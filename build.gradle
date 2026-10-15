@@ -1,0 +1,64 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+    archivesName = 'riichicraft'
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        riichicraft {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'riichicraft-test'
+        enableGameTests = true
+        enableClientGameTests = true
+        eula = providers.gradleProperty('riichicraft_accept_eula')
+                .map { value -> value.toBoolean() }.getOrElse(false)
+    }
+}
+
+def verifyDedicatedServer = providers.gradleProperty('verify_dedicated_server')
+        .map { value -> value.toBoolean() }.getOrElse(false)
+def testProjectRoot = layout.projectDirectory.asFile.absolutePath
+tasks.named('runClientGameTest', JavaExec) {
+    systemProperty 'riichicraft.test.dedicated', verifyDedicatedServer
+    systemProperty 'riichicraft.test.projectRoot', testProjectRoot
+    if (verifyDedicatedServer) {
+        systemProperty 'java.awt.headless', true
+    }
+}
+
+processResources {
+    def modVersion = project.version.toString()
+    inputs.property 'version', modVersion
+    filesMatching('fabric.mod.json') {
+        expand 'version': modVersion
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}

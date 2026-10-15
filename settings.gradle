@@ -1,0 +1,13 @@
+pluginManagement {
+    repositories {
+        maven {
+            url = providers.gradleProperty('loom_fabric_repository')
+                    .getOrElse('https://maven.fabricmc.net/')
+            content { includeGroupByRegex('net\\.fabricmc(\\..*)?') }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'riichicraft'

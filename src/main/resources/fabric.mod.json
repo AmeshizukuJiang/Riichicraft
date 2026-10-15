@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "riichicraft",
+  "version": "${version}",
+  "name": "Riichicraft",
+  "description": "Japanese mahjong in Minecraft. The first prototype adds a basic mahjong table.",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.riichicraft.Riichicraft"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

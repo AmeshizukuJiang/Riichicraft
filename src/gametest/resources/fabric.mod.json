@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "riichicraft-test",
+  "version": "0.0.1",
+  "name": "Riichicraft Game Tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "dev.riichicraft.test.MahjongTableGameTests"
+    ],
+    "fabric-client-gametest": [
+      "dev.riichicraft.test.MahjongTableClientGameTest"
+    ]
+  },
+  "depends": {
+    "riichicraft": "*",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
