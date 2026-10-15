@@ -1,0 +1,19 @@
+# Project-local tooling, caches and temporary downloads
+/.tools/
+/.gradle-home/
+/.gradle/
+/.tmp/
+
+# Generated build output and Minecraft test worlds/logs
+/build/
+/run/
+/run-*/
+/out/
+*.log
+
+# Editors and operating system files
+/.idea/
+/.vscode/
+*.iml
+Thumbs.db
+.DS_Store
