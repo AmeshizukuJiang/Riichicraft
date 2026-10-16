@@ -36,7 +36,7 @@ try {
     # A fresh, empty classpath ensures that no game or globally installed test library is needed.
     & $javacExecutable -encoding UTF-8 --release 25 --class-path $classesDirectory -d $classesDirectory @sources
     if ($LASTEXITCODE -ne 0) { throw 'Standalone rules compilation failed.' }
-    & $javaExecutable -ea --class-path $classesDirectory dev.riichicraft.rules.HandAnalyzerTests
+    & $javaExecutable -ea --class-path $classesDirectory dev.riichicraft.rules.RulesTests
     if ($LASTEXITCODE -ne 0) { throw 'Standalone rules verification failed.' }
 }
 finally {

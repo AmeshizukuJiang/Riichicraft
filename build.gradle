@@ -45,7 +45,7 @@ tasks.register('rulesTest', JavaExec) {
     description = 'Verify the standalone rules without loading Minecraft or external test libraries.'
     dependsOn tasks.named('rulesTestClasses')
     classpath = sourceSets.rulesTest.runtimeClasspath
-    mainClass = 'dev.riichicraft.rules.HandAnalyzerTests'
+    mainClass = 'dev.riichicraft.rules.RulesTests'
     enableAssertions = true
 }
 
