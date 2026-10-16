@@ -39,8 +39,9 @@ public record FuritenState(Set<Integer> discardedTypes, boolean temporary, boole
 
     /**
      * Record a missed ron event already established by the authoritative caller.
-     * This primitive does not decide which offers (including no-yaku tiles) trigger an event,
-     * or whether riichi has legally become established; those are separate round decisions.
+     * FuritenTracker identifies missed structural completions of ordinary opponent discards,
+     * including no-yaku tiles. This primitive does not establish a live response window or
+     * whether riichi has legally become established; those are separate round decisions.
      */
     public FuritenState afterPassedRon(WinContext.Riichi establishedRiichi) {
         Objects.requireNonNull(establishedRiichi, "establishedRiichi");

@@ -9,5 +9,6 @@ public final class RulesTests {
         HandAnalyzerTests.main(args);
         ScoringTests.main(args);
         FuritenTests.main(args);
+        DiscardFuritenTests.main(args);
     }
 }

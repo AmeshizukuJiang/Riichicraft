@@ -142,7 +142,7 @@ public final class FuritenTests {
         // Ignoring furiten for tsumo cannot bypass the ordinary shape and yaku requirements.
         rejected(WinEvaluator.evaluate(eastComplete, east,
                 FuritenState.initial().afterDiscard(tile("3z")), DISCARD), DISCARD_FURITEN);
-        // This is NOT an assertion about whether passing the no-yaku west offer creates temporary furiten.
+        // Automatic no-yaku pass events are covered separately in DiscardFuritenTests.
 
         HandInput noShape = hand("123m456p789s12345z");
         WinContext incompleteShape = context(noShape, "5z", WinMethod.RON, Riichi.NONE, WinEvent.NORMAL);
