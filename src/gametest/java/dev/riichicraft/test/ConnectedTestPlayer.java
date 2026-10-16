@@ -43,7 +43,8 @@ public final class ConnectedTestPlayer implements AutoCloseable {
             server.getPlayerList().placeNewPlayer(connection, player, cookie);
             player.setGameMode(GameType.CREATIVE);
             player.setNoGravity(true);
-            player.setPos(tablePos.getX() + 0.5, tablePos.getY() + 1.0, tablePos.getZ() + 1.5);
+            // Stay beside the table, leaving the real client's south-side interaction ray unobstructed.
+            player.setPos(tablePos.getX() + 2.5, tablePos.getY(), tablePos.getZ() + 0.5);
             if (server.getPlayerList().getPlayer(player.getUUID()) != player || player.connection == null
                     || !player.isAlive() || player.isSpectator()
                     || !player.isWithinBlockInteractionRange(tablePos, 1.0)) {

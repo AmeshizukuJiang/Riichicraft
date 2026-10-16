@@ -77,5 +77,10 @@
   "message.riichicraft.game.paused": "本局已暂停，暂时不能打牌。",
   "message.riichicraft.game.exhausted": "牌墙已摸完，本局摸打已结束。",
   "message.riichicraft.game.not_your_turn": "还没有轮到你打牌。",
-  "message.riichicraft.game.invalid_tile": "这张牌不在你的手牌中，请按最新状态重新选择。"
+  "message.riichicraft.game.invalid_tile": "这张牌不在你的手牌中，请按最新状态重新选择。",
+  "message.riichicraft.game.player_unavailable": "有玩家暂时无法继续。本局已暂停，手牌和座位已保留；四人回桌并重新准备后继续。",
+  "message.riichicraft.game.awaiting_confirmations": "四名玩家已回桌，等待所有玩家重新准备后继续。",
+  "message.riichicraft.game.resumed": "四名玩家均已确认，本局继续。",
+  "message.riichicraft.game.aborted": "本局已终止，座位保留，准备状态已清除。",
+  "message.riichicraft.game.terminated": "这张麻将桌已无法继续。本局已终止，未保存进度。"
 }

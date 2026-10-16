@@ -73,15 +73,14 @@ final class GamePanel {
 
         int left = 8;
         int available = width - 16;
-        int closeWidth = Math.min(120, available / 3);
-        int actionWidth = available - closeWidth - 4;
+        int actionWidth = (available - 8) / 3;
+        int closeWidth = available - actionWidth * 2 - 8;
         discardButton = screen.addGameButton(Button.builder(text("discard"),
                 button -> request(GameActionPayload.DISCARD, selectedTileId))
                 .bounds(left, 192, actionWidth, 20).build());
-        int half = (actionWidth - 4) / 2;
         resumeButton = screen.addGameButton(Button.builder(text("resume"),
                 button -> request(GameActionPayload.RESUME, -1))
-                .bounds(left, 192, half, 20).build());
+                .bounds(left, 192, actionWidth, 20).build());
         abortButton = screen.addGameButton(Button.builder(text("abort"), button -> {
             if (abortArmed) {
                 request(GameActionPayload.ABORT, -1);
@@ -89,13 +88,13 @@ final class GamePanel {
                 abortArmed = true;
                 updateButtons();
             }
-        }).bounds(left + half + 4, 192, actionWidth - half - 4, 20).build());
+        }).bounds(left + actionWidth + 4, 192, actionWidth, 20).build());
         cancelAbortButton = screen.addGameButton(Button.builder(text("cancel_abort"), button -> {
             abortArmed = false;
             updateButtons();
-        }).bounds(left, 192, half, 20).build());
+        }).bounds(left, 192, actionWidth, 20).build());
         screen.addGameButton(Button.builder(Component.translatable("screen.riichicraft.lobby.close"),
-                button -> screen.onClose()).bounds(left + actionWidth + 4, 192, closeWidth, 20).build());
+                button -> screen.onClose()).bounds(left + (actionWidth + 4) * 2, 192, closeWidth, 20).build());
         updateButtons();
     }
 
@@ -122,7 +121,9 @@ final class GamePanel {
     private void updateButtons() {
         boolean available = !awaitingReply && LobbyClient.canSendGame();
         boolean seated = screen.snapshot().ownSeat() >= 0;
-        boolean mayDiscard = available && seated && !game().paused()
+        boolean ownConfirmed = seated && game().seats().get(screen.snapshot().ownSeat()).confirmed();
+        boolean allPresent = game().seats().stream().allMatch(GameSnapshot.Seat::present);
+        boolean mayDiscard = available && seated && !abortArmed && !game().paused()
                 && game().turnSeat() == screen.snapshot().ownSeat() && game().drawnTile() >= 0;
         for (GameTileButton tile : tiles) {
             tile.active = mayDiscard;
@@ -131,14 +132,15 @@ final class GamePanel {
         if (discardButton == null) {
             return;
         }
-        discardButton.visible = !game().paused();
+        discardButton.visible = !game().paused() && !abortArmed;
         discardButton.active = mayDiscard && selectedTileId >= 0;
         resumeButton.visible = game().paused() && !abortArmed;
-        resumeButton.active = available && seated;
-        abortButton.visible = game().paused();
+        resumeButton.active = available && seated && allPresent && !ownConfirmed;
+        resumeButton.setMessage(text(ownConfirmed ? "confirmed" : "resume"));
+        abortButton.visible = true;
         abortButton.active = available && seated;
         abortButton.setMessage(text(abortArmed ? "confirm_abort" : "abort"));
-        cancelAbortButton.visible = game().paused() && abortArmed;
+        cancelAbortButton.visible = abortArmed;
         cancelAbortButton.active = !awaitingReply;
     }
 

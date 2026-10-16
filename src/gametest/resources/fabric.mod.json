@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "riichicraft-test",
-  "version": "0.0.3-dev",
+  "version": "0.0.3",
   "name": "Riichicraft Game Tests",
   "environment": "*",
   "entrypoints": {
@@ -11,7 +11,8 @@
       "dev.riichicraft.test.LobbyServiceGameTests",
       "dev.riichicraft.test.DrawDiscardGameTests",
       "dev.riichicraft.test.GamePayloadTests",
-      "dev.riichicraft.test.DrawDiscardServiceGameTests"
+      "dev.riichicraft.test.DrawDiscardServiceGameTests",
+      "dev.riichicraft.test.PrototypeLifecycleGameTests"
     ],
     "fabric-client-gametest": [
       "dev.riichicraft.test.MahjongTableClientGameTest"

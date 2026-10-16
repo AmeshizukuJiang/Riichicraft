@@ -45,17 +45,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
                     playerId = server.computeOnServer(s -> connection.getServerPlayer().getUUID());
                 }
                 server.waitFor(s -> LobbyService.get(s).registry().tableForPlayer(playerId).isEmpty());
-                try (TestDedicatedServerConnection connection = server.connect()) {
-                    connection.waitForChunksRender();
-                    BlockPos target = context.computeOnClient(client -> client.player.blockPosition().offset(0, 0, -2));
-                    openTable(context, connection, target);
-                    if (snapshot(context).ownSeat() != -1) {
-                        throw new AssertionError("A reconnected player must have released their previous lobby seat");
-                    }
-                    context.clickScreenButton("screen.riichicraft.lobby.join");
-                    sync(connection);
-                    if (snapshot(context).ownSeat() != 0) throw new AssertionError("Released seat must be available again");
-                }
+                DrawDiscardClientScenario.runReconnect(context, server);
             }
             return;
         }
@@ -95,6 +85,8 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
             Properties properties = new Properties();
             properties.setProperty("server-ip", "127.0.0.1");
             properties.setProperty("level-name", DEDICATED_WORLD_NAME);
+            // The framework's one-player default must also accommodate three native server fixtures.
+            properties.setProperty("max-players", "8");
             // Choose an available loopback port rather than taking the player's normal server port.
             try (ServerSocket reservation = new ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))) {
                 properties.setProperty("server-port", Integer.toString(reservation.getLocalPort()));
@@ -239,7 +231,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
         DrawDiscardClientScenario.run(context, server, connection, target, dedicated);
     }
 
-    private static void openTable(ClientGameTestContext context, TestServerConnection connection, BlockPos target) {
+    static void openTable(ClientGameTestContext context, TestServerConnection connection, BlockPos target) {
         context.getInput().lookAt(target);
         context.waitTick();
         context.runOnClient(client -> {

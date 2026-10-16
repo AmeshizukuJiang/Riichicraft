@@ -77,5 +77,10 @@
   "message.riichicraft.game.paused": "This hand is paused. Tiles cannot be discarded yet.",
   "message.riichicraft.game.exhausted": "The wall is empty. This draw-and-discard hand has ended.",
   "message.riichicraft.game.not_your_turn": "It is not your turn to discard.",
-  "message.riichicraft.game.invalid_tile": "That tile is not in your hand. Select again using the updated state."
+  "message.riichicraft.game.invalid_tile": "That tile is not in your hand. Select again using the updated state.",
+  "message.riichicraft.game.player_unavailable": "Hand paused. Hands and seats are kept. All four players must return and confirm to continue.",
+  "message.riichicraft.game.awaiting_confirmations": "All four players are back. Waiting for everyone to confirm they are ready to continue.",
+  "message.riichicraft.game.resumed": "All four players confirmed. The hand has resumed.",
+  "message.riichicraft.game.aborted": "The hand has ended. Seats are kept and all players are no longer ready.",
+  "message.riichicraft.game.terminated": "This table is no longer available. The hand has ended without saving its progress."
 }

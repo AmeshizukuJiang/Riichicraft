@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
@@ -20,6 +22,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -35,6 +38,8 @@ public final class LobbyService {
     private final Map<UUID, TableKey> locations = new HashMap<>();
     private final Map<UUID, View> views = new HashMap<>();
     private final Map<UUID, Prototype> games = new HashMap<>();
+    private final Set<UUID> disconnected = new HashSet<>();
+    private final Map<UUID, String> pendingNotices = new HashMap<>();
     private static final SecureRandom SEEDS = new SecureRandom();
 
     private static final class Prototype {
@@ -42,7 +47,8 @@ public final class LobbyService {
         long revision;
         boolean paused;
         String statusKey = "";
-        final java.util.Set<UUID> confirmations = new java.util.HashSet<>();
+        final Set<UUID> confirmations = new HashSet<>();
+        Set<UUID> unavailable = Set.of();
 
         Prototype(DrawDiscardGame game) {
             this.game = game;
@@ -62,6 +68,7 @@ public final class LobbyService {
 
     public static void initialize() {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> get(server).disconnect(handler.player));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> get(server).connected(handler.player));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             LobbyService service = SERVICES.get(server);
             if (service != null) service.tick();
@@ -70,12 +77,17 @@ public final class LobbyService {
             LobbyService service = SERVICES.get(level.getServer());
             if (service != null) service.unloadChunk(level, chunk.getPos().x(), chunk.getPos().z());
         });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            LobbyService service = SERVICES.get(server);
+            if (service != null) service.stop();
+        });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> SERVICES.remove(server));
     }
 
     public UUID open(ServerPlayer player, BlockPos pos) {
         TableKey key = new TableKey(player.level().dimension(), pos.immutable());
         if (!accessible(player, key)) return null;
+        disconnected.remove(player.getUUID());
         UUID tableId = tables.computeIfAbsent(key, ignored -> {
             UUID id = UUID.randomUUID();
             locations.put(id, key);
@@ -86,6 +98,8 @@ public final class LobbyService {
         if (old != null) sendClosed(player, old, "");
         View view = new View(UUID.randomUUID(), tableId);
         views.put(player.getUUID(), view);
+        Prototype prototype = games.get(tableId);
+        if (prototype != null) refreshPresence(tableId, prototype);
         sendSnapshot(player, view, registry.snapshot(tableId).orElseThrow(), "");
         return view.id();
     }
@@ -154,6 +168,8 @@ public final class LobbyService {
         if (view == null || !view.id().equals(payload.viewId())) return;
         Prototype prototype = games.get(view.tableId());
         if (prototype == null || !prototype.game.gameId().equals(payload.gameId())) return;
+        // Recheck in the same server action, closing the gap before the next END_SERVER_TICK.
+        refreshPresence(view.tableId(), prototype);
         LobbyRegistry.Snapshot lobby = registry.snapshot(view.tableId()).orElseThrow();
         String feedback = "";
         if (payload.revision() != prototype.revision) feedback = "message.riichicraft.lobby.stale";
@@ -161,6 +177,28 @@ public final class LobbyService {
             feedback = "message.riichicraft.game.spectator";
         } else if (!accessible(player, locations.get(view.tableId()))) {
             feedback = "message.riichicraft.lobby.unavailable";
+        } else if (payload.action() == GameActionPayload.ABORT) {
+            games.remove(view.tableId());
+            for (UUID participant : prototype.game.players()) {
+                if (disconnected.contains(participant) || server.getPlayerList().getPlayer(participant) == null) {
+                    pendingNotices.put(participant, "message.riichicraft.game.aborted");
+                }
+            }
+            clearDisconnected(prototype);
+            broadcast(registry.resetReadiness(view.tableId()), null, "message.riichicraft.game.aborted");
+            return;
+        } else if (payload.action() == GameActionPayload.RESUME) {
+            if (!prototype.paused) feedback = "message.riichicraft.game.resumed";
+            else if (!prototype.unavailable.isEmpty()) feedback = "message.riichicraft.game.players_absent";
+            else if (prototype.confirmations.add(player.getUUID())) {
+                prototype.revision++;
+                if (prototype.confirmations.size() == 4) {
+                    prototype.paused = false;
+                    prototype.statusKey = "";
+                    broadcast(lobby, null, "message.riichicraft.game.resumed");
+                } else broadcast(lobby, null, "");
+                return;
+            }
         } else if (payload.action() == GameActionPayload.DISCARD) {
             if (prototype.paused) feedback = "message.riichicraft.game.paused";
             else {
@@ -170,6 +208,7 @@ public final class LobbyService {
                     prototype.revision++;
                     if (prototype.game.isFinished()) {
                         games.remove(view.tableId());
+                        clearDisconnected(prototype);
                         lobby = registry.resetReadiness(view.tableId());
                         broadcast(lobby, null, "message.riichicraft.game.exhausted");
                     } else broadcast(lobby, null, "");
@@ -188,7 +227,40 @@ public final class LobbyService {
     private boolean present(UUID playerId, UUID tableId) {
         ServerPlayer player = server.getPlayerList().getPlayer(playerId);
         TableKey location = locations.get(tableId);
-        return player != null && location != null && accessible(player, location);
+        return !disconnected.contains(playerId) && player != null && location != null && accessible(player, location);
+    }
+
+    private void connected(ServerPlayer player) {
+        disconnected.remove(player.getUUID());
+        String notice = pendingNotices.remove(player.getUUID());
+        if (notice != null) player.sendOverlayMessage(Component.translatable(notice));
+    }
+
+    private void refreshPresence(UUID tableId, Prototype prototype) {
+        Set<UUID> missing = new HashSet<>();
+        for (UUID playerId : prototype.game.players()) {
+            if (!present(playerId, tableId)) missing.add(playerId);
+        }
+        boolean changed = !missing.equals(prototype.unavailable);
+        boolean newlyMissing = missing.stream().anyMatch(id -> !prototype.unavailable.contains(id));
+        if (!missing.isEmpty() && (!prototype.paused || newlyMissing)) {
+            prototype.paused = true;
+            prototype.confirmations.clear();
+            changed = true;
+        }
+        prototype.unavailable = Set.copyOf(missing);
+        String status = !prototype.paused ? "" : missing.isEmpty()
+                ? "message.riichicraft.game.awaiting_confirmations" : "message.riichicraft.game.player_unavailable";
+        if (!status.equals(prototype.statusKey)) changed = true;
+        prototype.statusKey = status;
+        if (changed) {
+            prototype.revision++;
+            broadcast(registry.snapshot(tableId).orElseThrow(), null, "");
+        }
+    }
+
+    private void clearDisconnected(Prototype prototype) {
+        disconnected.removeAll(prototype.game.players());
     }
 
     /** A recipient-specific view for server integrations; never returns another player's concealed tiles. */
@@ -206,6 +278,13 @@ public final class LobbyService {
 
     public void disconnect(ServerPlayer player) {
         views.remove(player.getUUID());
+        UUID tableId = registry.tableForPlayer(player.getUUID()).orElse(null);
+        Prototype prototype = games.get(tableId);
+        if (prototype != null) {
+            disconnected.add(player.getUUID());
+            refreshPresence(tableId, prototype);
+            return;
+        }
         registry.disconnect(player.getUUID()).ifPresent(snapshot -> broadcast(snapshot, null, ""));
     }
 
@@ -214,13 +293,26 @@ public final class LobbyService {
         UUID id = tables.remove(key);
         if (id == null) return;
         locations.remove(id);
-        games.remove(id);
+        Prototype prototype = games.remove(id);
+        String reason = prototype == null ? "message.riichicraft.lobby.unavailable"
+                : "message.riichicraft.game.terminated";
+        if (prototype != null) {
+            for (UUID playerId : prototype.game.players()) {
+                ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+                View ownView = views.get(playerId);
+                if (player == null || disconnected.contains(playerId)) pendingNotices.put(playerId, reason);
+                else if (ownView == null || !ownView.tableId().equals(id)) {
+                    player.sendOverlayMessage(Component.translatable(reason));
+                }
+            }
+            clearDisconnected(prototype);
+        }
         registry.removeTable(id);
         for (Map.Entry<UUID, View> entry : List.copyOf(views.entrySet())) {
             if (entry.getValue().tableId().equals(id)) {
                 views.remove(entry.getKey());
                 ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
-                if (player != null) sendClosed(player, entry.getValue(), "message.riichicraft.lobby.unavailable");
+                if (player != null) sendClosed(player, entry.getValue(), reason);
             }
         }
     }
@@ -232,13 +324,16 @@ public final class LobbyService {
         }
     }
 
-    private void tick() {
+    public void tick() {
         for (TableKey key : List.copyOf(tables.keySet())) {
             ServerLevel level = server.getLevel(key.dimension());
             if (level != null && (!level.isLoaded(key.pos())
                     || !level.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE))) {
                 removeTable(level, key.pos());
             }
+        }
+        for (Map.Entry<UUID, Prototype> entry : List.copyOf(games.entrySet())) {
+            refreshPresence(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<UUID, View> entry : List.copyOf(views.entrySet())) {
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
@@ -249,6 +344,21 @@ public final class LobbyService {
                 sendClosed(player, entry.getValue(), "message.riichicraft.lobby.unavailable");
             }
         }
+    }
+
+    /** Temporary prototypes intentionally have no saved state in this version. */
+    public void stop() {
+        for (TableKey key : List.copyOf(tables.keySet())) {
+            ServerLevel level = server.getLevel(key.dimension());
+            if (level != null) removeTable(level, key.pos());
+        }
+        games.clear();
+        views.clear();
+        tables.clear();
+        locations.clear();
+        disconnected.clear();
+        pendingNotices.clear();
+        registry.clear();
     }
 
     private boolean accessible(ServerPlayer player, TableKey key) {
