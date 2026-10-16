@@ -236,6 +236,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
         openTable(context, connection, target);
         context.clickScreenButton("screen.riichicraft.lobby.join");
         sync(connection);
+        DrawDiscardClientScenario.run(context, server, connection, target, dedicated);
     }
 
     private static void openTable(ClientGameTestContext context, TestServerConnection connection, BlockPos target) {

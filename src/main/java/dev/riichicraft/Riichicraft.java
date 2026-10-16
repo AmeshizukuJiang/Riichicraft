@@ -21,6 +21,6 @@ public final class Riichicraft implements ModInitializer {
         ModBlocks.initialize();
         LobbyNetworking.initialize();
         LobbyService.initialize();
-        LOGGER.info("Riichicraft initialized: mahjong table lobby prototype");
+        LOGGER.info("Riichicraft initialized: draw/discard development prototype");
     }
 }

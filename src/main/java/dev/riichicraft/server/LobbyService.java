@@ -2,6 +2,9 @@ package dev.riichicraft.server;
 
 import dev.riichicraft.block.ModBlocks;
 import dev.riichicraft.lobby.LobbyRegistry;
+import dev.riichicraft.game.DrawDiscardGame;
+import dev.riichicraft.network.GameActionPayload;
+import dev.riichicraft.network.GameSnapshot;
 import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.network.LobbyClosedPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
@@ -9,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -30,6 +34,20 @@ public final class LobbyService {
     private final Map<TableKey, UUID> tables = new HashMap<>();
     private final Map<UUID, TableKey> locations = new HashMap<>();
     private final Map<UUID, View> views = new HashMap<>();
+    private final Map<UUID, Prototype> games = new HashMap<>();
+    private static final SecureRandom SEEDS = new SecureRandom();
+
+    private static final class Prototype {
+        final DrawDiscardGame game;
+        long revision;
+        boolean paused;
+        String statusKey = "";
+        final java.util.Set<UUID> confirmations = new java.util.HashSet<>();
+
+        Prototype(DrawDiscardGame game) {
+            this.game = game;
+        }
+    }
 
     private record TableKey(ResourceKey<Level> dimension, BlockPos pos) { }
     private record View(UUID id, UUID tableId) { }
@@ -85,6 +103,15 @@ public final class LobbyService {
             sendClosed(player, view, "message.riichicraft.lobby.unavailable");
             return;
         }
+        if (games.containsKey(view.tableId())) {
+            sendSnapshot(player, view, registry.snapshot(view.tableId()).orElseThrow(),
+                    "message.riichicraft.game.in_progress");
+            return;
+        }
+        if (payload.action() == LobbyActionPayload.START) {
+            startPrototype(player, view, payload.revision());
+            return;
+        }
         LobbyRegistry.Result result = switch (payload.action()) {
             case LobbyActionPayload.JOIN -> registry.join(view.tableId(), player.getUUID(),
                     player.getGameProfile().name(), payload.revision());
@@ -103,6 +130,80 @@ public final class LobbyService {
         }
     }
 
+    private void startPrototype(ServerPlayer player, View view, long expectedRevision) {
+        LobbyRegistry.Snapshot lobby = registry.snapshot(view.tableId()).orElseThrow();
+        String feedback = "";
+        if (lobby.revision() != expectedRevision) feedback = "message.riichicraft.lobby.stale";
+        else if (!player.getUUID().equals(lobby.seats().getFirst().playerId())) {
+            feedback = "message.riichicraft.game.east_starts";
+        } else if (!lobby.allReady()) feedback = "message.riichicraft.game.not_ready";
+        else if (lobby.seats().stream().anyMatch(seat -> !present(seat.playerId(), view.tableId()))) {
+            feedback = "message.riichicraft.game.players_absent";
+        }
+        if (!feedback.isEmpty()) {
+            sendSnapshot(player, view, lobby, feedback);
+            return;
+        }
+        List<UUID> players = lobby.seats().stream().map(LobbyRegistry.Seat::playerId).toList();
+        games.put(view.tableId(), new Prototype(new DrawDiscardGame(UUID.randomUUID(), players, SEEDS.nextLong())));
+        broadcast(lobby, null, "");
+    }
+
+    public void handleGameAction(ServerPlayer player, GameActionPayload payload) {
+        View view = views.get(player.getUUID());
+        if (view == null || !view.id().equals(payload.viewId())) return;
+        Prototype prototype = games.get(view.tableId());
+        if (prototype == null || !prototype.game.gameId().equals(payload.gameId())) return;
+        LobbyRegistry.Snapshot lobby = registry.snapshot(view.tableId()).orElseThrow();
+        String feedback = "";
+        if (payload.revision() != prototype.revision) feedback = "message.riichicraft.lobby.stale";
+        else if (!prototype.game.players().contains(player.getUUID())) {
+            feedback = "message.riichicraft.game.spectator";
+        } else if (!accessible(player, locations.get(view.tableId()))) {
+            feedback = "message.riichicraft.lobby.unavailable";
+        } else if (payload.action() == GameActionPayload.DISCARD) {
+            if (prototype.paused) feedback = "message.riichicraft.game.paused";
+            else {
+                DrawDiscardGame.Result result = prototype.game.discard(player.getUUID(), payload.tileId(),
+                        prototype.game.revision());
+                if (result.changed()) {
+                    prototype.revision++;
+                    if (prototype.game.isFinished()) {
+                        games.remove(view.tableId());
+                        lobby = registry.resetReadiness(view.tableId());
+                        broadcast(lobby, null, "message.riichicraft.game.exhausted");
+                    } else broadcast(lobby, null, "");
+                    return;
+                }
+                feedback = switch (result.status()) {
+                    case NOT_YOUR_TURN -> "message.riichicraft.game.not_your_turn";
+                    case TILE_NOT_IN_HAND -> "message.riichicraft.game.invalid_tile";
+                    default -> "message.riichicraft.lobby.stale";
+                };
+            }
+        } else feedback = "message.riichicraft.lobby.invalid_action";
+        sendSnapshot(player, view, lobby, feedback);
+    }
+
+    private boolean present(UUID playerId, UUID tableId) {
+        ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+        TableKey location = locations.get(tableId);
+        return player != null && location != null && accessible(player, location);
+    }
+
+    /** A recipient-specific view for server integrations; never returns another player's concealed tiles. */
+    public GameSnapshot gameView(UUID tableId, UUID recipient) {
+        Prototype prototype = games.get(tableId);
+        if (prototype == null) return null;
+        DrawDiscardGame.View gameView = prototype.game.view(recipient);
+        List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
+                seat.handCount(), seat.discards(), present(seat.playerId(), tableId),
+                prototype.confirmations.contains(seat.playerId()))).toList();
+        return new GameSnapshot(gameView.gameId(), prototype.revision, gameView.currentSeat(),
+                gameView.liveWallCount(), seats, gameView.closedHand(),
+                gameView.drawnTile() == null ? -1 : gameView.drawnTile(), prototype.paused, prototype.statusKey);
+    }
+
     public void disconnect(ServerPlayer player) {
         views.remove(player.getUUID());
         registry.disconnect(player.getUUID()).ifPresent(snapshot -> broadcast(snapshot, null, ""));
@@ -113,6 +214,7 @@ public final class LobbyService {
         UUID id = tables.remove(key);
         if (id == null) return;
         locations.remove(id);
+        games.remove(id);
         registry.removeTable(id);
         for (Map.Entry<UUID, View> entry : List.copyOf(views.entrySet())) {
             if (entry.getValue().tableId().equals(id)) {
@@ -161,7 +263,7 @@ public final class LobbyService {
             if (!entry.getValue().tableId().equals(snapshot.tableId())) continue;
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player != null) sendSnapshot(player, entry.getValue(), snapshot,
-                    entry.getKey().equals(actor) ? feedback : "");
+                    actor == null || entry.getKey().equals(actor) ? feedback : "");
         }
     }
 
@@ -174,7 +276,8 @@ public final class LobbyService {
         var seats = snapshot.seats().stream().map(seat ->
                 new LobbySnapshotPayload.Seat(seat.playerId(), seat.name(), seat.ready())).toList();
         ServerPlayNetworking.send(player, new LobbySnapshotPayload(view.id(), view.tableId(),
-                locations.get(view.tableId()).pos(), snapshot.revision(), seats, ownSeat, snapshot.allReady(), feedback));
+                locations.get(view.tableId()).pos(), snapshot.revision(), seats, ownSeat, snapshot.allReady(), feedback,
+                gameView(view.tableId(), player.getUUID())));
     }
 
     private void sendClosed(ServerPlayer player, View view, String reason) {

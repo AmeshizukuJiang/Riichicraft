@@ -13,6 +13,7 @@ public record LobbyActionPayload(UUID viewId, long revision, int action, boolean
     public static final int SET_READY = 1;
     public static final int LEAVE = 2;
     public static final int CLOSE = 3;
+    public static final int START = 4;
     public static final Type<LobbyActionPayload> TYPE = new Type<>(Riichicraft.id("lobby_action"));
     public static final StreamCodec<RegistryFriendlyByteBuf, LobbyActionPayload> CODEC = StreamCodec.of(
             (buf, value) -> {

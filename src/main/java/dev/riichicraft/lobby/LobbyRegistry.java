@@ -138,6 +138,21 @@ public final class LobbyRegistry {
         playerSeats.clear();
     }
 
+    /** Return participants to an unprepared lobby without changing seats or the global index. */
+    public Snapshot resetReadiness(UUID tableId) {
+        Lobby lobby = tables.get(Objects.requireNonNull(tableId, "tableId"));
+        if (lobby == null) throw new IllegalArgumentException("Unknown table");
+        boolean changed = false;
+        for (Occupant occupant : lobby.seats) {
+            if (occupant != null && occupant.ready) {
+                occupant.ready = false;
+                changed = true;
+            }
+        }
+        if (changed) lobby.revision++;
+        return snapshotOf(lobby);
+    }
+
     private static Result result(Status status, Lobby lobby) {
         return new Result(status, snapshotOf(lobby));
     }

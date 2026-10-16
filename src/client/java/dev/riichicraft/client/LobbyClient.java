@@ -1,6 +1,7 @@
 package dev.riichicraft.client;
 
 import dev.riichicraft.network.LobbyActionPayload;
+import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.LobbyClosedPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
 import java.util.HashSet;
@@ -75,10 +76,20 @@ final class LobbyClient {
 
     static boolean request(LobbySnapshotPayload snapshot, int action, boolean ready) {
         if (!snapshot.viewId().equals(activeViewId) || DISMISSED_VIEWS.contains(snapshot.viewId())
-                || !canSend()) {
+                || snapshot.game() != null || !canSend()) {
             return false;
         }
         ClientPlayNetworking.send(new LobbyActionPayload(snapshot.viewId(), snapshot.revision(), action, ready));
+        return true;
+    }
+
+    static boolean requestGame(LobbySnapshotPayload snapshot, int action, int tileId) {
+        if (!snapshot.viewId().equals(activeViewId) || DISMISSED_VIEWS.contains(snapshot.viewId())
+                || snapshot.game() == null || !canSendGame()) {
+            return false;
+        }
+        ClientPlayNetworking.send(new GameActionPayload(snapshot.viewId(), snapshot.game().gameId(),
+                snapshot.game().revision(), action, tileId));
         return true;
     }
 
@@ -96,5 +107,10 @@ final class LobbyClient {
     static boolean canSend() {
         return connected && Minecraft.getInstance().getConnection() != null
                 && ClientPlayNetworking.canSend(LobbyActionPayload.TYPE);
+    }
+
+    static boolean canSendGame() {
+        return connected && Minecraft.getInstance().getConnection() != null
+                && ClientPlayNetworking.canSend(GameActionPayload.TYPE);
     }
 }

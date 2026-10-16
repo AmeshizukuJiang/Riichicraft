@@ -3,7 +3,7 @@
   "id": "riichicraft",
   "version": "${version}",
   "name": "Riichicraft",
-  "description": "Japanese mahjong in Minecraft. This prototype adds a table with a four-player lobby.",
+  "description": "Japanese mahjong in Minecraft. A four-player draw/discard prototype with private hands.",
   "environment": "*",
   "entrypoints": {
     "main": ["dev.riichicraft.Riichicraft"],

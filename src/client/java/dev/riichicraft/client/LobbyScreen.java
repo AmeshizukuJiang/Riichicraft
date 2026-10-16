@@ -20,6 +20,8 @@ public final class LobbyScreen extends Screen {
     private Button joinButton;
     private Button readyButton;
     private Button leaveButton;
+    private Button startButton;
+    private GamePanel gamePanel;
     private int panelLeft;
     private int panelTop;
     private int panelWidth;
@@ -38,18 +40,54 @@ public final class LobbyScreen extends Screen {
         return snapshot;
     }
 
+    public int selectedTileId() {
+        return gamePanel == null || snapshot.game() == null ? -1 : gamePanel.selectedTileId();
+    }
+
+    /** Stable localized label; physical copies are available through GameTileButton.tileId(). */
+    public static Component tileButtonLabel(int tileId) {
+        return Component.translatable("screen.riichicraft.game.tile", TileFaces.fullName(tileId));
+    }
+
     void acceptSnapshot(LobbySnapshotPayload updated) {
         if (!snapshot.viewId().equals(updated.viewId()) || !snapshot.tableId().equals(updated.tableId())
                 || updated.revision() < snapshot.revision()) {
             return;
         }
+        if (snapshot.game() != null && updated.game() != null
+                && snapshot.game().gameId().equals(updated.game().gameId())
+                && updated.game().revision() < snapshot.game().revision()) {
+            return;
+        }
+        boolean hadGame = snapshot.game() != null;
         snapshot = updated;
         awaitingReply = false;
+        if (snapshot.game() != null) {
+            if (gamePanel == null) {
+                gamePanel = new GamePanel(this);
+            }
+            gamePanel.acceptSnapshot();
+            rebuildWidgets();
+            return;
+        }
+        if (hadGame) {
+            gamePanel = null;
+            rebuildWidgets();
+            return;
+        }
         updateButtons();
     }
 
     @Override
     protected void init() {
+        if (snapshot.game() != null) {
+            if (gamePanel == null) {
+                gamePanel = new GamePanel(this);
+                gamePanel.acceptSnapshot();
+            }
+            gamePanel.init(width);
+            return;
+        }
         panelWidth = Math.min(360, width - 16);
         panelHeight = Math.min(228, height - 8);
         panelLeft = (width - panelWidth) / 2;
@@ -70,9 +108,17 @@ public final class LobbyScreen extends Screen {
         leaveButton = addRenderableWidget(Button.builder(text("leave"),
                 button -> request(LobbyActionPayload.LEAVE, false))
                 .bounds(innerLeft + (buttonWidth + 4) * 2, actionsY, buttonWidth, 20).build());
+        int halfWidth = (innerWidth - 4) / 2;
+        startButton = addRenderableWidget(Button.builder(text("start"),
+                button -> request(LobbyActionPayload.START, false))
+                .bounds(innerLeft, actionsY + 24, halfWidth, 20).build());
         addRenderableWidget(Button.builder(text("close"), button -> onClose())
-                .bounds(innerLeft, actionsY + 24, innerWidth, 20).build());
+                .bounds(innerLeft + halfWidth + 4, actionsY + 24, innerWidth - halfWidth - 4, 20).build());
         updateButtons();
+    }
+
+    Button addGameButton(Button button) {
+        return addRenderableWidget(button);
     }
 
     private void request(int action, boolean ready) {
@@ -97,6 +143,7 @@ public final class LobbyScreen extends Screen {
         readyButton.active = available && seated;
         readyButton.setMessage(text(ownReady() ? "cancel_ready" : "prepare"));
         leaveButton.active = available && seated;
+        startButton.active = available && snapshot.allReady() && snapshot.ownSeat() == 0;
     }
 
     @Override
@@ -109,6 +156,11 @@ public final class LobbyScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        if (snapshot.game() != null) {
+            gamePanel.extractRenderState(graphics, mouseX, mouseY);
+            super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+            return;
+        }
         graphics.fill(0, 0, width, height, 0xA0000000);
         graphics.fill(panelLeft, panelTop, panelLeft + panelWidth, panelTop + panelHeight, 0xF01A2925);
         graphics.centeredText(font, title, width / 2, panelTop + 8, 0xFFF0E4C9);

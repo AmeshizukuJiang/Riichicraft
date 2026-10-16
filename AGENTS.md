@@ -3,7 +3,7 @@
 ## 项目与范围
 
 - 面向 Minecraft Java 26.2 / Fabric；模组 ID 为 `riichicraft`。
-- 采用实体麻将桌＋手牌操作界面。路线见 `docs/PLAN.md`；基础桌记录见 `docs/FIRST_STEP.md`，当前大厅步骤见 `docs/LOBBY.md`。
+- 采用实体麻将桌＋手牌操作界面。路线见 `docs/PLAN.md`；已完成大厅见 `docs/LOBBY.md`，当前摸打步骤见 `docs/DRAW_DISCARD.md`。
 - 按小步骤交付。改变玩法、规则、交互方向、生命周期或引入重要依赖时，先与用户沟通；已授权范围内的实现细节自行处理。
 - 规则核心、服务端状态和客户端显示保持职责分离；专用服务器不能加载客户端类。
 
