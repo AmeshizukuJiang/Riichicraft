@@ -209,7 +209,7 @@ Minecraft 实测：
 
 ## 10. 已核对的技术参考
 
-2026-10-15 核对了以下官方资料。这里用于确定技术方向；工程尚未生成，依赖组合尚未通过实际构建验证。
+2026-10-15 核对了以下官方资料。工程与固定依赖组合随后已通过构建、服务端及客户端测试，实际版本和证据分别见 [DEVELOPMENT.md](DEVELOPMENT.md) 与 [VALIDATION.md](VALIDATION.md)。
 
 - [Fabric 的 Minecraft 26.2 说明](https://www.fabricmc.net/2026/06/15/262.html)：26.2 的工具链、注册与 GUI 等变化。文中版本是发文时的建议，实际搭建时重新选择兼容组合并锁定。
 - [Fabric 工程创建指南](https://docs.fabricmc.net/develop/getting-started/creating-a-project)：以官方模板建立目标版本工程。

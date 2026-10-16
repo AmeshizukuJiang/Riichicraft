@@ -1,6 +1,8 @@
 package dev.riichicraft;
 
 import dev.riichicraft.block.ModBlocks;
+import dev.riichicraft.network.LobbyNetworking;
+import dev.riichicraft.server.LobbyService;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -17,6 +19,8 @@ public final class Riichicraft implements ModInitializer {
     @Override
     public void onInitialize() {
         ModBlocks.initialize();
-        LOGGER.info("Riichicraft initialized: basic mahjong table prototype");
+        LobbyNetworking.initialize();
+        LobbyService.initialize();
+        LOGGER.info("Riichicraft initialized: mahjong table lobby prototype");
     }
 }

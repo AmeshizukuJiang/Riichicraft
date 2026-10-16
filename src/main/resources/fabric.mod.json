@@ -3,10 +3,11 @@
   "id": "riichicraft",
   "version": "${version}",
   "name": "Riichicraft",
-  "description": "Japanese mahjong in Minecraft. The first prototype adds a basic mahjong table.",
+  "description": "Japanese mahjong in Minecraft. This prototype adds a table with a four-player lobby.",
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.riichicraft.Riichicraft"]
+    "main": ["dev.riichicraft.Riichicraft"],
+    "client": ["dev.riichicraft.client.RiichicraftClient"]
   },
   "depends": {
     "fabricloader": ">=0.19.5",

@@ -1,6 +1,10 @@
 package dev.riichicraft.test;
 
 import dev.riichicraft.Riichicraft;
+import dev.riichicraft.client.LobbyScreen;
+import dev.riichicraft.network.LobbyActionPayload;
+import dev.riichicraft.network.LobbySnapshotPayload;
+import dev.riichicraft.server.LobbyService;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.InetAddress;
@@ -8,8 +12,8 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
@@ -17,16 +21,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.phys.BlockHitResult;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Opens a real client world and records the table for visual review. This is a loading and
- * resource smoke test, not an assertion that the appearance has passed human acceptance.
+ * Exercises actual client input and lobby packets in integrated and TCP server modes.
+ * Screenshots document the current interface; they do not establish long-term human acceptance.
  */
 @SuppressWarnings("UnstableApiUsage")
 public final class MahjongTableClientGameTest implements FabricClientGameTest {
@@ -36,9 +38,24 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         if (Boolean.getBoolean("riichicraft.test.dedicated")) {
             Properties properties = dedicatedServerProperties(context);
-            try (TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
-                    TestDedicatedServerConnection connection = server.connect()) {
-                runTableScenario(context, server, connection, true);
+            try (TestDedicatedServerContext server = context.worldBuilder().createServer(properties)) {
+                UUID playerId;
+                try (TestDedicatedServerConnection connection = server.connect()) {
+                    runTableScenario(context, server, connection, true);
+                    playerId = server.computeOnServer(s -> connection.getServerPlayer().getUUID());
+                }
+                server.waitFor(s -> LobbyService.get(s).registry().tableForPlayer(playerId).isEmpty());
+                try (TestDedicatedServerConnection connection = server.connect()) {
+                    connection.waitForChunksRender();
+                    BlockPos target = context.computeOnClient(client -> client.player.blockPosition().offset(0, 0, -2));
+                    openTable(context, connection, target);
+                    if (snapshot(context).ownSeat() != -1) {
+                        throw new AssertionError("A reconnected player must have released their previous lobby seat");
+                    }
+                    context.clickScreenButton("screen.riichicraft.lobby.join");
+                    sync(connection);
+                    if (snapshot(context).ownSeat() != 0) throw new AssertionError("Released seat must be available again");
+                }
             }
             return;
         }
@@ -122,65 +139,132 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
                     throw new AssertionError("Missing client resource: " + resource);
                 }
             }
-            String messageKey = "message.riichicraft.table.prototype";
+            String messageKey = "screen.riichicraft.lobby.title";
             if (Component.translatable(messageKey).getString().equals(messageKey)) {
-                throw new AssertionError("The prototype feedback translation must be loaded");
+                throw new AssertionError("The lobby translation must be loaded");
             }
         });
 
-        assertOneFeedbackPerClick(context, server, connection);
-        context.takeScreenshot(dedicated ? "riichicraft-dedicated-table" : "riichicraft-basic-table");
+        runLobbyScenario(context, server, connection, dedicated);
     }
 
-    private static void assertOneFeedbackPerClick(ClientGameTestContext context,
-            TestServerContext server, TestServerConnection connection) {
-        AtomicBoolean recording = new AtomicBoolean(true);
-        AtomicInteger feedbackCount = new AtomicInteger();
-        context.runOnClient(client -> ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (recording.get() && overlay
-                    && message.getContents() instanceof TranslatableContents translation
-                    && translation.getKey().equals("message.riichicraft.table.prototype")) {
-                feedbackCount.incrementAndGet();
-            }
-        }));
-
-        try {
-            BlockPos target = context.computeOnClient(client -> client.player.blockPosition().offset(0, 0, -2));
-            context.getInput().lookAt(target);
+    private static void runLobbyScenario(ClientGameTestContext context,
+            TestServerContext server, TestServerConnection connection, boolean dedicated) {
+        BlockPos target = context.computeOnClient(client -> client.player.blockPosition().offset(0, 0, -2));
+        String[][] heldItems = {{}, {"weapon.mainhand", "minecraft:stick"}, {"weapon.offhand", "minecraft:stick"}};
+        for (String[] heldItem : heldItems) {
+            server.runCommand("clear @a");
+            if (heldItem.length != 0) server.runCommand("item replace entity @a " + heldItem[0] + " with " + heldItem[1]);
             context.waitTick();
-            context.runOnClient(client -> {
-                if (!(client.hitResult instanceof BlockHitResult hit) || !hit.getBlockPos().equals(target)) {
-                    throw new AssertionError("The real client crosshair must be aimed at the table");
-                }
-            });
-
-            String[][] heldItems = {
-                    {},
-                    {"weapon.mainhand", "minecraft:stick"},
-                    {"weapon.offhand", "minecraft:stick"}
-            };
-            for (String[] heldItem : heldItems) {
-                server.runCommand("clear @a");
-                if (heldItem.length != 0) {
-                    server.runCommand("item replace entity @a " + heldItem[0]
-                            + " with " + heldItem[1]);
-                }
-                context.waitTick();
-                connection.waitForClientboundPackets();
-                feedbackCount.set(0);
-
-                // Exercise actual input, client prediction, packets and server-side feedback.
-                context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
-                connection.waitForServerboundPackets();
-                connection.waitForClientboundPackets();
-                if (feedbackCount.get() != 1) {
-                    throw new AssertionError("One physical right click must yield one prototype feedback; got "
-                            + feedbackCount.get() + " for hand setup " + String.join(" ", heldItem));
-                }
-            }
-        } finally {
-            // Fabric events have no unregister operation; leave an inert listener after this test.
-            recording.set(false);
+            connection.waitForClientboundPackets();
+            openTable(context, connection, target);
+            context.clickScreenButton("screen.riichicraft.lobby.close");
+            sync(connection);
+            context.waitForScreen(null);
         }
+
+        openTable(context, connection, target);
+        context.clickScreenButton("screen.riichicraft.lobby.join");
+        sync(connection);
+        LobbySnapshotPayload joined = snapshot(context);
+        if (joined.ownSeat() != 0) throw new AssertionError("The first player must automatically receive East");
+        context.clickScreenButton("screen.riichicraft.lobby.prepare");
+        sync(connection);
+        if (!snapshot(context).seats().get(0).ready()) throw new AssertionError("Ready must reach the server and return");
+        context.clickScreenButton("screen.riichicraft.lobby.cancel_ready");
+        sync(connection);
+        long revision = snapshot(context).revision();
+        context.runOnClient(client -> {
+            ClientPlayNetworking.send(new LobbyActionPayload(joined.viewId(), joined.revision(),
+                    LobbyActionPayload.SET_READY, true));
+            ClientPlayNetworking.send(new LobbyActionPayload(UUID.randomUUID(), revision,
+                    LobbyActionPayload.LEAVE, false));
+        });
+        sync(connection);
+        if (snapshot(context).revision() != revision || snapshot(context).seats().get(0).ready()) {
+            throw new AssertionError("Stale or forged view requests must not change current state");
+        }
+        context.clickScreenButton("screen.riichicraft.lobby.close");
+        sync(connection);
+        openTable(context, connection, target);
+        if (snapshot(context).ownSeat() != 0) throw new AssertionError("Closing the screen must retain the seat");
+        context.clickScreenButton("screen.riichicraft.lobby.leave");
+        sync(connection);
+        if (snapshot(context).ownSeat() != -1) throw new AssertionError("Explicit leave must release the seat");
+        context.clickScreenButton("screen.riichicraft.lobby.join");
+        sync(connection);
+        context.clickScreenButton("screen.riichicraft.lobby.prepare");
+        sync(connection);
+
+        // Three server fixtures exercise the four-seat/all-ready view without claiming four real clients.
+        server.runOnServer(s -> {
+            var registry = LobbyService.get(s).registry();
+            UUID tableId = registry.tableForPlayer(connection.getServerPlayer().getUUID()).orElseThrow();
+            for (String name : new String[] {"TestSouth", "TestWest", "TestNorth"}) {
+                UUID fixture = UUID.randomUUID();
+                registry.join(tableId, fixture, name, registry.snapshot(tableId).orElseThrow().revision());
+                registry.setReady(tableId, fixture, true, registry.snapshot(tableId).orElseThrow().revision());
+            }
+        });
+        sendReady(context, true);
+        sync(connection); // The stale view receives a complete refreshed snapshot.
+        sendReady(context, true);
+        sync(connection); // Desired-state repetition must keep all four seats ready.
+        if (!snapshot(context).allReady()) throw new AssertionError("Four ready seats must enable the ready indication");
+
+        var reload = context.computeOnClient(client -> {
+            client.getLanguageManager().setSelected("zh_cn");
+            return client.reloadResourcePacks();
+        });
+        context.waitFor(client -> reload.isDone());
+        reload.join();
+        context.waitFor(client -> client.gui.overlay() == null);
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        context.waitTick();
+        context.takeScreenshot(dedicated ? "riichicraft-dedicated-lobby" : "riichicraft-lobby");
+
+        server.runCommand("execute as @a at @s run setblock ~ ~ ~-2 minecraft:air");
+        context.waitForScreen(null);
+        server.runOnServer(s -> {
+            if (LobbyService.get(s).registry().tableForPlayer(connection.getServerPlayer().getUUID()).isPresent()) {
+                throw new AssertionError("Breaking a table must release its lobby seats");
+            }
+        });
+        server.runCommand("execute as @a at @s run setblock ~ ~ ~-2 riichicraft:mahjong_table");
+        context.waitTick();
+        connection.waitForClientboundPackets();
+        openTable(context, connection, target);
+        context.clickScreenButton("screen.riichicraft.lobby.join");
+        sync(connection);
+    }
+
+    private static void openTable(ClientGameTestContext context, TestServerConnection connection, BlockPos target) {
+        context.getInput().lookAt(target);
+        context.waitTick();
+        context.runOnClient(client -> {
+            if (!(client.hitResult instanceof BlockHitResult hit) || !hit.getBlockPos().equals(target)) {
+                throw new AssertionError("The actual crosshair must hit the mahjong table");
+            }
+        });
+        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+        sync(connection);
+        context.waitForScreen(LobbyScreen.class);
+    }
+
+    private static LobbySnapshotPayload snapshot(ClientGameTestContext context) {
+        return context.computeOnClient(client -> ((LobbyScreen) client.gui.screen()).snapshot());
+    }
+
+    private static void sendReady(ClientGameTestContext context, boolean ready) {
+        context.runOnClient(client -> {
+            LobbySnapshotPayload current = ((LobbyScreen) client.gui.screen()).snapshot();
+            ClientPlayNetworking.send(new LobbyActionPayload(current.viewId(), current.revision(),
+                    LobbyActionPayload.SET_READY, ready));
+        });
+    }
+
+    private static void sync(TestServerConnection connection) {
+        connection.waitForServerboundPackets();
+        connection.waitForClientboundPackets();
     }
 }

@@ -3,7 +3,9 @@ package dev.riichicraft.block;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
+import dev.riichicraft.server.LobbyService;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -70,10 +72,16 @@ public final class MahjongTableBlock extends HorizontalDirectionalBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
             Player player, BlockHitResult hitResult) {
-        if (!level.isClientSide()) {
-            player.sendOverlayMessage(Component.translatable("message.riichicraft.table.prototype"));
+        if (player instanceof ServerPlayer serverPlayer) {
+            LobbyService.get(serverPlayer.level().getServer()).open(serverPlayer, pos);
         }
         // Consume the main-hand interaction, preventing a second off-hand action.
         return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean moved) {
+        LobbyService.get(level.getServer()).removeTable(level, pos);
+        super.affectNeighborsAfterRemoval(state, level, pos, moved);
     }
 }

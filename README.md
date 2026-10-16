@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-2026-10-15：已实现 v0.0.1 基础麻将桌，完成构建、服务端 GameTest、单人客户端及本地专用服务器连接验证。当前包含普通桌的注册、四向放置、碰撞、原型状态提示、掉落与原创模型；不包含入座或麻将对局。
+2026-10-16：已实现 v0.0.2 入座大厅，支持四人自动分座、准备／取消、离座和状态同步。关闭界面保留座位，断线释放；四人准备完成后显示条件满足，配牌与麻将对局将在下一阶段加入。
 
-当前按用户要求暂停；[接续记录](docs/SESSION_STATUS.md)与[验证记录](docs/VALIDATION.md)已保存。
+已恢复开发，检查点见[接续记录](docs/SESSION_STATUS.md)；构建、服务端和客户端的实际结果见[验证记录](docs/VALIDATION.md)。
 
 已确定：
 
@@ -22,6 +22,7 @@
 
 - [完整规划](docs/PLAN.md)：玩法边界、物品、规则、架构、开发阶段及验收。
 - [第一个开发步骤](docs/FIRST_STEP.md)：只实现工程与基础麻将桌的具体范围。
+- [入座大厅设计](docs/LOBBY.md)：v0.0.2 已确认的交互与验证目标。
 
 推荐顺序：
 
@@ -39,7 +40,7 @@ Windows / PowerShell 7：
 ./tools/Invoke-Gradle.ps1 build
 ```
 
-首次运行会将固定版本 JDK、Gradle 和依赖下载到本项目。后续通过 `Invoke-Gradle.ps1` 使用项目专用环境，避免使用全局 Gradle 缓存。构建产物为 `build/libs/riichicraft-0.0.1.jar`，带 `-sources` 的文件是源码包。
+首次运行会将固定版本 JDK、Gradle 和依赖下载到本项目。后续通过 `Invoke-Gradle.ps1` 使用项目专用环境，避免使用全局 Gradle 缓存。构建产物为 `build/libs/riichicraft-0.0.2.jar`，带 `-sources` 的文件是源码包。
 
 ```powershell
 # 自动进入测试世界，验证客户端交互并保存截图
@@ -49,7 +50,9 @@ Windows / PowerShell 7：
 ./tools/Invoke-Gradle.ps1 runClient
 ```
 
-开发客户端里可以使用 `/give @s riichicraft:mahjong_table` 获得桌子，也可以在创造模式的功能方块分类中找到它。普通右键显示原型提示；潜行保留原版使用手持物品的行为。当前桌子用于验证模组基础交互。
+开发客户端里可以使用 `/give @s riichicraft:mahjong_table` 获得桌子，也可以在创造模式的功能方块分类中找到它。普通右键打开大厅，再点击“自动入座”；潜行保留原版使用手持物品的行为。同一玩家只能占一桌，暂不提供坐姿动画和生存配方。未开局大厅为临时状态，桌子破坏、区块卸载或服务器停止时清理。
+
+![四人准备状态的客户端测试截图；其中三席为服务端测试数据](docs/images/lobby.png)
 
 - [开发流程与工具链](docs/DEVELOPMENT.md)
 - [资源来源与重建](docs/ASSETS.md)
