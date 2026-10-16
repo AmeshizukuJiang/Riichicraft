@@ -14,9 +14,9 @@
 - v0.0.3 游戏检查点产物为 `build/libs/riichicraft-0.0.3.jar`；截图 `docs/images/draw-discard.png`、`draw-discard-compact.png`、`paused-reconnected.png` 已更新。
 - v0.0.4-dev 首批新增 `rules/` 的牌／声明组校验、标准形全部分解、七对子／国士、真实可和的结构等待。独立测试不加载游戏，168,715 个断言通过，含全部 118,800 种合法单花色十四张计数态的完整分解集合对照；完整构建 49 秒，33 项原有服务端测试再次通过。见 [RULES_CORE.md](RULES_CORE.md) 和 [VALIDATION.md](VALIDATION.md)。
 - 前一批新增和牌张／待形解释、全部普通役与役满、符明细和基础支付，本地提交 `633be6f`；四种特殊双倍、真役满复合、宝牌不救无役、所有拆解择最高支付和天和最高点指定均有验证。独立计分测试 614 个断言通过，覆盖 45／45 项役枚举；牌形原有 168,715 个断言再次通过。该批完整构建 1 分 1 秒通过，33 项 required 服务端 GameTest 全通过（4.902 秒）。来源核对见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)，API 与边界见 [RULES_CORE.md](RULES_CORE.md)。
-- 本批新增 `FuritenState`、`FuritenAnalyzer` 和 `WinEvaluator`：完整结构等待与历史舍牌交集、同巡／立直见逃标志、自摸例外、具体拒绝原因及抢暗杠仅国士／四枚物理约束。最终独立测试 104 个新断言通过，原有牌形与计分断言再次通过；完整构建 53 秒，原有 33 项 required 服务端 GameTest 全通过（4.936 秒），追加边界后的最终 `rulesTest` 10 秒通过。见 [FURITEN.md](FURITEN.md)。
+- 本批新增 `FuritenState`、`FuritenAnalyzer` 和 `WinEvaluator`，规则代码提交 `14c857c`：完整结构等待与历史舍牌交集、同巡／立直见逃标志、自摸例外、具体拒绝原因及抢暗杠仅国士／四枚物理约束。最终独立测试 104 个新断言通过，原有牌形与计分断言再次通过；完整构建 53 秒，原有 33 项 required 服务端 GameTest 全通过（4.936 秒），追加边界后的最终 `rulesTest` 10 秒通过。见 [FURITEN.md](FURITEN.md)。
 - 开发产物为 `build/libs/riichicraft-0.0.4-dev.jar`，游戏内仍是 v0.0.3 摸打功能；新规则尚未接入。没有新增和牌按钮、完整见逃／鸣杠事件状态机或自动胜负结算。计分上下文与实际机会须由以后可信的服务端状态机提供，当前基础支付不含本场、供托、包牌及多人账本。无役见逃的自动触发及暗杠非国士完成牌等精确分支仍缺雀魂官方明文，不自行补规则，也不以有分就能和或能和才见逃作为替代。
-- v0.0.3 的本地提交与标签已完成；本轮推送曾因 GitHub 443 连接失败中断，不能把本地标签当作已发布。远程最终结果以实际核对为准；授权继续有效，无需为同一推送再次询问。
+- 此前 GitHub 连接失败，本轮已成功原子推送并用远程引用核对：`main` 和 `codex/draw-discard-prototype` 为 `18d1d5b`，注释标签 `v0.0.3` 解引用同为 `18d1d5b`；开发分支已包含本批规则代码 `14c857c`。稳定游戏版本与独立规则开发分开；没有打 `v0.0.4` 标签，也未创建 GitHub Release 页面。
 
 ## 本次继续的位置
 
@@ -34,6 +34,6 @@
 
 - 读取／编辑工作文件夹外文件前，先说明具体目录与用途并征得同意。尚无外部 Gradle 缓存读取授权。
 - 用户已同意本项目本地测试服务器的 Minecraft EULA；该授权不涉及外部目录。
-- 用户已授权在合适的已验证节点直接 commit／push／tag；既定目标为 `https://github.com/AmeshizukuJiang/Riichicraft.git`。`main`、`codex/table-lobby` 与 `v0.0.1`／`v0.0.2` 已在此前推送并核对；`ad49b10` 是当时的 `main`／`v0.0.2` 状态，不能当作后续发布后的当前引用。v0.0.3 已达到发布收尾节点，主代理按既定授权提交、推送和打标签，不强推、不移动已发布标签。不修改全局配置或读取代理配置。
+- 用户已授权在合适的已验证节点直接 commit／push／tag；既定目标为 `https://github.com/AmeshizukuJiang/Riichicraft.git`。2026-10-16 已完成 `main`／`v0.0.3` 的推送及远程核对，当前稳定游戏提交 `18d1d5b`。`ad49b10` 只是此前 `main`／`v0.0.2` 的历史状态。后续独立核心继续在 `codex/four-player-rules`，不将未完成的规则开发当作完整游戏版本发布；不强推、不移动已发布标签、不修改全局配置或读取代理配置。
 - 项目内 `.tools`、`.gradle-home` 和运行目录已准备好。使用 `tools/Invoke-Gradle.ps1`；Fabric 主源超时时可传完整加引号的 `-Ploom_fabric_repository=https://maven2.fabricmc.net/`。
 - 尚未进行真人长期体验或正式启动器安装验收，不把这些写成已通过。

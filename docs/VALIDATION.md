@@ -20,6 +20,8 @@ SHA-256：`71e82880fa5dba49d593fefabf329bfa247ffde02dc66df599baa58454a8af16`。
 
 日志：`.tmp/furiten-standalone.log`、`.tmp/furiten-build.log`、`.tmp/furiten-rules-final.log`。官方资料重取及公开说明文字核对见 `.tmp/furiten-source-findings.md`；官网来源与解释边界已同步进 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)。研究图像、提取数据、日志、工具和缓存均不提交。
 
+Git 同步：规则代码提交 `14c857c` 已推送到 `codex/four-player-rules`；本次还成功原子推送 v0.0.3 稳定游戏分支及标签。独立远程查询核对 `main`／`codex/draw-discard-prototype` 均为 `18d1d5b`、`v0.0.3` 标签解引用亦为该提交，开发分支包含 `14c857c`。推送日志 `.tmp/furiten-push.log`；没有强推、移动已有标签或创建完整 v0.0.4 标签。
+
 边界：尚未核实无役完成牌被放过是否自动触发同巡，以及暗杠非国士完成牌被跳过的精确分支；本批只接受已确认的见逃事实，不将未知分支写成成功断言。完整事件生成、立直成立与响应状态机仍待实现。没有接入 Minecraft 新按钮或网络裁决，本轮未重跑客户端；33 项服务端测试是原有功能的回归，不能作为新规则游戏内验收。本纯代码步骤无需用户人工测试，版本仍为 `0.0.4-dev`。
 
 ## v0.0.4-dev 独立单手计分：2026-10-16
