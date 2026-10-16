@@ -22,6 +22,37 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+// Compile the rules again in isolation: no Minecraft, Fabric or third-party test libraries.
+sourceSets {
+    rulesCore {
+        java {
+            srcDir 'src/main/java'
+            include 'dev/riichicraft/rules/**'
+            include 'dev/riichicraft/game/TileCatalog.java'
+        }
+        compileClasspath = files()
+        runtimeClasspath = output
+    }
+    rulesTest {
+        java.srcDir 'src/rulesTest/java'
+        compileClasspath = sourceSets.rulesCore.output
+        runtimeClasspath = output + compileClasspath
+    }
+}
+
+tasks.register('rulesTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify the standalone rules without loading Minecraft or external test libraries.'
+    dependsOn tasks.named('rulesTestClasses')
+    classpath = sourceSets.rulesTest.runtimeClasspath
+    mainClass = 'dev.riichicraft.rules.HandAnalyzerTests'
+    enableAssertions = true
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('rulesTest')
+}
+
 fabricApi {
     configureTests {
         createSourceSet = true

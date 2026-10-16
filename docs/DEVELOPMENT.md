@@ -9,6 +9,7 @@
 | `src/main` | 通用／服务端代码、游戏资源 | 是 |
 | `src/client` | 大厅／手牌界面、客户端网络与视图生命周期 | 是 |
 | `src/gametest` | 独立测试模组与测试代码 | 是；不打进正式模组 |
+| `src/rulesTest` | 纯 Java 规则测试，不依赖游戏或第三方测试库 | 是；不打进正式模组 |
 | `tools` | 初始化、构建入口和资源检查 | 是 |
 | `.tools` | JDK、初始化下载、Java 专用 home | 否 |
 | `.gradle-home`、`.gradle` | Gradle 全部构建缓存 | 否 |
@@ -43,6 +44,8 @@
 ./tools/Invoke-Gradle.ps1 runClientGameTest
 ./tools/Invoke-Gradle.ps1 runClient
 ```
+
+规则基础可单独运行，不启动游戏或 Gradle：`./tools/Test-Rules.ps1`。也可用 `./tools/Invoke-Gradle.ps1 rulesTest`；`rulesCore` 编译类路径为空，测试进程仅使用纯规则和测试的输出目录。`check` 自动包含规则验证，具体范围见 [RULES_CORE.md](RULES_CORE.md)。
 
 `build` 包括配置好的服务端 GameTest；`runClientGameTest` 另行启动实际 Minecraft 客户端，运行后自动关闭并输出截图。游戏测试是否通过以实际报告为准，配置测试入口本身不代表已验证。
 
