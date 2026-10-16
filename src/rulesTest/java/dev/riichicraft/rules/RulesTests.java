@@ -10,5 +10,6 @@ public final class RulesTests {
         ScoringTests.main(args);
         FuritenTests.main(args);
         DiscardFuritenTests.main(args);
+        DiscardResponseTests.main(args);
     }
 }
