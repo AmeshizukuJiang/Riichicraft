@@ -13,5 +13,8 @@ public final class RulesTests {
         DiscardResponseTests.main(args);
         CallActionsTests.main(args);
         RoundWallTests.main(args);
+        TurnActionTests.main(args);
+        RiichiTests.main(args);
+        LedgerTests.main(args);
     }
 }
