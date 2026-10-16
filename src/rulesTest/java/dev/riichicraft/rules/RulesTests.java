@@ -16,5 +16,8 @@ public final class RulesTests {
         TurnActionTests.main(args);
         RiichiTests.main(args);
         LedgerTests.main(args);
+        KanActionTests.main(args);
+        KanResponseTests.main(args);
+        KanRoundTests.main(args);
     }
 }

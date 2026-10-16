@@ -90,29 +90,41 @@ public final class RoundLedger {
         requireActive(); requireRound(window.id());
         var result = window.resolution().orElseThrow(() -> new IllegalStateException("Responses incomplete"));
         if (result.outcome() != DiscardResponseWindow.Outcome.RON) throw new IllegalArgumentException("No ron result to settle");
+        return settleCollectedRon(window.discarderSeat(),result.ronSeats(),result.ronValues(),responsibility);
+    }
+
+    /** Robbed kan uses the same multi-ron accounting; the declarer is the payer and no new kan is established. */
+    public Settlement settleRon(KanResponseWindow window, Map<Integer,Pao> responsibility) {
+        requireActive(); requireRound(window.id());
+        var result=window.resolution().orElseThrow(()->new IllegalStateException("Kan responses incomplete"));
+        if (!result.robbed()) throw new IllegalArgumentException("No robbery result to settle");
+        return settleCollectedRon(window.proposal().declarerSeat(),result.ronSeats(),result.ronValues(),responsibility);
+    }
+
+    private Settlement settleCollectedRon(int payer,List<Integer> winners,Map<Integer,ScoreResult> values,Map<Integer,Pao> responsibility) {
         responsibility = Map.copyOf(responsibility);
-        if (!result.ronSeats().containsAll(responsibility.keySet())) throw new IllegalArgumentException("Only actual winners can have liability inputs");
+        if (!winners.containsAll(responsibility.keySet())) throw new IllegalArgumentException("Only actual winners can have liability inputs");
         List<Transfer> transfers = new ArrayList<>();
-        for (int winner : result.ronSeats()) {
-            ScoreResult value = result.ronValues().get(winner);
+        for (int winner : winners) {
+            ScoreResult value = values.get(winner);
             requirePayment(value,winner,false);
             Pao pao = responsibility.get(winner);
             int responsible = responsibilityPoints(value,winner,pao,false).ronPoints();
             int ordinary = value.points().payment().ronPoints() - responsible;
-            pay(transfers,window.discarderSeat(),winner,ordinary,Kind.HAND);
+            pay(transfers,payer,winner,ordinary,Kind.HAND);
             if (pao != null) {
-                if (pao.liableSeat() == window.discarderSeat()) pay(transfers,pao.liableSeat(),winner,responsible,Kind.HAND);
+                if (pao.liableSeat() == payer) pay(transfers,pao.liableSeat(),winner,responsible,Kind.HAND);
                 else {
-                    pay(transfers,window.discarderSeat(),winner,responsible / 2,Kind.HAND);
+                    pay(transfers,payer,winner,responsible / 2,Kind.HAND);
                     pay(transfers,pao.liableSeat(),winner,responsible / 2,Kind.HAND);
                 }
             }
         }
-        int closest = result.ronSeats().getFirst();
-        int honbaPayer = responsibility.containsKey(closest) ? responsibility.get(closest).liableSeat() : window.discarderSeat();
+        int closest = winners.getFirst();
+        int honbaPayer = responsibility.containsKey(closest) ? responsibility.get(closest).liableSeat() : payer;
         pay(transfers,honbaPayer,closest,Math.multiplyExact(honba,300),Kind.HONBA);
         payDeposits(transfers,closest);
-        return settle(result.ronSeats(),transfers);
+        return settle(winners,transfers);
     }
 
     /** The owner must establish the real self-draw opportunity; an allowed supplied decision alone is not network authority. */

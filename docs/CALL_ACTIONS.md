@@ -40,4 +40,4 @@
 
 `RoundWallTests` 通过 101,983 个断言：精确配牌顺序、种子可复现、四次岭上及尾牌转移、末张普通／岭上来源、非法牌序与不可变快照；240 个固定种子的混合摸牌进程逐步审计完整 136 枚身份与 14 枚王牌。脚本明杠场景组合了真实配牌、普通摸牌、鸣牌执行、岭上补牌和十四张结构状态，保持整副牌守恒。
 
-上述七套及后续立直／弃牌／账本套件均由 `tools/Test-Rules.ps1` 和 Gradle `rulesTest` 运行；新组件见 [RIICHI_AND_LEDGER.md](RIICHI_AND_LEDGER.md)。构建与原有游戏回归证据见 [VALIDATION.md](VALIDATION.md)。当前没有暗杠／加杠动作执行、抢杠窗口、流局、责任触发历史或整场轮转，也没有新客户端按钮。用户已授权在核心闭环可验证时直接接入游戏，无需再确认接入时机。
+上述七套及后续套件均由 `tools/Test-Rules.ps1` 和 Gradle `rulesTest` 运行；新组件见 [RIICHI_AND_LEDGER.md](RIICHI_AND_LEDGER.md) 和 [KAN_FLOW.md](KAN_FLOW.md)。构建与原有游戏回归见 [VALIDATION.md](VALIDATION.md)。当前仍缺统一对局、其他流局、责任触发历史及整场轮转，没有新客户端按钮；核心闭环可验证后已获授权直接接入，无需再确认接入时机。
