@@ -11,7 +11,7 @@ import java.util.UUID;
 
 /** Immutable single-round accounts. The round owner supplies actual opportunities and established liability. */
 public final class RoundLedger {
-    public enum Kind { HAND, HONBA, DEPOSIT }
+    public enum Kind { HAND, HONBA, DEPOSIT, NOTEN, NAGASHI }
     /** fromSeat -1 is the deposit pool, used only for DEPOSIT transfers. */
     public record Transfer(int fromSeat, int toSeat, int points, Kind kind) { }
     public record RiichiEntry(RoundLedger ledger, RiichiState state) { }
@@ -152,6 +152,43 @@ public final class RoundLedger {
         return settle(List.of(winner),transfers);
     }
 
+    /** Actual exhaustive draw only; the round owner establishes tenpai and nagashi eligibility. */
+    public Settlement settleExhaustive(Set<Integer> tenpai, Set<Integer> nagashi) {
+        requireActive();
+        tenpai = Set.copyOf(tenpai); nagashi = Set.copyOf(nagashi);
+        tenpai.forEach(RoundLedger::requireSeat); nagashi.forEach(RoundLedger::requireSeat);
+        List<Transfer> transfers = new ArrayList<>();
+        if (!nagashi.isEmpty()) {
+            // User-confirmed variant: each winner receives an independent mangan tsumo,
+            // including payments from other nagashi winners. No honba or deposit collection.
+            for (int winner : nagashi.stream().sorted().toList()) {
+                var payment = PointCalculator.calculate(5,30,0,winner==dealerSeat,true).payment();
+                for (int payer=0; payer<4; payer++) if (payer!=winner) {
+                    pay(transfers,payer,winner,payer==dealerSeat?payment.fromDealer():payment.fromNonDealer(),Kind.NAGASHI);
+                }
+            }
+        } else if (!tenpai.isEmpty() && tenpai.size()!=4) {
+            // Record conserved net obligations in hundreds. In the two/two case, fictitious
+            // 750-point pairwise transfers would violate the actual point-stick denomination.
+            int[] owed = new int[4], receivable = new int[4];
+            for (int seat=0; seat<4; seat++) {
+                if (tenpai.contains(seat)) receivable[seat]=3_000/tenpai.size();
+                else owed[seat]=3_000/(4-tenpai.size());
+            }
+            for (int payer=0; payer<4; payer++) for (int receiver=0; receiver<4; receiver++) {
+                int amount=Math.min(owed[payer],receivable[receiver]);
+                if (amount>0) { pay(transfers,payer,receiver,amount,Kind.NOTEN); owed[payer]-=amount; receivable[receiver]-=amount; }
+            }
+        }
+        return settle(nagashi.stream().sorted().toList(),transfers,depositSticks);
+    }
+
+    /** Actual abortive draw: no noten payments, no honba payment, existing deposits carry. */
+    public Settlement settleAbortive() {
+        requireActive();
+        return settle(List.of(),List.of(),depositSticks);
+    }
+
     private void requirePayment(ScoreResult value,int winner,boolean tsumo) {
         var expected = PointCalculator.calculate(value.han(),value.fu(),value.yakumanUnits(),winner == dealerSeat,tsumo);
         if (!expected.equals(value.points())) throw new IllegalArgumentException("Hand payment does not match the actual dealer and method");
@@ -170,13 +207,17 @@ public final class RoundLedger {
     }
 
     private Settlement settle(List<Integer> winners,List<Transfer> transfers) {
+        return settle(winners,transfers,0);
+    }
+
+    private Settlement settle(List<Integer> winners,List<Transfer> transfers,int remainingDeposits) {
         long[] next = points.stream().mapToLong(Integer::longValue).toArray();
         for (Transfer transfer : transfers) {
             if (transfer.fromSeat() >= 0) next[transfer.fromSeat()] -= transfer.points();
             next[transfer.toSeat()] += transfer.points();
         }
         List<Integer> result = new ArrayList<>(); for (long point : next) result.add(Math.toIntExact(point));
-        var ledger = new RoundLedger(roundId,dealerSeat,honba,result,0,true,processedDeclarations);
+        var ledger = new RoundLedger(roundId,dealerSeat,honba,result,remainingDeposits,true,processedDeclarations);
         return new Settlement(ledger,winners,transfers);
     }
 

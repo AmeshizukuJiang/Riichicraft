@@ -19,5 +19,8 @@ public final class RulesTests {
         KanActionTests.main(args);
         KanResponseTests.main(args);
         KanRoundTests.main(args);
+        FourPlayerRoundTests.main(args);
+        RoundDrawTests.main(args);
+        RoundScenarioTests.main(args);
     }
 }
