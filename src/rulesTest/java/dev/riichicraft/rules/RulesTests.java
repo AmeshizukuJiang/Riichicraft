@@ -8,5 +8,6 @@ public final class RulesTests {
     public static void main(String[] args) {
         HandAnalyzerTests.main(args);
         ScoringTests.main(args);
+        FuritenTests.main(args);
     }
 }
