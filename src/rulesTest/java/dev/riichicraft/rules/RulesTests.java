@@ -11,5 +11,7 @@ public final class RulesTests {
         FuritenTests.main(args);
         DiscardFuritenTests.main(args);
         DiscardResponseTests.main(args);
+        CallActionsTests.main(args);
+        RoundWallTests.main(args);
     }
 }
