@@ -121,6 +121,10 @@ public final class LobbyScreen extends Screen {
         return addRenderableWidget(button);
     }
 
+    void rebuildGameWidgets() {
+        rebuildWidgets();
+    }
+
     private void request(int action, boolean ready) {
         if (!awaitingReply && LobbyClient.request(snapshot, action, ready)) {
             awaitingReply = true;

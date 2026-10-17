@@ -74,8 +74,11 @@ public final class PrototypeLifecycleGameTests {
             long resumedRevision = scenario.game(0).revision();
             scenario.gameAction(0, GameActionPayload.DISCARD, scenario.game(0).drawnTile());
             helper.assertTrue(scenario.game(0).revision() == resumedRevision + 1
-                            && scenario.game(0).turnSeat() == 1 && scenario.game(0).remainingTiles() == 68,
-                    "A resumed game must accept its original actor's discard despite the intervening lifecycle revisions");
+                            && scenario.game(0).seats().getFirst().discards().size() == 1,
+                    "A resumed game must accept its original actor's discard before collecting any actual responses");
+            scenario.passResponses();
+            helper.assertTrue(scenario.game(0).turnSeat() == 1 && scenario.game(0).remainingTiles() == 68,
+                    "Only completing any discard response window may draw once for the next player");
         }
         helper.succeed();
     }
@@ -297,10 +300,11 @@ public final class PrototypeLifecycleGameTests {
     }
 
     private record PlayState(UUID gameId, int turnSeat, int remainingTiles,
-            List<Integer> ownHand, int drawnTile, List<List<Integer>> rivers) {
+            List<Integer> ownHand, int drawnTile, List<List<Integer>> rivers, GameSnapshot.RuleState rules) {
         static PlayState of(GameSnapshot snapshot) {
             return new PlayState(snapshot.gameId(), snapshot.turnSeat(), snapshot.remainingTiles(),
-                    snapshot.ownHand(), snapshot.drawnTile(), snapshot.seats().stream().map(GameSnapshot.Seat::discards).toList());
+                    snapshot.ownHand(), snapshot.drawnTile(), snapshot.seats().stream().map(GameSnapshot.Seat::discards).toList(),
+                    snapshot.rules());
         }
     }
 
@@ -369,6 +373,21 @@ public final class PrototypeLifecycleGameTests {
             GameSnapshot state = game(seat);
             helper.assertTrue(state != null, "The scenario must still have an active game before an intention");
             service.handleGameAction(players.get(seat), new GameActionPayload(viewIds[seat], state.gameId(), state.revision(), action, tile));
+        }
+
+        void passResponses() {
+            GameSnapshot state = game(0);
+            if (state.rules().phase() != GameSnapshot.DISCARD_RESPONSES
+                    && state.rules().phase() != GameSnapshot.KAN_RESPONSES) return;
+            long serial = state.rules().opportunity().serial();
+            for (int seat = 0; seat < 4; seat++) {
+                GameSnapshot own = game(seat);
+                if (own.rules().responses().isEmpty()) continue;
+                helper.assertTrue(own.rules().responses().stream().anyMatch(option -> option.action() == GameActionPayload.PASS),
+                        "A pending native participant must receive a genuine PASS response option");
+                service.handleGameAction(players.get(seat), new GameActionPayload(viewIds[seat], own.gameId(), own.revision(),
+                        GameActionPayload.PASS, -1, serial, -1, List.of()));
+            }
         }
 
         GameSnapshot game(int seat) {

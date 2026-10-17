@@ -1,6 +1,6 @@
 # 振听状态与指定机会下的和牌检查
 
-版本：`0.0.4-dev`。本页描述独立振听组件；当前已由 [统一单局引擎](SINGLE_ROUND_CORE.md) 连接真实摸打、响应与历史。Minecraft 界面／网络适配正在进行，不能据此声称游戏验证完成。普通舍牌使用 [响应收集与裁决窗口](DISCARD_RESPONSES.md)，收齐选择后生成见逃历史；雀魂规则依据见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)，验证结果见 [VALIDATION.md](VALIDATION.md)。
+版本：`0.0.4-dev`。本页描述独立振听组件；当前已由 [统一单局引擎](SINGLE_ROUND_CORE.md) 连接真实摸打、响应与历史，并接入 Minecraft 界面／网络，玩家流程见 [SINGLE_ROUND.md](SINGLE_ROUND.md)。普通舍牌使用 [响应收集与裁决窗口](DISCARD_RESPONSES.md)，收齐选择后生成见逃历史；雀魂规则依据见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)，离线与实际游戏的验证范围分别见 [VALIDATION.md](VALIDATION.md)。
 
 ## 职责
 

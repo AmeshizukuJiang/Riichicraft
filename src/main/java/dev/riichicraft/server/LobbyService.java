@@ -2,7 +2,10 @@ package dev.riichicraft.server;
 
 import dev.riichicraft.block.ModBlocks;
 import dev.riichicraft.lobby.LobbyRegistry;
-import dev.riichicraft.game.DrawDiscardGame;
+import dev.riichicraft.rules.DiscardResponseWindow;
+import dev.riichicraft.rules.FourPlayerRound;
+import dev.riichicraft.rules.KanActions;
+import dev.riichicraft.rules.Meld;
 import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.GameSnapshot;
 import dev.riichicraft.network.LobbyActionPayload;
@@ -11,6 +14,8 @@ import dev.riichicraft.network.LobbySnapshotPayload;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,7 +34,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 
-/** Temporary, pre-game lobbies. Every instance is confined to its server's game thread. */
+/** Server-thread table ownership, authenticated intentions and temporary round lifecycle. */
 public final class LobbyService {
     private static final Map<MinecraftServer, LobbyService> SERVICES = new ConcurrentHashMap<>();
     private final MinecraftServer server;
@@ -43,15 +48,20 @@ public final class LobbyService {
     private static final SecureRandom SEEDS = new SecureRandom();
 
     private static final class Prototype {
-        final DrawDiscardGame game;
+        final FourPlayerRound game;
+        final UUID gameId;
+        final List<UUID> players;
         long revision;
         boolean paused;
+        boolean finished;
         String statusKey = "";
         final Set<UUID> confirmations = new HashSet<>();
         Set<UUID> unavailable = Set.of();
 
-        Prototype(DrawDiscardGame game) {
-            this.game = game;
+        Prototype(UUID gameId,List<UUID> players,long seed) {
+            this.gameId=gameId;
+            this.players=List.copyOf(players);
+            game=FourPlayerRound.shuffled(gameId,players,0,27,0,List.of(25_000,25_000,25_000,25_000),0,seed);
         }
     }
 
@@ -159,7 +169,7 @@ public final class LobbyService {
             return;
         }
         List<UUID> players = lobby.seats().stream().map(LobbyRegistry.Seat::playerId).toList();
-        games.put(view.tableId(), new Prototype(new DrawDiscardGame(UUID.randomUUID(), players, SEEDS.nextLong())));
+        games.put(view.tableId(), new Prototype(UUID.randomUUID(), players, SEEDS.nextLong()));
         broadcast(lobby, null, "");
     }
 
@@ -167,19 +177,28 @@ public final class LobbyService {
         View view = views.get(player.getUUID());
         if (view == null || !view.id().equals(payload.viewId())) return;
         Prototype prototype = games.get(view.tableId());
-        if (prototype == null || !prototype.game.gameId().equals(payload.gameId())) return;
+        if (prototype == null || !prototype.gameId.equals(payload.gameId())) return;
         // Recheck in the same server action, closing the gap before the next END_SERVER_TICK.
         refreshPresence(view.tableId(), prototype);
         LobbyRegistry.Snapshot lobby = registry.snapshot(view.tableId()).orElseThrow();
         String feedback = "";
-        if (payload.revision() != prototype.revision) feedback = "message.riichicraft.lobby.stale";
-        else if (!prototype.game.players().contains(player.getUUID())) {
+        // Other replies advance the visible revision but never invalidate this same opportunity.
+        boolean response=GameActionPayload.isResponse(payload.action());
+        if ((!response && payload.revision()!=prototype.revision) || payload.revision()>prototype.revision) feedback = "message.riichicraft.lobby.stale";
+        else if (!prototype.players.contains(player.getUUID())) {
             feedback = "message.riichicraft.game.spectator";
         } else if (!accessible(player, locations.get(view.tableId()))) {
             feedback = "message.riichicraft.lobby.unavailable";
-        } else if (payload.action() == GameActionPayload.ABORT) {
+        } else if (payload.action() == GameActionPayload.RETURN_LOBBY) {
+            if (!prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
+            else {
+                games.remove(view.tableId()); clearDisconnected(prototype);
+                broadcast(registry.resetReadiness(view.tableId()),null,"");
+                return;
+            }
+        } else if (payload.action() == GameActionPayload.ABORT && !prototype.finished) {
             games.remove(view.tableId());
-            for (UUID participant : prototype.game.players()) {
+            for (UUID participant : prototype.players) {
                 if (disconnected.contains(participant) || server.getPlayerList().getPlayer(participant) == null) {
                     pendingNotices.put(participant, "message.riichicraft.game.aborted");
                 }
@@ -187,7 +206,8 @@ public final class LobbyService {
             clearDisconnected(prototype);
             broadcast(registry.resetReadiness(view.tableId()), null, "message.riichicraft.game.aborted");
             return;
-        } else if (payload.action() == GameActionPayload.RESUME) {
+        } else if (prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
+        else if (payload.action() == GameActionPayload.RESUME) {
             if (!prototype.paused) feedback = "message.riichicraft.game.resumed";
             else if (!prototype.unavailable.isEmpty()) feedback = "message.riichicraft.game.players_absent";
             else if (prototype.confirmations.add(player.getUUID())) {
@@ -199,29 +219,56 @@ public final class LobbyService {
                 } else broadcast(lobby, null, "");
                 return;
             }
-        } else if (payload.action() == GameActionPayload.DISCARD) {
+        } else {
             if (prototype.paused) feedback = "message.riichicraft.game.paused";
             else {
-                DrawDiscardGame.Result result = prototype.game.discard(player.getUUID(), payload.tileId(),
-                        prototype.game.revision());
-                if (result.changed()) {
+                var command=new FourPlayerRound.Command(prototype.gameId,prototype.game.view(player.getUUID()).revision());
+                KanActions.Choice kanChoice=null;
+                if (payload.action()==GameActionPayload.CLOSED_KAN || payload.action()==GameActionPayload.ADDED_KAN) {
+                    try {
+                        kanChoice=new KanActions.Choice(payload.action()==GameActionPayload.CLOSED_KAN?KanActions.Kind.CLOSED:KanActions.Kind.ADDED,
+                                payload.meldIndex(),payload.handTiles());
+                    } catch (IllegalArgumentException invalidSelection) {
+                        sendSnapshot(player,view,lobby,"message.riichicraft.lobby.invalid_action");
+                        return;
+                    }
+                }
+                FourPlayerRound.Status result=switch(payload.action()) {
+                    case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> prototype.game.discard(player.getUUID(),command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
+                    case GameActionPayload.TSUMO -> prototype.game.tsumo(player.getUUID(),command);
+                    case GameActionPayload.NINE_TERMINALS -> prototype.game.nineTerminals(player.getUUID(),command);
+                    case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> prototype.game.declareKan(player.getUUID(),command,kanChoice);
+                    case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> prototype.game.respond(player.getUUID(),
+                            new DiscardResponseWindow.Id(prototype.gameId,payload.windowSerial()),responseChoice(payload));
+                    default -> FourPlayerRound.Status.NOT_OFFERED;
+                };
+                if (result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;
-                    if (prototype.game.isFinished()) {
-                        games.remove(view.tableId());
-                        clearDisconnected(prototype);
-                        lobby = registry.resetReadiness(view.tableId());
-                        broadcast(lobby, null, "message.riichicraft.game.exhausted");
-                    } else broadcast(lobby, null, "");
+                    prototype.finished=prototype.game.view(player.getUUID()).phase()==FourPlayerRound.Phase.FINISHED;
+                    broadcast(lobby, null, "");
                     return;
                 }
-                feedback = switch (result.status()) {
+                feedback = switch (result) {
                     case NOT_YOUR_TURN -> "message.riichicraft.game.not_your_turn";
-                    case TILE_NOT_IN_HAND -> "message.riichicraft.game.invalid_tile";
+                    case NOT_OFFERED,WRONG_PHASE -> "message.riichicraft.lobby.invalid_action";
                     default -> "message.riichicraft.lobby.stale";
                 };
             }
-        } else feedback = "message.riichicraft.lobby.invalid_action";
+        }
         sendSnapshot(player, view, lobby, feedback);
+    }
+
+    private static DiscardResponseWindow.Choice responseChoice(GameActionPayload payload) {
+        return switch(payload.action()) {
+            case GameActionPayload.PASS -> DiscardResponseWindow.Simple.PASS;
+            case GameActionPayload.RON -> DiscardResponseWindow.Simple.RON;
+            default -> new DiscardResponseWindow.Call(switch(payload.action()) {
+                case GameActionPayload.CHI -> Meld.Kind.CHI;
+                case GameActionPayload.PON -> Meld.Kind.PON;
+                case GameActionPayload.OPEN_KAN -> Meld.Kind.OPEN_KAN;
+                default -> throw new IllegalArgumentException("Not a response choice");
+            },payload.handTiles());
+        };
     }
 
     private boolean present(UUID playerId, UUID tableId) {
@@ -237,8 +284,10 @@ public final class LobbyService {
     }
 
     private void refreshPresence(UUID tableId, Prototype prototype) {
+        // A paid result is immutable and remains reopenable even when its players disconnect.
+        if (prototype.finished) return;
         Set<UUID> missing = new HashSet<>();
-        for (UUID playerId : prototype.game.players()) {
+        for (UUID playerId : prototype.players) {
             if (!present(playerId, tableId)) missing.add(playerId);
         }
         boolean changed = !missing.equals(prototype.unavailable);
@@ -260,20 +309,63 @@ public final class LobbyService {
     }
 
     private void clearDisconnected(Prototype prototype) {
-        disconnected.removeAll(prototype.game.players());
+        disconnected.removeAll(prototype.players);
     }
 
     /** A recipient-specific view for server integrations; never returns another player's concealed tiles. */
     public GameSnapshot gameView(UUID tableId, UUID recipient) {
         Prototype prototype = games.get(tableId);
         if (prototype == null) return null;
-        DrawDiscardGame.View gameView = prototype.game.view(recipient);
+        FourPlayerRound.View gameView = prototype.game.view(recipient);
         List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
-                seat.handCount(), seat.discards(), present(seat.playerId(), tableId),
+                seat.concealedCount(), seat.river().stream().map(FourPlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
                 prototype.confirmations.contains(seat.playerId()))).toList();
-        return new GameSnapshot(gameView.gameId(), prototype.revision, gameView.currentSeat(),
-                gameView.liveWallCount(), seats, gameView.closedHand(),
-                gameView.drawnTile() == null ? -1 : gameView.drawnTile(), prototype.paused, prototype.statusKey);
+        List<GameSnapshot.SeatRules> seatRules=new ArrayList<>(4);
+        for(var seat:gameView.seats()) {
+            List<GameSnapshot.MeldView> melds=new ArrayList<>();
+            for(int index=0;index<seat.melds().size();index++) {
+                var meld=seat.melds().get(index); var origin=seat.origins().get(index);
+                melds.add(new GameSnapshot.MeldView(meld.kind().ordinal(),meld.tiles(),origin.providerSeat(),origin.claimedTileId()));
+            }
+            seatRules.add(new GameSnapshot.SeatRules(melds,seat.river().stream().map(r->
+                    new GameSnapshot.RiverMark(r.declaration(),r.tsumogiri(),r.claimedBy())).toList(),seat.points(),seat.riichi().ordinal()));
+        }
+        var options=gameView.turnOptions();
+        List<GameSnapshot.ActionOption> kanOptions=options.kans().stream().map(k->new GameSnapshot.ActionOption(
+                k.kind()==KanActions.Kind.CLOSED?GameActionPayload.CLOSED_KAN:GameActionPayload.ADDED_KAN,k.meldIndex(),k.handTiles()))
+                .sorted(optionOrder()).toList();
+        List<GameSnapshot.ActionOption> responses=gameView.responses().stream().map(LobbyService::responseOption).sorted(optionOrder()).toList();
+        var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
+        var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
+                gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
+                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(LobbyService::resultView).orElse(null));
+        return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
+                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules);
+    }
+
+    private static Comparator<GameSnapshot.ActionOption> optionOrder() {
+        return Comparator.comparingInt(GameSnapshot.ActionOption::action).thenComparingInt(GameSnapshot.ActionOption::meldIndex)
+                .thenComparing(o->o.handTiles().toString());
+    }
+
+    private static GameSnapshot.ActionOption responseOption(DiscardResponseWindow.Choice choice) {
+        if(choice==DiscardResponseWindow.Simple.PASS) return new GameSnapshot.ActionOption(GameActionPayload.PASS,-1,List.of());
+        if(choice==DiscardResponseWindow.Simple.RON) return new GameSnapshot.ActionOption(GameActionPayload.RON,-1,List.of());
+        var call=(DiscardResponseWindow.Call)choice;
+        int action=switch(call.kind()) { case CHI->GameActionPayload.CHI; case PON->GameActionPayload.PON;
+            case OPEN_KAN->GameActionPayload.OPEN_KAN; case CLOSED_KAN->throw new IllegalArgumentException("Closed kan is not a discard response"); };
+        return new GameSnapshot.ActionOption(action,-1,call.handTiles());
+    }
+
+    private static GameSnapshot.Result resultView(FourPlayerRound.End end) {
+        List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
+            var v=entry.getValue();
+            return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
+                    new GameSnapshot.Award(y.yaku().name(),y.han(),y.yakumanUnits())).toList(),v.han(),v.fu(),v.yakumanUnits(),
+                    v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints());
+        }).toList();
+        return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
+                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues());
     }
 
     public void disconnect(ServerPlayer player) {
@@ -297,7 +389,7 @@ public final class LobbyService {
         String reason = prototype == null ? "message.riichicraft.lobby.unavailable"
                 : "message.riichicraft.game.terminated";
         if (prototype != null) {
-            for (UUID playerId : prototype.game.players()) {
+            for (UUID playerId : prototype.players) {
                 ServerPlayer player = server.getPlayerList().getPlayer(playerId);
                 View ownView = views.get(playerId);
                 if (player == null || disconnected.contains(playerId)) pendingNotices.put(playerId, reason);

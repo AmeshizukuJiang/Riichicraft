@@ -32,5 +32,8 @@ public final class GameTileButton extends Button {
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         TileFaces.drawHand(graphics, Minecraft.getInstance().font, tileId,
                 getX(), getY(), getWidth(), getHeight(), selected, isHoveredOrFocused());
+        if (!active) {
+            graphics.fill(getX(),getY(),getX()+getWidth(),getY()+getHeight(),0x44334236);
+        }
     }
 }

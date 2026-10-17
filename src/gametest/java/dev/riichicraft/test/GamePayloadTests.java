@@ -84,8 +84,8 @@ public final class GamePayloadTests {
         assertDecodeRejected(helper, buf -> {
             writeHeader(buf);
             writeEmptySeats(buf);
-            buf.writeVarInt(14);
-        }, "Fourteen tiles cannot be smuggled into the thirteen-tile concealed-hand field");
+            buf.writeVarInt(15);
+        }, "Fifteen tiles cannot be smuggled into the fourteen-tile concealed-hand field");
         assertDecodeRejected(helper, buf -> {
             writeHeader(buf);
             buf.writeVarInt(13);
@@ -163,7 +163,18 @@ public final class GamePayloadTests {
         for (GameActionPayload action : List.of(
                 new GameActionPayload(id(1), id(100), 9, GameActionPayload.DISCARD, 135),
                 new GameActionPayload(id(1), id(100), 9, GameActionPayload.RESUME, -1),
-                new GameActionPayload(id(1), id(100), 9, GameActionPayload.ABORT, -1))) {
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.ABORT, -1),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.RIICHI, 135),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.TSUMO, -1),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.NINE_TERMINALS, -1),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.PASS, -1, 8, -1, List.of()),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.RON, -1, 8, -1, List.of()),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.CHI, -1, 8, -1, List.of(4, 8)),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.PON, -1, 8, -1, List.of(16, 17)),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.OPEN_KAN, -1, 8, -1, List.of(16, 17, 18)),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.CLOSED_KAN, -1, -1, -1, List.of(16, 17, 18, 19)),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.ADDED_KAN, -1, -1, 2, List.of(19)),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.RETURN_LOBBY, -1))) {
             RegistryFriendlyByteBuf buf = buffer(helper);
             try {
                 GameActionPayload.CODEC.encode(buf, action);
@@ -176,7 +187,83 @@ public final class GamePayloadTests {
         assertActionRejected(helper, GameActionPayload.DISCARD, -1);
         assertActionRejected(helper, GameActionPayload.DISCARD, 136);
         assertActionRejected(helper, GameActionPayload.RESUME, 0);
-        assertActionRejected(helper, 3, -1);
+        assertActionRejected(helper, 14, -1);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void nestedRulesAndRetainedSettlementRoundTripWithoutRevealingOtherHands(GameTestHelper helper) {
+        List<GameSnapshot.Seat> seats = List.of(new GameSnapshot.Seat(13, List.of(4, 135), true, false),
+                new GameSnapshot.Seat(10, List.of(), true, false), new GameSnapshot.Seat(13, List.of(), true, false),
+                new GameSnapshot.Seat(13, List.of(), true, false));
+        List<Integer> hand = List.of(132, 133, 20, 21, 24, 25, 28, 29, 32, 33);
+        GameSnapshot.MeldView chi = new GameSnapshot.MeldView(GameSnapshot.MELD_CHI, List.of(4, 8, 12), 0, 4);
+        List<GameSnapshot.SeatRules> ruleSeats = List.of(
+                new GameSnapshot.SeatRules(List.of(), List.of(new GameSnapshot.RiverMark(false, false, 1),
+                        new GameSnapshot.RiverMark(true, true, -1)), 24_000, 2),
+                new GameSnapshot.SeatRules(List.of(chi), List.of(), 25_000, 0),
+                new GameSnapshot.SeatRules(List.of(), List.of(), 25_000, 0),
+                new GameSnapshot.SeatRules(List.of(), List.of(), 25_000, 0));
+        List<GameSnapshot.ActionOption> responses = List.of(new GameSnapshot.ActionOption(GameActionPayload.PASS, -1, List.of()),
+                new GameSnapshot.ActionOption(GameActionPayload.PON, -1, List.of(132, 133)));
+        GameSnapshot.RuleState responding = new GameSnapshot.RuleState(GameSnapshot.DISCARD_RESPONSES, 0, 27, 2, 1,
+                List.of(40), ruleSeats, List.of(), List.of(), List.of(), false, false,
+                new GameSnapshot.Opportunity(8, 0, 135, false), responses, null);
+        GameSnapshot snapshot = new GameSnapshot(id(100), 9, 0, 61, seats, hand, -1, false, "", responding);
+        assertRoundTrip(helper, snapshot);
+        GameSnapshot.Result result = new GameSnapshot.Result(0, List.of(1), List.of(),
+                List.of(new GameSnapshot.WinValue(1, 135, List.of(new GameSnapshot.Award("YAKUHAI_RED", 1, 0)),
+                        1, 30, 0, 0, 0, 0, 1_000)),
+                List.of(new GameSnapshot.Payment(0, 1, 1_000, 0), new GameSnapshot.Payment(-1, 1, 1_000, 2)), false);
+        GameSnapshot.RuleState finished = new GameSnapshot.RuleState(GameSnapshot.FINISHED, 0, 27, 2, 0,
+                List.of(40), ruleSeats, List.of(), List.of(), List.of(), false, false, null, List.of(), result);
+        assertRoundTrip(helper, new GameSnapshot(id(100), 12, 0, 61, seats, hand, -1, false, "", finished));
+        GameSnapshot.RuleState observerRules = new GameSnapshot.RuleState(GameSnapshot.DISCARD_RESPONSES, 0, 27, 2, 1,
+                List.of(40), ruleSeats, List.of(), List.of(), List.of(), false, false,
+                new GameSnapshot.Opportunity(8, 0, 135, false), List.of(), null);
+        GameSnapshot observer = new GameSnapshot(id(100), 9, 0, 61, seats, List.of(), -1, false, "", observerRules);
+        assertRoundTrip(helper, observer);
+        helper.assertTrue(observer.ownHand().isEmpty() && observer.rules().responses().isEmpty()
+                        && observer.rules().legalDiscards().isEmpty() && observer.rules().kans().isEmpty(),
+                "A rules-aware observer packet contains neither concealed tiles nor recipient action selections");
+        assertUnmodifiable(helper, snapshot.rules().seats()::clear);
+        assertUnmodifiable(helper, snapshot.rules().responses()::clear);
+        assertUnmodifiable(helper, snapshot.rules().seats().get(1).melds().getFirst().tiles()::clear);
+        assertUnmodifiable(helper, finished.result().transfers()::clear);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void nestedCollectionAndExactSelectionCountsRejectHostileLengths(GameTestHelper helper) {
+        assertDecodeRejected(helper, buf -> {
+            writeRulesPrefix(buf);
+            buf.writeVarInt(Integer.MAX_VALUE);
+        }, "Nested dora length is bounded before allocation");
+        assertDecodeRejected(helper, buf -> {
+            writeRulesPrefix(buf);
+            buf.writeVarInt(0);
+            buf.writeVarInt(5);
+        }, "A fifth nested rules seat is rejected before its body");
+        assertDecodeRejected(helper, buf -> {
+            writeRulesPrefix(buf);
+            buf.writeVarInt(0);
+            buf.writeVarInt(4);
+            buf.writeVarInt(5);
+        }, "A fifth declared meld is rejected before its body");
+        RegistryFriendlyByteBuf buf = buffer(helper);
+        try {
+            writeActionHeader(buf, GameActionPayload.CLOSED_KAN, -1);
+            buf.writeLong(-1); buf.writeVarInt(-1); buf.writeVarInt(Integer.MAX_VALUE);
+            boolean rejected = false;
+            try { GameActionPayload.CODEC.decode(buf); } catch (DecoderException expected) { rejected = true; }
+            helper.assertTrue(rejected, "Hostile exact selection length is rejected before collection allocation");
+        } finally { buf.release(); }
+        for (List<Integer> invalid : List.of(List.of(16, 16, 18, 19), List.of(16, 17, 18, 136))) {
+            boolean rejected = false;
+            try { new GameActionPayload(id(1), id(100), 9, GameActionPayload.CLOSED_KAN, -1, -1, -1, invalid); }
+            catch (IllegalArgumentException expected) { rejected = true; }
+            helper.assertTrue(rejected, "Duplicated and nonexistent exact physical selections are rejected");
+        }
         helper.succeed();
     }
 
@@ -201,11 +288,10 @@ public final class GamePayloadTests {
     private static void assertActionRejected(GameTestHelper helper, int action, int tileId) {
         RegistryFriendlyByteBuf buf = buffer(helper);
         try {
-            buf.writeUUID(id(1));
-            buf.writeUUID(id(100));
-            buf.writeLong(9);
-            buf.writeVarInt(action);
-            buf.writeVarInt(tileId);
+            writeActionHeader(buf, action, tileId);
+            buf.writeLong(-1);
+            buf.writeVarInt(-1);
+            buf.writeVarInt(0);
             boolean rejected = false;
             try {
                 GameActionPayload.CODEC.decode(buf);
@@ -216,6 +302,26 @@ public final class GamePayloadTests {
         } finally {
             buf.release();
         }
+    }
+
+    private static void assertRoundTrip(GameTestHelper helper, GameSnapshot snapshot) {
+        RegistryFriendlyByteBuf buf = buffer(helper);
+        try {
+            GameSnapshot.CODEC.encode(buf, snapshot);
+            helper.assertTrue(GameSnapshot.CODEC.decode(buf).equals(snapshot) && buf.readableBytes() == 0,
+                    "Nested legal masks, provenance, score components and settlement entries round-trip completely");
+        } finally { buf.release(); }
+    }
+
+    private static void writeActionHeader(RegistryFriendlyByteBuf buf, int action, int tile) {
+        buf.writeUUID(id(1)); buf.writeUUID(id(100)); buf.writeLong(9); buf.writeVarInt(action); buf.writeVarInt(tile);
+    }
+
+    private static void writeRulesPrefix(RegistryFriendlyByteBuf buf) {
+        writeHeader(buf); writeEmptySeats(buf); buf.writeVarInt(0); buf.writeVarInt(-1);
+        buf.writeBoolean(false); buf.writeUtf(""); buf.writeBoolean(true);
+        buf.writeVarInt(GameSnapshot.DRAWN_TURN); buf.writeVarInt(0); buf.writeVarInt(27);
+        buf.writeVarInt(0); buf.writeVarInt(0);
     }
 
     private static void assertSpectatorHandRejected(GameTestHelper helper,

@@ -66,6 +66,13 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
         if (ownSeat == -1 && game != null && (!game.ownHand().isEmpty() || game.drawnTile() != -1)) {
             throw new IllegalArgumentException("A spectator snapshot cannot contain a private hand or drawn tile");
         }
+        if (ownSeat == -1 && game != null && game.rules() != null) {
+            var rules=game.rules();
+            if (!rules.legalDiscards().isEmpty() || !rules.riichiDiscards().isEmpty() || !rules.kans().isEmpty()
+                    || rules.canTsumo() || rules.canNineTerminals() || !rules.responses().isEmpty()) {
+                throw new IllegalArgumentException("A spectator snapshot cannot contain private legal-action information");
+            }
+        }
     }
 
     public record Seat(UUID playerId, String name, boolean ready) { }

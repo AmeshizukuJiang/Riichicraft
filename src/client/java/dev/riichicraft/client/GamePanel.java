@@ -1,221 +1,256 @@
 package dev.riichicraft.client;
 
-import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.GameSnapshot;
-import dev.riichicraft.network.LobbySnapshotPayload;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
+import static dev.riichicraft.network.GameActionPayload.*;
 
-/** Game widgets inside the existing view, so starting or pausing never closes the view. */
+/** Recipient-only controls. Enabled tiles and actions always come from the server's legal mask. */
 final class GamePanel {
-    private static final String[] WINDS = {"east", "south", "west", "north"};
+    private enum Page { BOARD, ACTIONS, RESULT }
+    private static final String[] WINDS={"east","south","west","north"};
+    private static final String[] ENDS={"ron","tsumo","exhaustive","nagashi","nine_terminals","four_winds","four_riichi","four_kans"};
     private final LobbyScreen screen;
     private final Font font;
-    private final List<GameTileButton> tiles = new ArrayList<>();
+    private final List<GameTileButton> tiles=new ArrayList<>();
+    private final List<Button> optionButtons=new ArrayList<>();
     private UUID gameId;
-    private int selectedTileId = -1;
-    private boolean awaitingReply;
-    private boolean abortArmed;
-    private Button discardButton;
-    private Button resumeButton;
-    private Button abortButton;
-    private Button cancelAbortButton;
-    private int width;
-    private int handLeft;
-    private int handTileWidth;
-    private int handGap;
-    private int drawnX;
+    private long shownWindow=-1;
+    private int selectedTileId=-1;
+    private boolean awaitingReply, abortArmed;
+    private Button discardButton, riichiButton, moreButton, passButton, resumeButton, abortButton, cancelAbortButton, returnButton;
+    private Button toggleButton, previousButton, nextButton;
+    private int width, handTileWidth, drawnX, handY, bottomY;
+    private Page page=Page.BOARD;
+    private int actionPage, resultPage, riverPage=-1;
 
-    GamePanel(LobbyScreen screen) {
-        this.screen = screen;
-        font = screen.getFont();
-    }
-
-    int selectedTileId() {
-        return selectedTileId;
-    }
+    GamePanel(LobbyScreen screen) { this.screen=screen; font=screen.getFont(); }
+    int selectedTileId() { return selectedTileId; }
 
     void acceptSnapshot() {
-        GameSnapshot game = game();
+        var game=game();
         if (!game.gameId().equals(gameId)) {
-            gameId = game.gameId();
-            selectedTileId = -1;
+            gameId=game.gameId(); selectedTileId=-1; shownWindow=-1; page=Page.BOARD;
+            actionPage=0; resultPage=0; riverPage=-1;
         }
-        if (!game.ownHand().contains(selectedTileId) && game.drawnTile() != selectedTileId) {
-            selectedTileId = -1;
-        }
-        awaitingReply = false;
-        abortArmed = false;
+        if (!game.ownHand().contains(selectedTileId)) selectedTileId=-1;
+        if (finished()) {
+            if (shownWindow!=-2) { page=Page.RESULT; resultPage=0; shownWindow=-2; }
+        } else if (rules()!=null && rules().opportunity()!=null) {
+            long serial=rules().opportunity().serial();
+            if (shownWindow!=serial) { shownWindow=serial; actionPage=0; if (isResponse()) page=Page.ACTIONS; }
+            if (page==Page.ACTIONS && !isResponse()) page=Page.BOARD;
+        } else if (page==Page.ACTIONS) { page=Page.BOARD; shownWindow=-1; }
+        awaitingReply=false; abortArmed=false;
     }
 
     void init(int viewWidth) {
-        width = viewWidth;
-        tiles.clear();
-        handTileWidth = width - 16 >= 366 ? 24 : 19;
-        handGap = handTileWidth == 24 ? 2 : 1;
-        int closedWidth = 13 * handTileWidth + 12 * handGap;
-        int allWidth = closedWidth + 6 + handTileWidth;
-        handLeft = (width - allWidth) / 2;
-        drawnX = handLeft + closedWidth + 6;
-        List<Integer> hand = game().ownHand();
-        for (int index = 0; index < hand.size(); index++) {
-            addTile(hand.get(index), handLeft + index * (handTileWidth + handGap));
-        }
-        if (game().drawnTile() >= 0) {
-            addTile(game().drawnTile(), drawnX);
-        }
-
-        int left = 8;
-        int available = width - 16;
-        int actionWidth = (available - 8) / 3;
-        int closeWidth = available - actionWidth * 2 - 8;
-        discardButton = screen.addGameButton(Button.builder(text("discard"),
-                button -> request(GameActionPayload.DISCARD, selectedTileId))
-                .bounds(left, 192, actionWidth, 20).build());
-        resumeButton = screen.addGameButton(Button.builder(text("resume"),
-                button -> request(GameActionPayload.RESUME, -1))
-                .bounds(left, 192, actionWidth, 20).build());
-        abortButton = screen.addGameButton(Button.builder(text("abort"), button -> {
-            if (abortArmed) {
-                request(GameActionPayload.ABORT, -1);
-            } else {
-                abortArmed = true;
-                updateButtons();
+        width=viewWidth; tiles.clear(); optionButtons.clear(); handY=screen.height-86; bottomY=screen.height-48;
+        handTileWidth=width-16>=366?24:19; int gap=handTileWidth==24?2:1;
+        List<Integer> hand=new ArrayList<>(game().ownHand());
+        if (game().drawnTile()>=0) hand.remove(Integer.valueOf(game().drawnTile()));
+        int closedWidth=13*handTileWidth+12*gap, handLeft=(width-closedWidth-6-handTileWidth)/2;
+        drawnX=handLeft+closedWidth+6;
+        for (int index=0;index<hand.size();index++) addTile(hand.get(index),handLeft+index*(handTileWidth+gap));
+        if (game().drawnTile()>=0) addTile(game().drawnTile(),drawnX);
+        int bw=(width-32)/5;
+        discardButton=button(text("discard"),0,bw,b->request(DISCARD,selectedTileId));
+        riichiButton=button(text("riichi"),1,bw,b->request(RIICHI,selectedTileId));
+        moreButton=button(text("actions"),2,bw,b->setPage(page==Page.ACTIONS?Page.BOARD:Page.ACTIONS));
+        passButton=button(text("pass"),0,bw,b->requestResponse(new GameSnapshot.ActionOption(PASS,-1,List.of())));
+        resumeButton=button(text("resume"),0,bw,b->request(RESUME,-1));
+        abortButton=button(text("abort"),3,bw,b->{if (abortArmed) request(ABORT,-1); else {abortArmed=true;updateButtons();}});
+        cancelAbortButton=button(text("cancel_abort"),0,bw,b->{abortArmed=false;updateButtons();});
+        returnButton=screen.addGameButton(Button.builder(text("return_lobby"),b->request(RETURN_LOBBY,-1)).bounds(8,bottomY,bw*2+4,20).build());
+        var close=button(text("close"),4,bw,b->screen.onClose());
+        close.setTooltip(Tooltip.create(Component.translatable("screen.riichicraft.lobby.close")));
+        toggleButton=screen.addGameButton(Button.builder(text("board"),b->setPage(page!=Page.BOARD?Page.BOARD:finished()?Page.RESULT:Page.ACTIONS))
+                .bounds(width-70,3,62,18).build());
+        previousButton=screen.addGameButton(Button.builder(Component.literal("<"),b->changePage(-1)).bounds(width-70,26,20,15).build());
+        nextButton=screen.addGameButton(Button.builder(Component.literal(">"),b->changePage(1)).bounds(width-28,26,20,15).build());
+        if (page==Page.ACTIONS) {
+            List<GameSnapshot.ActionOption> options=visibleOptions(); actionPage=Math.min(actionPage,Math.max(0,(options.size()-1)/6)); int col=(width-20)/2;
+            for (int index=actionPage*6;index<Math.min(options.size(),actionPage*6+6);index++) {
+                var option=options.get(index); int local=index%6; Component label=optionLabel(option);
+                var widget=screen.addGameButton(Button.builder(label,b->requestOption(option)).bounds(8+(local%2)*(col+4),45+(local/2)*28,col,24).build());
+                widget.setTooltip(Tooltip.create(label)); optionButtons.add(widget);
             }
-        }).bounds(left + actionWidth + 4, 192, actionWidth, 20).build());
-        cancelAbortButton = screen.addGameButton(Button.builder(text("cancel_abort"), button -> {
-            abortArmed = false;
-            updateButtons();
-        }).bounds(left, 192, actionWidth, 20).build());
-        screen.addGameButton(Button.builder(Component.translatable("screen.riichicraft.lobby.close"),
-                button -> screen.onClose()).bounds(left + (actionWidth + 4) * 2, 192, closeWidth, 20).build());
+        }
         updateButtons();
     }
-
-    private void addTile(int tileId, int x) {
-        GameTileButton button = new GameTileButton(tileId, x, 154, handTileWidth,
-                selected -> select(tileId));
-        tiles.add(button);
-        screen.addGameButton(button);
+    private Button button(Component label,int slot,int bw,Button.OnPress callback) {
+        return screen.addGameButton(Button.builder(label,callback).bounds(8+slot*(bw+4),bottomY,bw,20).build());
     }
-
-    private void select(int tileId) {
-        selectedTileId = tileId;
-        updateButtons();
+    private void addTile(int tile,int x) {
+        var button=new GameTileButton(tile,x,handY,handTileWidth,b->{selectedTileId=tile;updateButtons();}); tiles.add(button); screen.addGameButton(button);
     }
-
-    private void request(int action, int tileId) {
-        if (!awaitingReply && LobbyClient.requestGame(screen.snapshot(), action, tileId)) {
-            awaitingReply = true;
-            abortArmed = false;
-            updateButtons();
+    private void setPage(Page value) { page=value; screen.rebuildGameWidgets(); }
+    private void changePage(int direction) {
+        int changed=Math.max(0,Math.min(pageCount()-1,currentPage()+direction));
+        if (page==Page.BOARD) riverPage=changed; else if(page==Page.ACTIONS) actionPage=changed; else resultPage=changed;
+        screen.rebuildGameWidgets();
+    }
+    private int currentPage() {
+        if (page==Page.ACTIONS) return actionPage; if (page==Page.RESULT) return resultPage;
+        return riverPage<0?pageCount()-1:Math.min(riverPage,pageCount()-1);
+    }
+    private int pageCount() {
+        if (page==Page.ACTIONS) return Math.max(1,(visibleOptions().size()+5)/6);
+        if (page==Page.RESULT) return Math.max(1,(resultLines().size()+6)/7);
+        return Math.max(1,(game().seats().stream().mapToInt(s->s.discards().size()).max().orElse(0)+11)/12);
+    }
+    private void request(int action,int tile) { send(action,tile,-1,-1,List.of()); }
+    private void requestResponse(GameSnapshot.ActionOption option) {
+        if (rules()!=null && rules().opportunity()!=null) send(option.action(),-1,rules().opportunity().serial(),option.meldIndex(),option.handTiles());
+    }
+    private void requestOption(GameSnapshot.ActionOption option) {
+        if (isResponse()) requestResponse(option); else send(option.action(),-1,-1,option.meldIndex(),option.handTiles());
+    }
+    private void send(int action,int tile,long window,int meld,List<Integer> hand) {
+        if (!awaitingReply && LobbyClient.requestGame(screen.snapshot(),action,tile,window,meld,hand)) {
+            awaitingReply=true; abortArmed=false; updateButtons();
         }
     }
+    private boolean finished() { return rules()!=null && rules().result()!=null; }
+    private boolean isResponse() { return rules()!=null && rules().opportunity()!=null && !rules().responses().isEmpty(); }
+    private boolean isTurn() { return rules()!=null && !rules().legalDiscards().isEmpty(); }
 
     private void updateButtons() {
-        boolean available = !awaitingReply && LobbyClient.canSendGame();
-        boolean seated = screen.snapshot().ownSeat() >= 0;
-        boolean ownConfirmed = seated && game().seats().get(screen.snapshot().ownSeat()).confirmed();
-        boolean allPresent = game().seats().stream().allMatch(GameSnapshot.Seat::present);
-        boolean mayDiscard = available && seated && !abortArmed && !game().paused()
-                && game().turnSeat() == screen.snapshot().ownSeat() && game().drawnTile() >= 0;
-        for (GameTileButton tile : tiles) {
-            tile.active = mayDiscard;
-            tile.setSelected(tile.tileId() == selectedTileId);
+        boolean available=!awaitingReply && LobbyClient.canSendGame(), seated=screen.snapshot().ownSeat()>=0;
+        boolean unlocked=available && seated && !game().paused() && !abortArmed && !finished();
+        boolean ownConfirmed=seated && game().seats().get(screen.snapshot().ownSeat()).confirmed();
+        for (var tile:tiles) {
+            boolean legal=isTurn() && rules().legalDiscards().contains(tile.tileId());
+            tile.active=unlocked && legal; tile.setSelected(tile.tileId()==selectedTileId);
+            MutableComponent name=Component.empty().append(TileFaces.fullName(tile.tileId()));
+            if (isTurn() && !legal) name.append(" · ").append(text("discard_locked"));
+            tile.setTooltip(Tooltip.create(name));
         }
-        if (discardButton == null) {
-            return;
+        discardButton.visible=!game().paused() && !abortArmed && !finished() && !isResponse();
+        discardButton.active=unlocked && isTurn() && rules().legalDiscards().contains(selectedTileId);
+        riichiButton.visible=discardButton.visible; riichiButton.active=unlocked && rules()!=null && rules().riichiDiscards().contains(selectedTileId);
+        moreButton.visible=!abortArmed && !game().paused() && !finished(); moreButton.active=available && !visibleOptions().isEmpty();
+        moreButton.setMessage(text(page==Page.ACTIONS?"board":rules()!=null && rules().canTsumo()?"tsumo_menu":"actions"));
+        passButton.visible=isResponse() && !game().paused() && !abortArmed; passButton.active=unlocked && rules().responses().stream().anyMatch(o->o.action()==PASS);
+        resumeButton.visible=game().paused() && !abortArmed && !finished();
+        resumeButton.active=available && seated && game().seats().stream().allMatch(GameSnapshot.Seat::present) && !ownConfirmed;
+        resumeButton.setMessage(text(ownConfirmed?"confirmed":"resume"));
+        abortButton.visible=!finished(); abortButton.active=available && seated; abortButton.setMessage(text(abortArmed?"confirm_abort":"abort"));
+        cancelAbortButton.visible=abortArmed; cancelAbortButton.active=available; returnButton.visible=finished(); returnButton.active=available && seated;
+        for (var option:optionButtons) { option.visible=!abortArmed; option.active=unlocked; }
+        toggleButton.active=!abortArmed && (finished() || !visibleOptions().isEmpty()); toggleButton.setMessage(text(page!=Page.BOARD?"board":finished()?"result":"actions"));
+        previousButton.active=currentPage()>0; nextButton.active=currentPage()+1<pageCount();
+    }
+    private List<GameSnapshot.ActionOption> visibleOptions() {
+        if (rules()==null || finished()) return List.of(); List<GameSnapshot.ActionOption> result=new ArrayList<>();
+        if (isResponse()) result.addAll(rules().responses());
+        else {
+            if (rules().canTsumo()) result.add(new GameSnapshot.ActionOption(TSUMO,-1,List.of()));
+            if (rules().canNineTerminals()) result.add(new GameSnapshot.ActionOption(NINE_TERMINALS,-1,List.of()));
+            result.addAll(rules().kans());
         }
-        discardButton.visible = !game().paused() && !abortArmed;
-        discardButton.active = mayDiscard && selectedTileId >= 0;
-        resumeButton.visible = game().paused() && !abortArmed;
-        resumeButton.active = available && seated && allPresent && !ownConfirmed;
-        resumeButton.setMessage(text(ownConfirmed ? "confirmed" : "resume"));
-        abortButton.visible = true;
-        abortButton.active = available && seated;
-        abortButton.setMessage(text(abortArmed ? "confirm_abort" : "abort"));
-        cancelAbortButton.visible = abortArmed;
-        cancelAbortButton.active = !awaitingReply;
+        result.sort(Comparator.comparingInt(o->o.action()==RON?-1:o.action()==PASS?99:o.action()));
+        // Normal copies with identical faces need one control; red/non-red alternatives remain distinct.
+        var distinct=new LinkedHashMap<String,GameSnapshot.ActionOption>();
+        for (var option:result) distinct.putIfAbsent(optionLabel(option).getString(),option); return List.copyOf(distinct.values());
+    }
+    private Component optionLabel(GameSnapshot.ActionOption option) {
+        String key=switch(option.action()) {
+            case TSUMO -> "tsumo"; case NINE_TERMINALS -> "nine_terminals"; case PASS -> "pass"; case RON -> "ron";
+            case CHI -> "chi"; case PON -> "pon"; case OPEN_KAN -> "open_kan"; case CLOSED_KAN -> "closed_kan"; case ADDED_KAN -> "added_kan"; default -> "actions";
+        };
+        MutableComponent label=text(key); for (int tile:option.handTiles()) label.append(" ").append(TileFaces.shortName(tile)); return label;
     }
 
-    void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        graphics.fill(0, 0, width, screen.height, 0xEE12271F);
-        graphics.centeredText(font, text("title"), width / 2, 4, 0xFFF0E4C9);
-        graphics.centeredText(font, text("turn", wind(game().turnSeat()), game().remainingTiles()),
-                width / 2, 17, 0xFFD6E4D9);
-        for (int seat = 0; seat < 4; seat++) {
-            drawRiver(graphics, seat, mouseX, mouseY);
-        }
-        Component handTitle = screen.snapshot().ownSeat() < 0 ? text("spectating")
-                : selectedTileId < 0 ? text("hand", wind(screen.snapshot().ownSeat()))
-                : text("selected", TileFaces.fullName(selectedTileId));
-        graphics.text(font, font.plainSubstrByWidth(handTitle.getString(), Math.max(142, width / 2) - 16),
-                8, 141, 0xFFF0E4C9);
-        graphics.text(font, text("red_legend"), Math.max(142, width / 2), 141, 0xFFE2BCB2);
-        if (game().drawnTile() >= 0) {
-            graphics.centeredText(font, text("drawn"), drawnX + handTileWidth / 2, 141, 0xFF9BE3AD);
-        }
-        Component note;
-        if (abortArmed) {
-            note = text("abort_prompt");
-        } else if (awaitingReply) {
-            note = text("processing");
-        } else if (!screen.snapshot().feedbackKey().isEmpty()) {
-            note = Component.translatable(screen.snapshot().feedbackKey());
-        } else if (!game().statusKey().isEmpty()) {
-            note = Component.translatable(game().statusKey());
-        } else {
-            note = text(game().paused() ? "paused" : "select_hint");
-        }
-        List<FormattedCharSequence> lines = font.split(note, width - 16);
-        for (int line = 0; line < Math.min(2, lines.size()); line++) {
-            graphics.text(font, lines.get(line), 8, 217 + line * font.lineHeight, 0xFFE8D3A5);
-        }
-    }
-
-    private void drawRiver(GuiGraphicsExtractor graphics, int seat, int mouseX, int mouseY) {
-        int columnWidth = (width - 24) / 2;
-        int left = 8 + (seat % 2) * (columnWidth + 8);
-        int top = 31 + (seat / 2) * 54;
-        GameSnapshot.Seat state = game().seats().get(seat);
-        boolean current = game().turnSeat() == seat;
-        graphics.fill(left, top, left + columnWidth, top + 51, current ? 0xFF315440 : 0xFF203F31);
-        Component header = text("river", wind(seat), state.handCount());
-        graphics.text(font, header, left + 3, top + 1, current ? 0xFFFFD76E : 0xFFC3D5C8);
-        if (!state.present()) {
-            Component absent = text("absent");
-            graphics.text(font, absent, left + columnWidth - font.width(absent) - 3, top + 1, 0xFFFFB59D);
-        } else if (game().paused() && state.confirmed()) {
-            Component confirmed = text("confirmed");
-            graphics.text(font, confirmed, left + columnWidth - font.width(confirmed) - 3, top + 1, 0xFF9BE3AD);
-        }
-        int tileWidth = Math.min(22, (columnWidth - 11) / 6);
-        for (int index = 0; index < Math.min(18, state.discards().size()); index++) {
-            int x = left + 3 + (index % 6) * (tileWidth + 1);
-            int y = top + 12 + (index / 6) * 13;
-            int tile = state.discards().get(index);
-            TileFaces.drawDiscard(graphics, font, tile, x, y, tileWidth, 12);
-            if (mouseX >= x && mouseX < x + tileWidth && mouseY >= y && mouseY < y + 12) {
-                graphics.setTooltipForNextFrame(TileFaces.fullName(tile), mouseX, mouseY);
+    void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY) {
+        graphics.fill(0,0,width,screen.height,0xEE12271F); graphics.centeredText(font,text("title"),width/2,4,0xFFF0E4C9);
+        Component headline=finished()?text("end."+ENDS[rules().result().kind()]):text("turn",wind(game().turnSeat()),game().remainingTiles());
+        graphics.centeredText(font,headline,width/2,17,0xFFD6E4D9);
+        MutableComponent indicators=text("dora");
+        if (rules()!=null) { for (int tile:rules().doraIndicators()) indicators.append(" ").append(TileFaces.shortName(tile)); indicators.append("  ").append(text("deposits",rules().deposits())); }
+        graphics.text(font,font.plainSubstrByWidth(indicators.getString(),width-88),8,30,0xFFE2C995);
+        graphics.centeredText(font,(currentPage()+1)+"/"+pageCount(),width-39,29,0xFFC3D5C8);
+        if (page==Page.BOARD) for(int seat=0;seat<4;seat++) drawRiver(graphics,seat,mouseX,mouseY);
+        else if(page==Page.RESULT) {
+            List<Component> lines=resultLines(); resultPage=Math.min(resultPage,Math.max(0,(lines.size()-1)/7));
+            for (int line=resultPage*7;line<Math.min(lines.size(),resultPage*7+7);line++) {
+                Component value=lines.get(line); int y=46+(line%7)*12;
+                graphics.text(font,font.plainSubstrByWidth(value.getString(),width-16),8,y,0xFFF0E4C9);
+                if (mouseY>=y && mouseY<y+12) graphics.setTooltipForNextFrame(value,mouseX,mouseY);
             }
+        } else if (optionButtons.isEmpty()) graphics.centeredText(font,text("waiting_response"),width/2,78,0xFFC3D5C8);
+        Component handTitle=screen.snapshot().ownSeat()<0?text("spectating"):selectedTileId<0?text("hand",wind(screen.snapshot().ownSeat())):text("selected",TileFaces.fullName(selectedTileId));
+        graphics.text(font,font.plainSubstrByWidth(handTitle.getString(),Math.max(142,width/2)-16),8,handY-13,0xFFF0E4C9);
+        graphics.text(font,text("red_legend"),Math.max(142,width/2),handY-13,0xFFE2BCB2);
+        if (game().drawnTile()>=0) graphics.centeredText(font,text("drawn"),drawnX+handTileWidth/2,handY-13,0xFF9BE3AD);
+        List<FormattedCharSequence> lines=font.split(note(),width-16);
+        for (int line=0;line<Math.min(2,lines.size());line++) graphics.text(font,lines.get(line),8,bottomY+25+line*font.lineHeight,0xFFE8D3A5);
+    }
+    private Component note() {
+        if (abortArmed) return text("abort_prompt"); if (awaitingReply) return text("processing");
+        if (!screen.snapshot().feedbackKey().isEmpty()) return Component.translatable(screen.snapshot().feedbackKey());
+        if (finished()) return text("result_hint"); if (game().paused()) return text("paused");
+        if (isResponse()) return text("response_hint",wind(rules().opportunity().actorSeat()),TileFaces.fullName(rules().opportunity().tileId()));
+        if (!game().statusKey().isEmpty()) return Component.translatable(game().statusKey()); return text(isTurn()?"select_hint":"waiting_response");
+    }
+
+    private void drawRiver(GuiGraphicsExtractor graphics,int seat,int mouseX,int mouseY) {
+        int col=(width-24)/2,left=8+(seat%2)*(col+8),top=45+(seat/2)*46; var state=game().seats().get(seat); boolean current=game().turnSeat()==seat;
+        graphics.fill(left,top,left+col,top+44,current?0xFF315440:0xFF203F31); MutableComponent header=Component.empty().append(wind(seat));
+        if (rules()!=null) { var details=rules().seats().get(seat); header.append(" "+details.points()); if (details.riichiPhase()>0) header.append(" ").append(text(details.riichiPhase()==1?"declaring":"riichi")); }
+        if (!state.present()) header.append(" ").append(text("absent")); else if (game().paused() && state.confirmed()) header.append(" ").append(text("confirmed"));
+        graphics.text(font,font.plainSubstrByWidth(header.getString(),col-6),left+3,top+1,current?0xFFFFD76E:0xFFC3D5C8);
+        MutableComponent groups=Component.empty();
+        if (rules()!=null) for (var meld:rules().seats().get(seat).melds()) {
+            groups.append(text(meld.kind()==3?"closed_kan_short":meld.kind()==2?"kan_short":meld.kind()==1?"pon_short":"chi_short"));
+            for (int tile:meld.tiles()) groups.append(TileFaces.shortName(tile)); groups.append(" ");
+        }
+        graphics.text(font,font.plainSubstrByWidth(groups.getString(),col-6),left+3,top+10,0xFFA5C9B1);
+        if (mouseX>=left && mouseX<left+col && mouseY>=top && mouseY<top+19) graphics.setTooltipForNextFrame(Component.empty().append(header).append(" · ").append(text("river",wind(seat),state.handCount())).append(" ").append(groups),mouseX,mouseY);
+        int tileWidth=Math.min(22,(col-11)/6),start=currentPage()*12;
+        for(int index=start;index<Math.min(start+12,state.discards().size());index++) {
+            int local=index-start,x=left+3+(local%6)*(tileWidth+1),y=top+20+(local/6)*12,tile=state.discards().get(index);
+            TileFaces.drawDiscard(graphics,font,tile,x,y,tileWidth,12); MutableComponent tooltip=Component.empty().append(TileFaces.fullName(tile));
+            if (rules()!=null) { var mark=rules().seats().get(seat).river().get(index);
+                if (mark.declaration()) { graphics.fill(x,y,x+tileWidth,y+1,0xFFFFC647); tooltip.append(" ").append(text("declaration_tile")); }
+                if (mark.claimedBy()>=0) { graphics.fill(x,y,x+2,y+12,0xFF6C8A7B); tooltip.append(" ").append(text("claimed",wind(mark.claimedBy()))); }
+            }
+            if(mouseX>=x && mouseX<x+tileWidth && mouseY>=y && mouseY<y+12) graphics.setTooltipForNextFrame(tooltip,mouseX,mouseY);
         }
     }
 
-    private GameSnapshot game() {
-        return screen.snapshot().game();
+    private List<Component> resultLines() {
+        if (!finished()) return List.of(); var result=rules().result(); List<Component> lines=new ArrayList<>();
+        if (!result.winners().isEmpty()) {
+            MutableComponent winners=text("winners");
+            for (int seat:result.winners()) winners.append(" ").append(wind(seat));
+            lines.add(winners);
+        }
+        for(int seat=0;seat<4;seat++) { int points=rules().seats().get(seat).points(),delta=points-25_000; lines.add(text("result_points",wind(seat),points,(delta>=0?"+":"")+delta)); }
+        if (!result.tenpai().isEmpty()) { MutableComponent tenpai=text("tenpai"); for(int seat:result.tenpai()) tenpai.append(" ").append(wind(seat)); lines.add(tenpai); }
+        for(var value:result.values()) {
+            lines.add(value.yakumanUnits()>0?text("value_yakuman",wind(value.seat()),value.yakumanUnits(),value.totalPoints())
+                    :text("value",wind(value.seat()),value.han(),value.fu(),value.totalPoints()));
+            MutableComponent awards=Component.empty();
+            for(var award:value.yaku()) { if (!awards.getString().isEmpty()) awards.append(" · "); awards.append(Component.translatable("yaku.riichicraft."+award.yaku().toLowerCase(Locale.ROOT))); }
+            lines.add(awards); if(value.yakumanUnits()==0) lines.add(text("bonuses",value.dora(),value.aka(),value.ura()));
+        }
+        for(var payment:result.transfers()) lines.add(text("payment",payment.fromSeat()<0?text("deposit_pool"):wind(payment.fromSeat()),wind(payment.toSeat()),payment.points()));
+        lines.add(text("single_round_hint")); return lines;
     }
-
-    private static Component wind(int seat) {
-        return Component.translatable("screen.riichicraft.lobby." + WINDS[seat]);
-    }
-
-    private static Component text(String suffix, Object... arguments) {
-        return Component.translatable("screen.riichicraft.game." + suffix, arguments);
-    }
+    private GameSnapshot game() { return screen.snapshot().game(); }
+    private GameSnapshot.RuleState rules() { return game().rules(); }
+    private static Component wind(int seat) { return Component.translatable("screen.riichicraft.lobby."+WINDS[seat]); }
+    private static MutableComponent text(String suffix,Object... arguments) { return Component.translatable("screen.riichicraft.game."+suffix,arguments); }
 }

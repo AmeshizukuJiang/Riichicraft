@@ -49,7 +49,7 @@
 
 `build` 包括配置好的服务端 GameTest；`runClientGameTest` 另行启动实际 Minecraft 客户端，运行后自动关闭并输出截图。游戏测试是否通过以实际报告为准，配置测试入口本身不代表已验证。
 
-`src/main/java/dev/riichicraft/game` 是不依赖 Minecraft 的摸打核心。`LobbyService` 管理桌子、权限和临时生命周期；网络只携带接收者有权查看的数据。测试模组与正式模组分开，正式 jar 不包含测试类。客户端与服务器需使用同一 Riichicraft 版本，当前未实现跨协议版本兼容。
+`src/main/java/dev/riichicraft/rules` 是不依赖 Minecraft 的四人单局核心；`game/DrawDiscardGame` 保留为旧摸打原型的独立回归对象，活动桌不再用它裁决。`LobbyService` 管理桌子、连接权限和临时生命周期，分别维护外层界面修订与核心动作修订；普通意图严格匹配界面修订，三家响应使用稳定小局／窗口号，不因另一家先答而失效。网络只携带接收者有权查看的数据，所有嵌套集合在分配前检查长度。测试模组与正式模组分开，正式 jar 不包含测试类。客户端与服务器需使用同一 Riichicraft 版本，当前未实现跨协议版本兼容。
 
 若 Fabric 主源下载超时，可以在该次调用中选用 Fabric 官方安装器使用的备用下载源：
 
@@ -69,7 +69,7 @@ PowerShell 中包含 URL 的 `-P` 参数需要整段加引号。此选项同时�
 
 EULA 选项默认为 false，不把当前用户的同意写成所有使用者的默认选择。专用测试仅监听 `127.0.0.1`，使用临时端口及项目内的 `riichicraft-dedicated-test-world`；测试会重建该测试世界。专用模式使用 AWT headless 避免额外弹出 Swing 服务器面板，Minecraft 的 GLFW 测试客户端仍正常运行。
 
-摸打场景使用一名真实客户端和三名原生 `ServerPlayer`／`EmbeddedChannel` 夹具。专用测试将最大玩家数设为 8，以允许夹具仍在时真实客户端断线重连；不代表八个真实客户端已经验收。每次客户端测试可能重建截图目录，保留证据时应先复制到 `docs/images`。构建日志、测试世界和临时报告保留在忽略目录。
+单局场景使用一名真实客户端和三名原生 `ServerPlayer`／`EmbeddedChannel` 夹具。专用测试将最大玩家数设为 8，以允许夹具仍在时真实客户端断线重连；不代表八个真实客户端已经验收。场景验证合法阶段驱动、私有手牌、真实鼠标弃牌、结算保留／重开／返回，以及活动局暂停恢复和终局 TCP 重连；具体已执行证据见 [VALIDATION.md](VALIDATION.md)。每次客户端测试可能重建截图目录，保留证据时应先复制到 `docs/images`。构建日志、测试世界和临时报告保留在忽略目录。
 
 ## 每一步的交付流程
 

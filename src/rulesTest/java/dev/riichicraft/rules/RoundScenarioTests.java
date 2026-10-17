@@ -25,6 +25,8 @@ public final class RoundScenarioTests {
         run("pon bans the remaining red copy",RoundScenarioTests::ponRedKuikae);
         run("kokushi robs an ankan before replacement and dora",RoundScenarioTests::kokushiRobbery);
         run("four actual consecutive closed kans and rinshan settlement",RoundScenarioTests::fourClosedKans);
+        run("multiple owners' fourth kan permits rinshan then aborts after unclaimed discard",()->fourOwnersKans(false));
+        run("ron on the fourth-kan discard beats the abort",()->fourOwnersKans(true));
         run("four declarations debit before four-riichi draw",RoundScenarioTests::fourRiichi);
         run("fourth declaration's ron beats four-riichi and its debit",RoundScenarioTests::fourthRiichiRon);
         run("called declaration establishes and loses ippatsu",RoundScenarioTests::calledDeclaration);
@@ -153,6 +155,75 @@ public final class RoundScenarioTests {
         check(end.kind()==EndKind.FOUR_RIICHI && end.transfers().isEmpty(),"four-riichi is abortive after all declaration accounting, without noten payments");
         check(round.serverState().riichi().stream().allMatch(r->r.phase()==RiichiState.Phase.ESTABLISHED && r.establishedRiichi()==WinContext.Riichi.DOUBLE_RIICHI),"all four first uncalled declarations really establish double riichi");
         check(round.view(OBSERVER).deposits()==4 && end.dealerContinues(),"all four deposits carry and dealer continues");
+    }
+
+    private static void fourOwnersKans(boolean ron) {
+        Wall wall=new Wall();
+        int[] dealer={0,1,2,3,40,41,42,44,45,46,48,49,108};
+        for(int index=0;index<dealer.length;index++) wall.exact(index*4,dealer[index]);
+        for(int seat=1;seat<4;seat++) for(int copy=0;copy<4;copy++) wall.exact(copy*4+seat,seat*4+copy);
+        int[] live={68,72,76,80}, replacement={50,84,85,109};
+        for(int index=0;index<4;index++) {
+            wall.exact(52+index,live[index]); wall.exact(122+index,replacement[index]);
+        }
+        FourPlayerRound round=wall.round(0);
+        for(int seat=0;seat<4;seat++) {
+            int owner=seat; var before=round.view(PLAYERS.get(seat));
+            check(before.phase()==Phase.DRAWN_TURN && before.actorSeat()==seat && before.ownDraw().orElseThrow()==live[seat],
+                    "each different kan owner reaches its scripted real live draw");
+            var choice=before.turnOptions().kans().stream()
+                    .filter(k->k.kind()==KanActions.Kind.CLOSED && k.handTiles().getFirst()/4==owner).findFirst().orElseThrow();
+            check(round.declareKan(PLAYERS.get(seat),before.command(),choice)==Status.ACCEPTED,
+                    "each owner's physically held four-copy closed kan is genuinely offered and established");
+            respond(round,Map.of());
+            var drawn=round.view(PLAYERS.get(seat)); var state=round.serverState();
+            check(drawn.phase()==Phase.DRAWN_TURN && drawn.actorSeat()==seat && drawn.ownDraw().orElseThrow()==replacement[seat],
+                    "even the multi-owner fourth kan receives its exact real replacement tile before aborting");
+            check(drawn.doraIndicators().size()==seat+2 && state.wall().replacementDraws()==seat+1
+                            && state.kans().establishedKans()==seat+1 && state.wall().deadTiles().size()==14,
+                    "actual closed kan progress, visible indicators and the fourteen-tile dead wall agree after every draw");
+            check(state.hands().stream().filter(h->h.melds().size()==1).count()==seat+1,
+                    "fourth-kan condition derives from quads really declared by different owners");
+            round.assertConservation();
+            if(seat<3) { discard(round,live[seat],false); respond(round,Map.of()); }
+        }
+        var finalDraw=round.view(PLAYERS.get(3));
+        check(round.serverState().kans().fourthStage()==KanRoundState.FourthStage.NEEDS_DISCARD
+                        && finalDraw.liveTiles()==62 && finalDraw.turnOptions().discards().containsAll(List.of(80,109)),
+                "fourth kan pauses at its replacement discard opportunity instead of immediately aborting or drawing for east");
+        check(finalDraw.turnOptions().kans().isEmpty(),"a fifth kan cannot be declared during the fourth-kan gate");
+        discard(round,ron?109:80,false);
+        if(ron) {
+            var offered=round.view(PLAYERS.getFirst());
+            check(offered.phase()==Phase.DISCARD_RESPONSES && offered.responses().contains(Simple.RON)
+                            && round.serverState().kans().fourthStage()==KanRoundState.FourthStage.RESPONSES,
+                    "dealer's genuine east-tanki ron remains actionable before the multi-owner fourth-kan abort");
+            check(offered.responses().stream().noneMatch(c->c instanceof Call),"only ron/pass can participate in the fourth-kan final discard");
+            respond(round,Map.of(0,Simple.RON));
+        } else respond(round,Map.of());
+        var end=round.view(OBSERVER).end().orElseThrow(); var state=round.serverState();
+        check(round.view(OBSERVER).phase()==Phase.FINISHED && state.wall().liveCount()==62
+                        && state.wall().replacementDraws()==4 && state.kans().kansBySeat().equals(List.of(1,1,1,1))
+                        && round.view(OBSERVER).doraIndicators().size()==5,
+                "both fourth-kan outcomes retain exactly four actual replacements/five indicators without a further live draw");
+        if(ron) {
+            check(end.kind()==EndKind.RON && end.winners().equals(List.of(0))
+                            && state.kans().fourthStage()==KanRoundState.FourthStage.WON,
+                    "a real ron beats fourth-kan abort and closes the exact fourth-discard gate as won");
+            check(end.values().get(0).yakumanUnits()==2
+                            && end.values().get(0).yaku().stream().anyMatch(y->y.yaku()==Yaku.SUUANKOU_TANKI),
+                    "east completes the dealer's actual double suuankou tanki rather than a synthetic allowed decision");
+            check(round.view(OBSERVER).seats().stream().map(PublicSeat::points).toList()
+                            .equals(List.of(121_000,25_000,25_000,-71_000)),
+                    "fourth-kan ron is paid once by its real discarder, with no abortive payment");
+        } else {
+            check(end.kind()==EndKind.FOUR_KANS && end.winners().isEmpty() && end.transfers().isEmpty()
+                            && state.kans().fourthStage()==KanRoundState.FourthStage.ABORTED,
+                    "all three unclaimed responses resolve before the fourth-kan abort, without noten payments");
+            check(round.view(OBSERVER).seats().stream().allMatch(s->s.points()==25_000),
+                    "the fourth-kan abort transfers no points");
+        }
+        round.assertConservation();
     }
 
     private static void calledDeclaration() {

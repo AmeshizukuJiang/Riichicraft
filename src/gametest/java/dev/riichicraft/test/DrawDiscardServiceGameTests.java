@@ -82,7 +82,7 @@ public final class DrawDiscardServiceGameTests {
             helper.assertTrue(eastView != null && eastView.revision() == 0 && eastView.turnSeat() == 0
                             && eastView.remainingTiles() == 69 && !eastView.paused(),
                     "A valid east start must create one active deal with 69 live tiles remaining");
-            assertRecipientCounts(helper, initial, 0, 0);
+            assertRecipientViews(helper, initial, 0);
             GameSnapshot outsider = service.gameView(tableId, UUID.randomUUID());
             helper.assertTrue(outsider != null && outsider.ownHand().isEmpty() && outsider.drawnTile() == -1
                             && outsider.seats().equals(eastView.seats()),
@@ -122,10 +122,9 @@ public final class DrawDiscardServiceGameTests {
             GameActionPayload firstDiscard = discard(viewIds[0], gameId, 0, eastDraw);
             service.handleGameAction(east, firstDiscard);
             List<GameSnapshot> afterFirst = recipientViews(service, tableId, players);
-            assertRecipientCounts(helper, afterFirst, 1, 1);
-            helper.assertTrue(afterFirst.getFirst().remainingTiles() == 68
-                            && afterFirst.getFirst().seats().getFirst().discards().equals(List.of(eastDraw)),
-                    "The first valid discard must enter east's river and draw exactly once for south");
+            assertRecipientViews(helper, afterFirst, 1);
+            helper.assertTrue(afterFirst.getFirst().seats().getFirst().discards().equals(List.of(eastDraw)),
+                    "The first valid discard must enter east's river exactly once, before any pending responses finish");
             service.handleGameAction(east, firstDiscard);
             service.handleAction(east, acceptedStart);
             assertUnchanged(helper, service, tableId, players, afterFirst,
@@ -133,36 +132,109 @@ public final class DrawDiscardServiceGameTests {
 
             int acceptedDiscards = 1;
             GameActionPayload lastDiscard = firstDiscard;
-            while (service.gameView(tableId, east.getUUID()) != null) {
+            int commands = 0;
+            boolean responsePauseChecked = false;
+            while (service.gameView(tableId, east.getUUID()).rules().phase() != GameSnapshot.FINISHED) {
+                helper.assertTrue(++commands <= 400, "A finite all-pass round must terminate within its tile and response budget");
                 GameSnapshot before = service.gameView(tableId, east.getUUID());
+                if (before.rules().phase() == GameSnapshot.DISCARD_RESPONSES
+                        || before.rules().phase() == GameSnapshot.KAN_RESPONSES) {
+                    long serial = before.rules().opportunity().serial();
+                    List<Integer> pending = new ArrayList<>();
+                    for (int seat = 0; seat < 4; seat++) {
+                        if (!service.gameView(tableId, players.get(seat).getUUID()).rules().responses().isEmpty()) pending.add(seat);
+                    }
+                    helper.assertTrue(!pending.isEmpty(), "An unresolved response window must offer at least one real recipient action");
+                    int firstResponder = pending.getFirst();
+                    GameSnapshot beforeBad = service.gameView(tableId, players.get(firstResponder).getUUID());
+                    service.handleGameAction(players.get(firstResponder), new GameActionPayload(viewIds[firstResponder], gameId,
+                            before.revision(), GameActionPayload.PASS, -1, serial + 10_000, -1, List.of()));
+                    helper.assertTrue(service.gameView(tableId, players.get(firstResponder).getUUID()).equals(beforeBad),
+                            "An unoffered window serial cannot consume a real response or alter its mask");
+                    if (!responsePauseChecked) {
+                        responsePauseChecked = true;
+                        GameSnapshot.RuleState held = before.rules();
+                        players.get(3).setPos(tablePos.getX() + 100.0, tablePos.getY(), tablePos.getZ());
+                        service.tick();
+                        GameSnapshot paused = service.gameView(tableId, east.getUUID());
+                        helper.assertTrue(paused.paused() && paused.rules().equals(held),
+                                "A pending response window pauses without resolving, redrawing or changing its legal options");
+                        service.handleGameAction(players.get(firstResponder), new GameActionPayload(viewIds[firstResponder], gameId,
+                                paused.revision(), GameActionPayload.PASS, -1, serial, -1, List.of()));
+                        helper.assertTrue(service.gameView(tableId, east.getUUID()).rules().equals(held),
+                                "Even a valid current-window response must not resolve while play is paused");
+                        players.get(3).setPos(tablePos.getX() + 0.5, tablePos.getY() + 1.0, tablePos.getZ() + 1.5);
+                        viewIds[3] = service.open(players.get(3), tablePos);
+                        service.tick();
+                        for (int seat = 0; seat < 4; seat++) {
+                            GameSnapshot state = service.gameView(tableId, players.get(seat).getUUID());
+                            service.handleGameAction(players.get(seat), new GameActionPayload(viewIds[seat], gameId,
+                                    state.revision(), GameActionPayload.RESUME, -1));
+                        }
+                        helper.assertTrue(!service.gameView(tableId, east.getUUID()).paused()
+                                        && service.gameView(tableId, east.getUUID()).rules().equals(held),
+                                "Four confirmations resume the same stable response window without replaying any action");
+                    }
+                    long responseRevision = service.gameView(tableId, east.getUUID()).revision();
+                    for (int seat : pending) {
+                        GameSnapshot current = service.gameView(tableId, players.get(seat).getUUID());
+                        GameActionPayload pass = new GameActionPayload(viewIds[seat], gameId, responseRevision,
+                                GameActionPayload.PASS, -1, serial, -1, List.of());
+                        service.handleGameAction(players.get(seat), pass);
+                        GameSnapshot next = service.gameView(tableId, east.getUUID());
+                        helper.assertTrue(next.revision() > current.revision(),
+                                "Stable window responses accept the first responder's revision despite other responses");
+                        List<GameSnapshot> frozen = recipientViews(service, tableId, players);
+                        service.handleGameAction(players.get(seat), pass);
+                        assertUnchanged(helper, service, tableId, players, frozen,
+                                "A response cannot be overwritten or replayed after the window moves on");
+                    }
+                    continue;
+                }
                 int seat = before.turnSeat();
                 ServerPlayer actor = players.get(seat);
                 GameSnapshot actorView = service.gameView(tableId, actor.getUUID());
-                helper.assertTrue(actorView != null && actorView.drawnTile() >= 0 && actorView.ownHand().size() == 13,
-                        "The current actor must receive their thirteen closed tiles plus one separate draw");
-                if (before.remainingTiles() == 0) {
-                    helper.assertTrue(acceptedDiscards == 69,
-                            "The final drawn tile must remain playable until its seventieth discard");
-                }
-                int tile = acceptedDiscards % 2 == 0 ? actorView.drawnTile() : actorView.ownHand().getFirst();
+                helper.assertTrue(actorView != null && !actorView.rules().legalDiscards().isEmpty(),
+                        "The current actor must receive an authoritative exact physical discard mask");
+                int tile = actorView.rules().legalDiscards().contains(actorView.drawnTile())
+                        ? actorView.drawnTile() : actorView.rules().legalDiscards().getFirst();
                 lastDiscard = discard(viewIds[seat], actorView.gameId(), actorView.revision(), tile);
                 service.handleGameAction(actor, lastDiscard);
                 acceptedDiscards++;
                 helper.assertTrue(acceptedDiscards <= 70, "The service must finish after exactly seventy live-wall draws");
                 GameSnapshot after = service.gameView(tableId, east.getUUID());
-                if (after != null) {
-                    helper.assertTrue(after.gameId().equals(gameId) && after.revision() == before.revision() + 1
-                                    && after.remainingTiles() == Math.max(0, before.remainingTiles() - 1),
-                            "Every accepted service intention must preserve game identity and advance exactly once");
-                    assertRecipientCounts(helper, recipientViews(service, tableId, players),
-                            (seat + 1) % 4, acceptedDiscards);
-                }
+                helper.assertTrue(after.gameId().equals(gameId) && after.revision() == before.revision() + 1,
+                        "An exact offered discard advances once without replacing the round");
+                assertRecipientViews(helper, recipientViews(service, tableId, players), acceptedDiscards);
             }
 
-            helper.assertTrue(acceptedDiscards == 70, "Wall exhaustion must occur only after the final discard");
+            GameSnapshot finished = service.gameView(tableId, east.getUUID());
+            helper.assertTrue(responsePauseChecked,
+                    "This complete native-service trajectory must actually exercise pausing and resuming a real response window");
+            helper.assertTrue(finished.rules().result() != null && !finished.paused(),
+                    "A finished round must retain an actual immutable settlement for review");
+            if (finished.remainingTiles() == 0) helper.assertTrue(acceptedDiscards == 70,
+                    "Natural wall exhaustion occurs only after the final physical discard");
+            GameSnapshot.Result settlement = finished.rules().result();
+            int deposits = finished.rules().deposits();
+            int total = finished.rules().seats().stream().mapToInt(GameSnapshot.SeatRules::points).sum() + deposits * 1_000;
+            helper.assertTrue(total == 100_000, "The retained settlement conserves all points and deposit sticks");
+            service.handleAction(east, lobbyAction(viewIds[0], lobby(service, tableId).revision(), LobbyActionPayload.CLOSE, false));
+            viewIds[0] = service.open(east, tablePos);
+            helper.assertTrue(service.gameView(tableId, east.getUUID()).rules().result().equals(settlement),
+                    "Closing and reopening must show the same settled result rather than a new deal");
+            service.disconnect(east);
+            service.tick();
+            helper.assertTrue(service.gameView(tableId, east.getUUID()).rules().result().equals(settlement)
+                            && !service.gameView(tableId, east.getUUID()).paused(),
+                    "A finished participant disconnect must not revoke the ledger or enter recovery confirmations");
+            viewIds[0] = service.open(east, tablePos);
+            GameSnapshot returned = service.gameView(tableId, players.get(1).getUUID());
+            service.handleGameAction(players.get(1), new GameActionPayload(viewIds[1], gameId, returned.revision(),
+                    GameActionPayload.RETURN_LOBBY, -1));
             LobbyRegistry.Snapshot ended = lobby(service, tableId);
             helper.assertTrue(!ended.allReady() && ended.seats().stream().noneMatch(LobbyRegistry.Seat::ready),
-                    "Exhaustion must return the table to a lobby with all preparation flags cleared");
+                    "A participant's explicit return clears the result and all preparation flags for the table");
             for (int seat = 0; seat < 4; seat++) {
                 helper.assertTrue(ended.seats().get(seat).playerId().equals(players.get(seat).getUUID())
                                 && service.registry().tableForPlayer(players.get(seat).getUUID()).orElseThrow().equals(tableId)
@@ -188,17 +260,15 @@ public final class DrawDiscardServiceGameTests {
         helper.assertTrue(recipientViews(service, tableId, players).equals(expected), message);
     }
 
-    private static void assertRecipientCounts(GameTestHelper helper, List<GameSnapshot> views,
-            int turnSeat, int discardedCount) {
+    private static void assertRecipientViews(GameTestHelper helper, List<GameSnapshot> views, int discardedCount) {
         GameSnapshot publicView = views.getFirst();
         Set<Integer> concealed = new HashSet<>();
         for (int seat = 0; seat < 4; seat++) {
             GameSnapshot own = views.get(seat);
-            helper.assertTrue(own != null && own.turnSeat() == turnSeat && own.ownHand().size() == 13
-                            && (own.drawnTile() >= 0) == (seat == turnSeat)
+            helper.assertTrue(own != null && own.ownHand().size() <= 14
                             && own.seats().equals(publicView.seats()),
-                    "Every recipient must see the same public state and only their own separate draw");
-            helper.assertTrue(own.seats().get(seat).handCount() == (seat == turnSeat ? 14 : 13)
+                    "Every recipient must see the same public state and only their own concealed tiles");
+            helper.assertTrue(own.seats().get(seat).handCount() == own.ownHand().size()
                             && own.seats().stream().allMatch(GameSnapshot.Seat::present),
                     "Native connected participants must expose accurate public hand counts and presence");
             helper.assertTrue(own.seats().stream().mapToInt(publicSeat -> publicSeat.discards().size()).sum() == discardedCount,
@@ -208,10 +278,12 @@ public final class DrawDiscardServiceGameTests {
                         "Recipient-specific views must not accidentally repeat another participant's private hand");
             }
             if (own.drawnTile() >= 0) {
-                helper.assertTrue(concealed.add(own.drawnTile()), "A recipient's draw must be a distinct physical tile");
+                helper.assertTrue(own.ownHand().contains(own.drawnTile()) && seat == own.turnSeat(),
+                        "The recipient's draw is a reference into that same concealed hand, not a duplicated extra tile");
             }
         }
-        helper.assertTrue(concealed.size() == 53, "The four private views must partition the 53 currently held tiles");
+        int expectedHeld = publicView.rules().phase() == GameSnapshot.DRAWN_TURN ? 53 : 52;
+        helper.assertTrue(concealed.size() == expectedHeld, "The private views partition only the currently held physical tiles");
         Set<Integer> rivers = new HashSet<>();
         for (GameSnapshot.Seat seat : publicView.seats()) {
             for (int tile : seat.discards()) {

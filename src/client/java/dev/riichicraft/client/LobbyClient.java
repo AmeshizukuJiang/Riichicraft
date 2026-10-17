@@ -5,6 +5,7 @@ import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.LobbyClosedPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -84,12 +85,17 @@ final class LobbyClient {
     }
 
     static boolean requestGame(LobbySnapshotPayload snapshot, int action, int tileId) {
+        return requestGame(snapshot,action,tileId,-1,-1,List.of());
+    }
+
+    static boolean requestGame(LobbySnapshotPayload snapshot, int action, int tileId,
+            long windowSerial, int meldIndex, List<Integer> handTiles) {
         if (!snapshot.viewId().equals(activeViewId) || DISMISSED_VIEWS.contains(snapshot.viewId())
                 || snapshot.game() == null || !canSendGame()) {
             return false;
         }
         ClientPlayNetworking.send(new GameActionPayload(snapshot.viewId(), snapshot.game().gameId(),
-                snapshot.game().revision(), action, tileId));
+                snapshot.game().revision(), action, tileId,windowSerial,meldIndex,handTiles));
         return true;
     }
 
