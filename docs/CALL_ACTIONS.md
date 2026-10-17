@@ -40,4 +40,4 @@
 
 `RoundWallTests` 通过 101,983 个断言：精确配牌顺序、种子可复现、四次岭上及尾牌转移、末张普通／岭上来源、非法牌序与不可变快照；240 个固定种子的混合摸牌进程逐步审计完整 136 枚身份与 14 枚王牌。脚本明杠场景组合了真实配牌、普通摸牌、鸣牌执行、岭上补牌和十四张结构状态，保持整副牌守恒。
 
-上述七套及后续套件均由 `tools/Test-Rules.ps1` 和 Gradle `rulesTest` 运行；新组件见 [RIICHI_AND_LEDGER.md](RIICHI_AND_LEDGER.md) 和 [KAN_FLOW.md](KAN_FLOW.md)。统一单局已补齐流局、责任历史、视图及每步整副牌守恒，64 个固定种子完整轨迹实际执行 259 次鸣牌、8 次杠；确定墙场景另覆盖实际吃碰食替、宣言牌被鸣、国士抢暗杠、连续四暗杠岭上和多人第四杠真实终局分支，见 [SINGLE_ROUND_CORE.md](SINGLE_ROUND_CORE.md)。当前已接入 Minecraft，具体服务端／TCP 与菜单回归见 [VALIDATION.md](VALIDATION.md)；整场轮转和三麻仍未实现。
+上述七套及后续套件均由 `tools/Test-Rules.ps1` 和 Gradle `rulesTest` 运行；新组件见 [RIICHI_AND_LEDGER.md](RIICHI_AND_LEDGER.md) 和 [KAN_FLOW.md](KAN_FLOW.md)。统一单局已补齐流局、责任历史、视图及每步整副牌守恒，64 个固定种子完整轨迹实际执行259次鸣牌、8次杠；确定墙场景另覆盖吃碰食替、宣言牌被鸣、国士抢暗杠、连续四暗杠岭上和多人第四杠终局，见 [SINGLE_ROUND_CORE.md](SINGLE_ROUND_CORE.md)。现已接入Minecraft，整场轮转由 [MATCHES.md](MATCHES.md)所述核心处理；服务端／TCP证据见 [VALIDATION.md](VALIDATION.md)，三麻尚未实现。
