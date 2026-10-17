@@ -20,7 +20,7 @@
 
 最终日志`.tmp/three-player-game-rules-final.log`、`three-player-game-build-final.log`、`three-player-client-final.log`、`three-player-game-artifact.json`、`three-player-game-gradle-stop.log`。重启测试夹具第一次在区块不可访问前开桌得到空view，已改为等待真实客户端正常加载后再开，不强载、不放宽超时；失败诊断保留为`three-player-client-restart-fixture-failed.log`，不当通过证据。开发测试身份profile-key401及Windows系统采样警告未改变验证结论，也未因此检查外部配置。
 
-核心／测试`d206aef`、游戏／实际验证`73e5c04`；最终文档与Git同步另作完整小提交，最终推送／开发tag状态见接续页。原tag保持原位；没有正式`v0.0.7`发布。所有研究、测试世界、缓存、工具和主动文件读写均限本仓库。
+核心／测试`d206aef`、游戏／实际验证`73e5c04`、最终文档／截图`b30f7a6`已本地提交；本地开发tag`v0.0.7-dev`指向`b30f7a6`。最终两次GitHub推送均报443连接超时（约21秒），本批提交与标签尚未推送，失败日志`.tmp/github-push-three-player-release.err.log`；网络恢复后继续同步。原tag保持原位，没有正式`v0.0.7`发布。所有研究、测试世界、缓存、工具和主动文件读写均限本仓库。
 
 ## v0.0.7-dev 三麻手牌计分与拔北明细：2026-10-17
 
