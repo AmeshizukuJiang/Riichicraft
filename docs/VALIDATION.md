@@ -18,7 +18,7 @@
 
 日志`.tmp/three-player-basics-rules.log`、`three-player-basics-build.log`、`three-player-basics-artifact.json`、`three-player-basics-gradle-stop.log`。所有工具、研究下载、测试与缓存限工作文件夹；官方公开客户端只静态解析，未执行、未打包进模组。
 
-Git：三麻基础代码／测试`5c94a1c`已提交；规则定稿、研究来源及验证文档一并保存，文档提交与分支推送完成后补记。不建立代表完整三麻已完成的tag，已有`v0.0.6-dev`保持原位。
+Git：三麻基础代码／测试`5c94a1c`、规则定稿／来源与验证文档`8ad1e8e`已本地提交。再次核对用户指定origin后重试推送`codex/three-player-rules`，仍因GitHub HTTPS低速超时失败，尚无此分支远程上游；日志`.tmp/github-push-three-player-design.err.log`。后续可重试，不把本地完成记成已推送。未建立代表完整三麻已完成的tag，已有`v0.0.6-dev`保持原位。
 
 ## v0.0.7 三麻规则设计：2026-10-17（未实现）
 
