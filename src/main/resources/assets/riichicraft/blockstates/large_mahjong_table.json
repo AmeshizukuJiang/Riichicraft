@@ -1,0 +1,148 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "riichicraft:block/large_mahjong_table_0",
+      "y": 0
+    },
+    "facing=east,part=0": {
+      "model": "riichicraft:block/large_mahjong_table_0",
+      "y": 90
+    },
+    "facing=south,part=0": {
+      "model": "riichicraft:block/large_mahjong_table_0",
+      "y": 180
+    },
+    "facing=west,part=0": {
+      "model": "riichicraft:block/large_mahjong_table_0",
+      "y": 270
+    },
+    "facing=north,part=1": {
+      "model": "riichicraft:block/large_mahjong_table_1",
+      "y": 0
+    },
+    "facing=east,part=1": {
+      "model": "riichicraft:block/large_mahjong_table_1",
+      "y": 90
+    },
+    "facing=south,part=1": {
+      "model": "riichicraft:block/large_mahjong_table_1",
+      "y": 180
+    },
+    "facing=west,part=1": {
+      "model": "riichicraft:block/large_mahjong_table_1",
+      "y": 270
+    },
+    "facing=north,part=2": {
+      "model": "riichicraft:block/large_mahjong_table_2",
+      "y": 0
+    },
+    "facing=east,part=2": {
+      "model": "riichicraft:block/large_mahjong_table_2",
+      "y": 90
+    },
+    "facing=south,part=2": {
+      "model": "riichicraft:block/large_mahjong_table_2",
+      "y": 180
+    },
+    "facing=west,part=2": {
+      "model": "riichicraft:block/large_mahjong_table_2",
+      "y": 270
+    },
+    "facing=north,part=3": {
+      "model": "riichicraft:block/large_mahjong_table_3",
+      "y": 0
+    },
+    "facing=east,part=3": {
+      "model": "riichicraft:block/large_mahjong_table_3",
+      "y": 90
+    },
+    "facing=south,part=3": {
+      "model": "riichicraft:block/large_mahjong_table_3",
+      "y": 180
+    },
+    "facing=west,part=3": {
+      "model": "riichicraft:block/large_mahjong_table_3",
+      "y": 270
+    },
+    "facing=north,part=4": {
+      "model": "riichicraft:block/large_mahjong_table_4",
+      "y": 0
+    },
+    "facing=east,part=4": {
+      "model": "riichicraft:block/large_mahjong_table_4",
+      "y": 90
+    },
+    "facing=south,part=4": {
+      "model": "riichicraft:block/large_mahjong_table_4",
+      "y": 180
+    },
+    "facing=west,part=4": {
+      "model": "riichicraft:block/large_mahjong_table_4",
+      "y": 270
+    },
+    "facing=north,part=5": {
+      "model": "riichicraft:block/large_mahjong_table_5",
+      "y": 0
+    },
+    "facing=east,part=5": {
+      "model": "riichicraft:block/large_mahjong_table_5",
+      "y": 90
+    },
+    "facing=south,part=5": {
+      "model": "riichicraft:block/large_mahjong_table_5",
+      "y": 180
+    },
+    "facing=west,part=5": {
+      "model": "riichicraft:block/large_mahjong_table_5",
+      "y": 270
+    },
+    "facing=north,part=6": {
+      "model": "riichicraft:block/large_mahjong_table_6",
+      "y": 0
+    },
+    "facing=east,part=6": {
+      "model": "riichicraft:block/large_mahjong_table_6",
+      "y": 90
+    },
+    "facing=south,part=6": {
+      "model": "riichicraft:block/large_mahjong_table_6",
+      "y": 180
+    },
+    "facing=west,part=6": {
+      "model": "riichicraft:block/large_mahjong_table_6",
+      "y": 270
+    },
+    "facing=north,part=7": {
+      "model": "riichicraft:block/large_mahjong_table_7",
+      "y": 0
+    },
+    "facing=east,part=7": {
+      "model": "riichicraft:block/large_mahjong_table_7",
+      "y": 90
+    },
+    "facing=south,part=7": {
+      "model": "riichicraft:block/large_mahjong_table_7",
+      "y": 180
+    },
+    "facing=west,part=7": {
+      "model": "riichicraft:block/large_mahjong_table_7",
+      "y": 270
+    },
+    "facing=north,part=8": {
+      "model": "riichicraft:block/large_mahjong_table_8",
+      "y": 0
+    },
+    "facing=east,part=8": {
+      "model": "riichicraft:block/large_mahjong_table_8",
+      "y": 90
+    },
+    "facing=south,part=8": {
+      "model": "riichicraft:block/large_mahjong_table_8",
+      "y": 180
+    },
+    "facing=west,part=8": {
+      "model": "riichicraft:block/large_mahjong_table_8",
+      "y": 270
+    }
+  }
+}

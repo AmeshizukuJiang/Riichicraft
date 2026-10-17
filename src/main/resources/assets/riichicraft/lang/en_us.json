@@ -209,5 +209,16 @@
   "message.riichicraft.lobby.leave_before_three": "One player must leave voluntarily before switching to three players.",
   "screen.riichicraft.game.cumulative_points_three": "Parentheses show differences from the initial 35,000.",
   "screen.riichicraft.game.ranking_formula_three": "Final score = (points - 35,000) / 1,000 +15 / 0 / -15",
-  "screen.riichicraft.game.last_round_result_three": "Last hand details (difference from initial 35,000)"
+  "screen.riichicraft.game.last_round_result_three": "Last hand details (difference from initial 35,000)",
+  "block.riichicraft.large_mahjong_table": "Large Mahjong Table",
+  "block.riichicraft.mahjong_chair": "Mahjong Chair",
+  "block.riichicraft.empty_chair": "Empty Chair",
+  "message.riichicraft.structure.no_space": "A clear 3x3 footprint is required, without obstructing entities or exceeding the available area.",
+  "message.riichicraft.structure.invalid": "Invalid chairs: use four Mahjong Chairs, or three plus one Empty Chair, all facing the table.",
+  "message.riichicraft.structure.count_locked": "This table gets its player count from its chairs. Adjust the chair layout.",
+  "message.riichicraft.structure.paused": "Repair the chairs to this game's original player count, then everyone confirms.",
+  "screen.riichicraft.lobby.chairs.3": "Chairs: 3P",
+  "screen.riichicraft.lobby.chairs.4": "Chairs: 4P",
+  "screen.riichicraft.lobby.chairs.0": "Invalid layout",
+  "screen.riichicraft.lobby.layout_invalid": "Repair the chairs and match the lobby player count."
 }

@@ -198,6 +198,28 @@ else {
 }
 
 $languagePaths = @((Join-Path $assetRoot 'lang/en_us.json'), (Join-Path $assetRoot 'lang/zh_cn.json'))
+foreach ($furniture in @('large_mahjong_table', 'mahjong_chair', 'empty_chair')) {
+    $statePath = Join-Path $assetRoot "blockstates/$furniture.json"
+    if (-not $documents.ContainsKey($statePath) -or -not $documents[$statePath].Contains('variants')) {
+        Add-Problem $statePath 'Furniture blockstate variants are missing.'
+        continue
+    }
+    $variants = $documents[$statePath]['variants']
+    $expectedCount = if ($furniture -eq 'large_mahjong_table') { 36 } else { 4 }
+    if ($variants.Count -ne $expectedCount) { Add-Problem $statePath "Expected exactly $expectedCount furniture variants." }
+    foreach ($facing in @('north', 'east', 'south', 'west')) {
+        $parts = if ($furniture -eq 'large_mahjong_table') { @(0..8) } else { @(-1) }
+        foreach ($part in $parts) {
+            $key = "facing=$facing" + $(if ($part -ge 0) { ",part=$part" } else { '' })
+            $model = "${namespace}:block/$furniture" + $(if ($part -ge 0) { "_$part" } else { '' })
+            $angle = @{north=0; east=90; south=180; west=270}[$facing]
+            if (-not $variants.Contains($key) -or $variants[$key]['model'] -cne $model -or $variants[$key]['y'] -ne $angle) {
+                Add-Problem $statePath "Incorrect furniture model or rotation for $key."
+            }
+        }
+    }
+}
+
 if (@($languagePaths | Where-Object { -not $documents.ContainsKey($_) }).Count -gt 0) {
     Add-Problem $assetRoot 'Both en_us.json and zh_cn.json must exist and contain valid JSON.'
 }
@@ -241,4 +263,4 @@ if ($errors.Count -gt 0) {
     foreach ($problem in $errors) { Write-Output "FAIL: $problem" }
     throw "Resource checks failed with $($errors.Count) issue(s)."
 }
-Write-Output "PASS: $($documents.Count) JSON files; $($references.Count) local resource references; $($pngFiles.Count) valid PNG files; model bounds and texture variables; four table facing mappings; matching en_us/zh_cn keys."
+Write-Output "PASS: $($documents.Count) JSON files; $($references.Count) local resource references; $($pngFiles.Count) valid PNG files; model bounds and texture variables; legacy table and all 44 furniture facing/part mappings; matching en_us/zh_cn keys."

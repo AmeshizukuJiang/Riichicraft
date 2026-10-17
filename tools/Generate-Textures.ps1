@@ -62,3 +62,20 @@ Write-Texture 'mahjong_table_end' {
     $distance = [System.Math]::Max([System.Math]::Abs($x - 7), [System.Math]::Abs($y - 7))
     return $wood[([int]$distance + [int][System.Math]::Floor($x / 5)) % $wood.Length]
 }
+
+# The new furniture keeps the original table intact and uses its own darker wood palette.
+$furnitureWood = @(New-Color '#503727'; New-Color '#5C3E2B'; New-Color '#684A33'; New-Color '#745139')
+Write-Texture 'furniture_wood' {
+    param($x, $y)
+    return $furnitureWood[($x + [int][Math]::Floor($y / 5)) % $furnitureWood.Length]
+}
+Write-Texture 'furniture_cloth' {
+    param($x, $y)
+    return $cloth[($x * 5 + $y * 3) % $cloth.Length]
+}
+$emptyCloth = @(New-Color '#343A3E'; New-Color '#3A4146'; New-Color '#41494E')
+Write-Texture 'empty_chair_cloth' {
+    param($x, $y)
+    if ([Math]::Abs($x - $y) -le 1 -or [Math]::Abs(($x + $y) - 15) -le 1) { return $marker[0] }
+    return $emptyCloth[($x + $y * 2) % $emptyCloth.Length]
+}

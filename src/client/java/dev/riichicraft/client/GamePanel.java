@@ -149,7 +149,8 @@ final class GamePanel {
         moreButton.setMessage(text(page==Page.ACTIONS?"board":rules()!=null && rules().canTsumo()?"tsumo_menu":"actions"));
         passButton.visible=isResponse() && !game().paused() && !abortArmed; passButton.active=unlocked && rules().responses().stream().anyMatch(o->o.action()==PASS);
         resumeButton.visible=game().paused() && !abortArmed && !finished();
-        resumeButton.active=available && seated && game().seats().stream().allMatch(GameSnapshot.Seat::present) && !ownConfirmed;
+        boolean structureValid=screen.snapshot().structurePlayers()<0 || screen.snapshot().structurePlayers()==game().seats().size();
+        resumeButton.active=available && seated && structureValid && game().seats().stream().allMatch(GameSnapshot.Seat::present) && !ownConfirmed;
         resumeButton.setMessage(text(ownConfirmed?"confirmed":"resume"));
         abortButton.visible=!finished() || intermission(); abortButton.active=available && seated;
         abortButton.setMessage(text(abortArmed?"confirm_abort":game().match()!=null?"abort_match":"abort"));
@@ -157,7 +158,7 @@ final class GamePanel {
         returnButton.visible=finished() && !intermission() && !abortArmed; returnButton.active=available && seated;
         boolean ownNextConfirmed=seated && game().match()!=null && game().match().confirmations().get(screen.snapshot().ownSeat());
         continueButton.visible=intermission() && !abortArmed;
-        continueButton.active=available && seated && !ownNextConfirmed && game().seats().stream().allMatch(GameSnapshot.Seat::present);
+        continueButton.active=available && seated && structureValid && !ownNextConfirmed && game().seats().stream().allMatch(GameSnapshot.Seat::present);
         continueButton.setMessage(text(ownNextConfirmed?"confirmed":"next_round"));
         for (var option:optionButtons) { option.visible=!abortArmed; option.active=unlocked; }
         toggleButton.active=!abortArmed && (finished() || !visibleOptions().isEmpty()); toggleButton.setMessage(text(page!=Page.BOARD?"board":finished()?"result":"actions"));
@@ -213,6 +214,7 @@ final class GamePanel {
     private Component note() {
         if (abortArmed) return text(game().match()==null?"abort_prompt":"abort_match_prompt"); if (awaitingReply) return text("processing");
         if (!screen.snapshot().feedbackKey().isEmpty()) return Component.translatable(screen.snapshot().feedbackKey());
+        if (game().statusKey().equals("message.riichicraft.structure.paused")) return Component.translatable(game().statusKey());
         if (intermission()) return game().seats().stream().allMatch(GameSnapshot.Seat::present)
                 ?text("next_round_hint_count",game().match().confirmations().stream().filter(Boolean::booleanValue).count(),game().seats().size()):text("next_round_absent");
         if (matchFinished()) return text("match_result_hint");

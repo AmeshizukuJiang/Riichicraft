@@ -2,6 +2,7 @@ package dev.riichicraft.server;
 
 import dev.riichicraft.Riichicraft;
 import dev.riichicraft.block.ModBlocks;
+import dev.riichicraft.block.TableStructure;
 import dev.riichicraft.lobby.LobbyRegistry;
 import dev.riichicraft.persistence.TableArchiveStore;
 import dev.riichicraft.rules.DiscardResponseWindow;
@@ -65,6 +66,7 @@ public final class LobbyService {
     /** Invalid core records remain byte-for-byte present and continue reserving their player UUIDs. */
     private final Map<UUID, TableArchiveStore.Table> blockedTables = new HashMap<>();
     private final Set<UUID> unloadedTables = new HashSet<>();
+    private final Map<UUID,Integer> structureCounts = new HashMap<>();
     private boolean archiveBlocked;
     private boolean archiveDirty;
     private boolean saveFailed;
@@ -348,6 +350,8 @@ public final class LobbyService {
 
     public UUID open(ServerPlayer player, BlockPos pos) {
         if(blocked(player,null)) return null;
+        pos=TableStructure.resolve(player.level(),pos);
+        if(pos==null) return null;
         TableKey key = new TableKey(player.level().dimension(), pos.immutable());
         if (!accessible(player, key)) return null;
         if(blocked(player,tables.get(key))) return null;
@@ -359,6 +363,7 @@ public final class LobbyService {
             registry.createTable(id);
             return id;
         });
+        if(!games.containsKey(tableId)) refreshStructure(tableId);
         View old = views.remove(player.getUUID());
         if (old != null) sendClosed(player, old, "");
         View view = new View(UUID.randomUUID(), tableId);
@@ -387,6 +392,19 @@ public final class LobbyService {
             sendSnapshot(player, view, registry.snapshot(view.tableId()).orElseThrow(),
                     "message.riichicraft.game.in_progress");
             return;
+        }
+        refreshStructure(view.tableId());
+        var current=registry.snapshot(view.tableId()).orElseThrow();
+        TableStructure.Layout layout=layout(view.tableId());
+        if(layout.large() && (payload.action()==LobbyActionPayload.JOIN || payload.action()==LobbyActionPayload.START
+                || payload.action()==LobbyActionPayload.SET_READY && payload.ready() || payload.action()==LobbyActionPayload.SET_MODE)) {
+            if(!layout.matches(current.seats().size())) {
+                sendSnapshot(player,view,current,layout.players()==3 && current.seats().size()==4
+                        ?"message.riichicraft.lobby.leave_before_three":"message.riichicraft.structure.invalid"); return;
+            }
+            if(payload.action()==LobbyActionPayload.SET_MODE && LobbyRegistry.seatCount(payload.mode())!=layout.players()) {
+                sendSnapshot(player,view,current,"message.riichicraft.structure.count_locked"); return;
+            }
         }
         if (payload.action() == LobbyActionPayload.START) {
             startPrototype(player, view, payload.revision());
@@ -542,6 +560,28 @@ public final class LobbyService {
                 && player != null && location != null && accessible(player, location);
     }
 
+    private TableStructure.Layout layout(UUID tableId) {
+        TableKey key=locations.get(tableId);
+        ServerLevel level=key==null?null:server.getLevel(key.dimension());
+        return level==null?new TableStructure.Layout(true,false,false,0):TableStructure.inspect(level,key.pos());
+    }
+
+    /** Apply physical capacity only between games; an active game's identities and rules remain fixed. */
+    private void refreshStructure(UUID tableId) {
+        TableStructure.Layout layout=layout(tableId);
+        if(!layout.large()) return;
+        int count=layout.players();
+        Integer previous=structureCounts.put(tableId,count);
+        var before=registry.snapshot(tableId).orElseThrow();
+        if(count==3 || count==4) registry.setPlayerCount(tableId,count);
+        var after=registry.snapshot(tableId).orElseThrow();
+        boolean changed=previous==null || previous!=count;
+        if(changed && after.revision()==before.revision()) after=registry.invalidatePreparation(tableId);
+        if(changed || after.revision()!=before.revision()) broadcast(after,null,
+                count==0?"message.riichicraft.structure.invalid"
+                        :count==3 && after.seats().size()==4?"message.riichicraft.lobby.leave_before_three":"");
+    }
+
     private void connected(ServerPlayer player) {
         disconnected.remove(player.getUUID());
         String notice = pendingNotices.remove(player.getUUID());
@@ -551,17 +591,21 @@ public final class LobbyService {
     private void refreshPresence(UUID tableId, Prototype prototype) {
         // A paid result is immutable and remains reopenable even when its players disconnect.
         if (prototype.finished) return;
+        var physical=layout(tableId);
+        boolean layoutValid=physical.matches(prototype.players.size());
+        Integer oldCount=physical.large()?structureCounts.put(tableId,physical.players()):null;
+        boolean layoutChanged=physical.large() && !java.util.Objects.equals(oldCount,physical.players());
         Set<UUID> missing = new HashSet<>();
         for (UUID playerId : prototype.players) {
-            if (!present(playerId, tableId)) missing.add(playerId);
+            if (!layoutValid || !present(playerId, tableId)) missing.add(playerId);
         }
-        boolean changed = !missing.equals(prototype.unavailable);
+        boolean changed = layoutChanged || !missing.equals(prototype.unavailable);
         boolean newlyMissing = missing.stream().anyMatch(id -> !prototype.unavailable.contains(id));
         if(prototype.intermission()) {
             if(newlyMissing) changed|=prototype.clearNext();
             prototype.unavailable=Set.copyOf(missing);
-            prototype.paused=false;prototype.confirmations.clear();
-            String status=missing.isEmpty()?"":"message.riichicraft.game.player_unavailable";
+            prototype.paused=!layoutValid;prototype.confirmations.clear();
+            String status=!layoutValid?"message.riichicraft.structure.paused":missing.isEmpty()?"":"message.riichicraft.game.player_unavailable";
             if(!status.equals(prototype.statusKey)) changed=true;
             prototype.statusKey=status;
             if(changed) { prototype.revision++;broadcast(registry.snapshot(tableId).orElseThrow(),null,""); }
@@ -573,7 +617,7 @@ public final class LobbyService {
             changed = true;
         }
         prototype.unavailable = Set.copyOf(missing);
-        String status = !prototype.paused ? "" : missing.isEmpty()
+        String status = !layoutValid?"message.riichicraft.structure.paused":!prototype.paused ? "" : missing.isEmpty()
                 ? "message.riichicraft.game.awaiting_confirmations" : "message.riichicraft.game.player_unavailable";
         if (!status.equals(prototype.statusKey)) changed = true;
         prototype.statusKey = status;
@@ -722,6 +766,7 @@ public final class LobbyService {
         // Destruction is never an implicit repair operation for a record that failed validation.
         if(stopping || archiveBlocked || blockedTables.containsKey(id)) return;
         tables.remove(key);
+        structureCounts.remove(id);
         unloadedTables.remove(id);
         locations.remove(id);
         Prototype prototype = games.remove(id);
@@ -753,14 +798,18 @@ public final class LobbyService {
     private void unloadChunk(ServerLevel level, int chunkX, int chunkZ) {
         if(stopping || archiveBlocked) return;
         for (TableKey key : List.copyOf(tables.keySet())) {
-            if (key.dimension().equals(level.dimension()) && key.pos().getX() >> 4 == chunkX
-                    && key.pos().getZ() >> 4 == chunkZ) {
+            boolean rootChunk=key.pos().getX()>>4==chunkX && key.pos().getZ()>>4==chunkZ;
+            var root=TableStructure.loadedState(level,key.pos());
+            boolean large=root!=null && root.is(ModBlocks.LARGE_MAHJONG_TABLE);
+            if (key.dimension().equals(level.dimension()) && (rootChunk || large
+                    && chunkX>=((key.pos().getX()-2)>>4) && chunkX<=((key.pos().getX()+2)>>4)
+                    && chunkZ>=((key.pos().getZ()-2)>>4) && chunkZ<=((key.pos().getZ()+2)>>4))) {
                 UUID tableId=tables.get(key);
                 if(blockedTables.containsKey(tableId)) continue;
                 if(games.containsKey(tableId)) {
                     unloadedTables.add(tableId);
                     refreshPresence(tableId,games.get(tableId));
-                } else removeTable(level,key.pos());
+                } else if(rootChunk) removeTable(level,key.pos());
             }
         }
         save();
@@ -774,7 +823,7 @@ public final class LobbyService {
                 UUID tableId=tables.get(key);
                 if(blockedTables.containsKey(tableId)) continue;
                 // FULL's future is still completing here: a world lookup would wait recursively on this callback.
-                if(!chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE)) removeTable(level,key.pos());
+                if(!TableStructure.isRoot(chunk.getBlockState(key.pos()))) removeTable(level,key.pos());
                 else {
                     unloadedTables.remove(tableId);
                     // Presence and broadcasts run at END_SERVER_TICK, after the chunk can be queried without waiting.
@@ -792,7 +841,8 @@ public final class LobbyService {
             LevelChunk chunk=level==null?null:level.getChunkSource().getChunkNow(key.pos().getX()>>4,key.pos().getZ()>>4);
             if(chunk!=null) {
                 unloadedTables.remove(tableId);
-                if(!chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE)) removeTable(level,key.pos());
+                if(!TableStructure.isRoot(chunk.getBlockState(key.pos()))) removeTable(level,key.pos());
+                else if(!games.containsKey(tableId)) refreshStructure(tableId);
             } else if(games.containsKey(tableId)) {
                 unloadedTables.add(tableId);
             }
@@ -826,6 +876,7 @@ public final class LobbyService {
         disconnected.clear();
         pendingNotices.clear();
         unloadedTables.clear();
+        structureCounts.clear();
         blockedTables.clear();
         registry.clear();
     }
@@ -834,7 +885,7 @@ public final class LobbyService {
         if(key==null || !player.isAlive() || player.isSpectator() || !player.level().dimension().equals(key.dimension())
                 || !player.isWithinBlockInteractionRange(key.pos(),1.0)) return false;
         LevelChunk chunk=player.level().getChunkSource().getChunkNow(key.pos().getX()>>4,key.pos().getZ()>>4);
-        return chunk!=null && chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE);
+        return chunk!=null && TableStructure.isRoot(chunk.getBlockState(key.pos()));
     }
 
     private void broadcast(LobbyRegistry.Snapshot snapshot, UUID actor, String feedback) {
@@ -855,9 +906,11 @@ public final class LobbyService {
         }
         var seats = snapshot.seats().stream().map(seat ->
                 new LobbySnapshotPayload.Seat(seat.playerId(), seat.name(), seat.ready())).toList();
+        var layout=layout(view.tableId());
         ServerPlayNetworking.send(player, new LobbySnapshotPayload(view.id(), view.tableId(),
                 locations.get(view.tableId()).pos(), snapshot.revision(), seats, ownSeat, snapshot.allReady(), feedback,
-                gameView(view.tableId(), player.getUUID()),snapshot.mode()));
+                gameView(view.tableId(), player.getUUID()),snapshot.mode(),
+                layout.large()?layout.players():-1));
     }
 
     private void sendClosed(ServerPlayer player, View view, String reason) {

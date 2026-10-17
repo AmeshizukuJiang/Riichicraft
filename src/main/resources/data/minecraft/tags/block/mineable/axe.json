@@ -1,4 +1,9 @@
 {
   "replace": false,
-  "values": ["riichicraft:mahjong_table"]
+  "values": [
+    "riichicraft:mahjong_table",
+    "riichicraft:large_mahjong_table",
+    "riichicraft:mahjong_chair",
+    "riichicraft:empty_chair"
+  ]
 }

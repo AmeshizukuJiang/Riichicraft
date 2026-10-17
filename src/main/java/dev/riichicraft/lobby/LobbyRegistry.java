@@ -146,12 +146,24 @@ public final class LobbyRegistry {
         if(lobby.revision!=expectedRevision) return result(Status.STALE_REVISION,lobby);
         if(lobby.seats[0]==null || !lobby.seats[0].playerId.equals(playerId)) return result(Status.NOT_EAST,lobby);
         if(mode<SINGLE || mode>THREE_SOUTH) return result(Status.INVALID_MODE,lobby);
+        return applyMode(lobby,mode);
+    }
+
+    /** Server-owned furniture adapts capacity without inventing an east player or ejecting occupants. */
+    public Result setPlayerCount(UUID tableId,int players) {
+        Lobby lobby=tables.get(Objects.requireNonNull(tableId,"tableId"));
+        if(lobby==null) return new Result(Status.TABLE_NOT_FOUND,null);
+        if(players!=3 && players!=4) return result(Status.INVALID_MODE,lobby);
+        return applyMode(lobby,lobby.mode%3+(players==3?3:0));
+    }
+
+    private Result applyMode(Lobby lobby,int mode) {
         if(lobby.mode==mode) return result(Status.UNCHANGED,lobby);
         if(mode>=3 && java.util.Arrays.stream(lobby.seats).filter(Objects::nonNull).count()>3) return result(Status.TOO_MANY_PLAYERS,lobby);
         var occupants=java.util.Arrays.stream(lobby.seats).filter(Objects::nonNull).toList();
         if(seatCount(mode)!=seatCount(lobby.mode)) {
             java.util.Arrays.fill(lobby.seats,null);
-            for(int index=0;index<occupants.size();index++) { lobby.seats[index]=occupants.get(index); playerSeats.put(occupants.get(index).playerId,new SeatReference(tableId,index)); }
+            for(int index=0;index<occupants.size();index++) { lobby.seats[index]=occupants.get(index); playerSeats.put(occupants.get(index).playerId,new SeatReference(lobby.tableId,index)); }
         }
         lobby.mode=mode;
         for(Occupant occupant:lobby.seats) if(occupant!=null) occupant.ready=false;
@@ -191,6 +203,15 @@ public final class LobbyRegistry {
     }
 
     /** Return participants to an unprepared lobby without changing seats or the global index. */
+    public Snapshot invalidatePreparation(UUID tableId) {
+        Lobby lobby=tables.get(Objects.requireNonNull(tableId,"tableId"));
+        if(lobby==null) throw new IllegalArgumentException("Unknown table");
+        long before=lobby.revision;
+        resetReadiness(tableId);
+        if(lobby.revision==before) lobby.revision++;
+        return snapshotOf(lobby);
+    }
+
     public Snapshot resetReadiness(UUID tableId) {
         Lobby lobby = tables.get(Objects.requireNonNull(tableId, "tableId"));
         if (lobby == null) throw new IllegalArgumentException("Unknown table");

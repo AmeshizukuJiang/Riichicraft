@@ -209,5 +209,16 @@
   "message.riichicraft.lobby.leave_before_three": "切换三麻前，需要一名玩家主动离座。",
   "screen.riichicraft.game.cumulative_points_three": "括号内为相对整场起始35,000的点差。",
   "screen.riichicraft.game.ranking_formula_three": "精算＝（最终点数−35,000）÷1,000＋15／0／−15",
-  "screen.riichicraft.game.last_round_result_three": "末局明细（点差相对开场35,000）"
+  "screen.riichicraft.game.last_round_result_three": "末局明细（点差相对开场35,000）",
+  "block.riichicraft.large_mahjong_table": "大麻将桌",
+  "block.riichicraft.mahjong_chair": "麻将椅",
+  "block.riichicraft.empty_chair": "空椅子",
+  "message.riichicraft.structure.no_space": "需要完整的3×3空位，且不能挡住实体或超出可用范围。",
+  "message.riichicraft.structure.invalid": "椅位布局无效：四把麻将椅，或三把麻将椅加一把空椅子；全部朝向桌心。",
+  "message.riichicraft.structure.count_locked": "这张桌的人数由椅位决定，请调整椅子布局。",
+  "message.riichicraft.structure.paused": "椅位有误或未加载。请恢复本局原人数布局，再全员确认继续。",
+  "screen.riichicraft.lobby.chairs.3": "椅位：三麻",
+  "screen.riichicraft.lobby.chairs.4": "椅位：四麻",
+  "screen.riichicraft.lobby.chairs.0": "布局无效",
+  "screen.riichicraft.lobby.layout_invalid": "请修复椅位布局，并使人数与大厅一致。"
 }

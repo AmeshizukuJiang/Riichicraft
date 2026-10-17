@@ -155,16 +155,19 @@ public final class LobbyScreen extends Screen {
         boolean available = !awaitingReply && LobbyClient.canSend();
         boolean seated = snapshot.ownSeat() >= 0;
         boolean full = snapshot.seats().stream().noneMatch(seat -> seat.playerId() == null);
-        joinButton.active = available && !seated && !full;
-        readyButton.active = available && seated;
+        boolean layoutValid=layoutValid();
+        joinButton.active = available && layoutValid && !seated && !full;
+        readyButton.active = available && seated && (layoutValid || ownReady());
         readyButton.setMessage(text(ownReady() ? "cancel_ready" : "prepare"));
         leaveButton.active = available && seated;
-        startButton.active = available && snapshot.allReady() && snapshot.ownSeat() == 0;
-        modeButton.active=available && snapshot.ownSeat()==0;
+        startButton.active = available && layoutValid && snapshot.allReady() && snapshot.ownSeat() == 0;
+        modeButton.active=available && layoutValid && snapshot.ownSeat()==0;
         modeButton.setMessage(modeLabel());
-        playerCountButton.active=available && snapshot.ownSeat()==0;
-        playerCountButton.setMessage(text("players."+snapshot.seats().size()));
+        playerCountButton.active=available && snapshot.ownSeat()==0 && snapshot.structurePlayers()<0;
+        playerCountButton.setMessage(text(snapshot.structurePlayers()<0?"players."+snapshot.seats().size():"chairs."+snapshot.structurePlayers()));
     }
+
+    private boolean layoutValid() { return snapshot.structurePlayers()<0 || snapshot.structurePlayers()==snapshot.seats().size(); }
 
     private Component modeLabel() {
         return text("mode",text("mode."+new String[]{"single","east","south"}[snapshot.mode()%3]));
@@ -196,7 +199,7 @@ public final class LobbyScreen extends Screen {
         }
 
         int statusY = seatTop + seatRowHeight * 4 + 3;
-        Component status = text(awaitingReply ? "processing" : snapshot.allReady() ? "all_ready" : "waiting");
+        Component status = text(awaitingReply ? "processing" : !layoutValid() ? "layout_invalid" : snapshot.allReady() ? "all_ready" : "waiting");
         drawWrapped(graphics, status, statusY, snapshot.allReady() ? 0xFF9BE3AD : 0xFFC8D3CB);
         if (!snapshot.feedbackKey().isEmpty()) {
             drawWrapped(graphics, Component.translatable(snapshot.feedbackKey()), statusY + 21, 0xFFFFCF8A);
