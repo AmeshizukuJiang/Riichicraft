@@ -220,5 +220,6 @@
   "screen.riichicraft.lobby.chairs.3": "椅位：三麻",
   "screen.riichicraft.lobby.chairs.4": "椅位：四麻",
   "screen.riichicraft.lobby.chairs.0": "布局无效",
-  "screen.riichicraft.lobby.layout_invalid": "请修复椅位布局，并使人数与大厅一致。"
+  "screen.riichicraft.lobby.layout_invalid": "请修复椅位布局，并使人数与大厅一致。",
+  "item.riichicraft.mahjong_tile": "麻将牌（一万）"
 }

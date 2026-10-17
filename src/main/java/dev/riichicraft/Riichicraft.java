@@ -1,6 +1,7 @@
 package dev.riichicraft;
 
 import dev.riichicraft.block.ModBlocks;
+import dev.riichicraft.item.ModItems;
 import dev.riichicraft.network.LobbyNetworking;
 import dev.riichicraft.server.LobbyService;
 import net.fabricmc.api.ModInitializer;
@@ -19,8 +20,9 @@ public final class Riichicraft implements ModInitializer {
     @Override
     public void onInitialize() {
         ModBlocks.initialize();
+        ModItems.initialize();
         LobbyNetworking.initialize();
         LobbyService.initialize();
-        LOGGER.info("Riichicraft initialized: draw/discard development prototype");
+        LOGGER.info("Riichicraft initialized");
     }
 }

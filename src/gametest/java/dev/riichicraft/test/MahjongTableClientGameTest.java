@@ -143,6 +143,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
             }
         });
 
+        TileClientScenario.run(context, server, connection);
         runLobbyScenario(context, server, connection, dedicated);
     }
 

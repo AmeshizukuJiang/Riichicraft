@@ -220,5 +220,6 @@
   "screen.riichicraft.lobby.chairs.3": "Chairs: 3P",
   "screen.riichicraft.lobby.chairs.4": "Chairs: 4P",
   "screen.riichicraft.lobby.chairs.0": "Invalid layout",
-  "screen.riichicraft.lobby.layout_invalid": "Repair the chairs and match the lobby player count."
+  "screen.riichicraft.lobby.layout_invalid": "Repair the chairs and match the lobby player count.",
+  "item.riichicraft.mahjong_tile": "Mahjong Tile (1 Man)"
 }

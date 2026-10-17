@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 
-/** A real keyboard/narration-accessible button with a code-drawn tile face. */
+/** A keyboard/narration-accessible button using the shared graphical tile face. */
 public final class GameTileButton extends Button {
     private final int tileId;
     private final int baselineY;
