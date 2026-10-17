@@ -2,6 +2,7 @@ package dev.riichicraft.rules;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,6 +43,71 @@ public final class MatchRules {
         public boolean finished() { return result.isPresent(); }
     }
     private MatchRules() { }
+
+    /** Apply a complete, already-paid round receipt; never check intermediate multi-winner payments. */
+    public static Decision afterRound(Context context,FourPlayerRound.End end) {
+        Objects.requireNonNull(context,"context"); Objects.requireNonNull(end,"end");
+        validateEnd(context,end);
+        if(context.points().stream().anyMatch(point->point<0)) return finish(context,Reason.NEGATIVE_SCORE);
+        boolean win=end.kind()==FourPlayerRound.EndKind.RON || end.kind()==FourPlayerRound.EndKind.TSUMO;
+        boolean abort=switch(end.kind()) {
+            case NINE_TERMINALS,FOUR_WINDS,FOUR_RIICHI,FOUR_KANS->true;
+            default->false;
+        };
+        int leader=rankOrder(context.points(),context.initialDealer()).getFirst();
+        boolean target=context.points().get(leader)>=30_000;
+        boolean last=context.roundIndex()==context.format().scheduledLast()
+                || context.roundIndex()==context.format().maximumLast();
+        if(!abort && last && end.dealerContinues() && leader==context.dealerSeat() && target) {
+            return finish(context,win?Reason.DEALER_WIN_STOP:Reason.DEALER_TENPAI_STOP);
+        }
+        boolean dealerMultiRon=end.kind()==FourPlayerRound.EndKind.RON && end.winners().size()>1 && end.dealerContinues();
+        if(context.roundIndex()>context.format().scheduledLast() && target && !dealerMultiRon) {
+            return finish(context,Reason.TARGET_REACHED);
+        }
+        // No formal-tenpai stop for aborts. The extension target check above applies to every paid result.
+        if(abort) return continueWith(context,context.roundIndex(),Math.incrementExact(context.honba()));
+        if(last && !end.dealerContinues()) {
+            if(target) return finish(context,Reason.TARGET_REACHED);
+            if(context.roundIndex()==context.format().maximumLast()) return finish(context,Reason.EXTENSION_LIMIT);
+        }
+        int index=end.dealerContinues()?context.roundIndex():context.roundIndex()+1;
+        int honba=win && !end.dealerContinues()?0:Math.incrementExact(context.honba());
+        return continueWith(context,index,honba);
+    }
+
+    private static Decision finish(Context context,Reason reason) {
+        return new Decision(Optional.empty(),Optional.of(finalStandings(context.points(),context.deposits(),context.initialDealer(),reason)));
+    }
+    private static Decision continueWith(Context context,int index,int honba) {
+        return new Decision(Optional.of(new NextRound(index,honba,context.points(),context.deposits())),Optional.empty());
+    }
+    private static void validateEnd(Context context,FourPlayerRound.End end) {
+        Objects.requireNonNull(end.kind(),"end kind");
+        for(int seat:end.winners()) requireSeat(seat);
+        for(int seat:end.tenpai()) requireSeat(seat);
+        if(new HashSet<>(end.winners()).size()!=end.winners().size()) throw new IllegalArgumentException("Duplicate winner");
+        boolean continues=switch(end.kind()) {
+            case RON,TSUMO->{
+                int count=end.winners().size();
+                if(count<1 || count>(end.kind()==FourPlayerRound.EndKind.TSUMO?1:3) || !end.tenpai().isEmpty()) {
+                    throw new IllegalArgumentException("Invalid win receipt");
+                }
+                yield end.winners().contains(context.dealerSeat());
+            }
+            case EXHAUSTIVE,NAGASHI->{
+                if(end.kind()==FourPlayerRound.EndKind.EXHAUSTIVE?!end.winners().isEmpty():end.winners().isEmpty()) {
+                    throw new IllegalArgumentException("Invalid exhaustive/nagashi receipt");
+                }
+                yield end.tenpai().contains(context.dealerSeat());
+            }
+            case NINE_TERMINALS,FOUR_WINDS,FOUR_RIICHI,FOUR_KANS->{
+                if(!end.winners().isEmpty() || !end.tenpai().isEmpty()) throw new IllegalArgumentException("Invalid abortive receipt");
+                yield true;
+            }
+        };
+        if(continues!=end.dealerContinues()) throw new IllegalArgumentException("Dealer continuation contradicts the completed receipt");
+    }
 
     /** Award remaining deposits once to the leader chosen BEFORE the award, then rank by fixed initial seat order. */
     public static FinalResult finalStandings(List<Integer> points,int deposits,int initialDealer,Reason reason) {
