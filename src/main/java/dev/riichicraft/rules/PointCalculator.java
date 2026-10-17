@@ -14,6 +14,14 @@ public final class PointCalculator {
         KAZOE_YAKUMAN
     }
 
+    /** Hand value before deciding how many players pay. Shared by the two fixed presets. */
+    public record BasicValue(int basePoints, Limit limit) {
+        public BasicValue {
+            if (basePoints <= 0) throw new IllegalArgumentException("Basic points must be positive");
+            Objects.requireNonNull(limit, "limit");
+        }
+    }
+
     /** A tsumo winner receives fromDealer once and fromNonDealer twice (three times if dealer). */
     public record Payment(int ronPoints, int fromDealer, int fromNonDealer, int totalPoints) {
         public Payment {
@@ -46,6 +54,32 @@ public final class PointCalculator {
      * Any result outside the int-based score representation is rejected rather than wrapped.
      */
     public static Points calculate(int han, int fu, int yakumanUnits, boolean dealer, boolean tsumo) {
+        BasicValue value = basicValue(han, fu, yakumanUnits);
+        long base = value.basePoints();
+        long ron = 0;
+        long fromDealer = 0;
+        long fromNonDealer = 0;
+        long total;
+        if (!tsumo) {
+            ron = roundHundred(base * (dealer ? 6L : 4L));
+            total = ron;
+        } else if (dealer) {
+            fromNonDealer = roundHundred(base * 2L);
+            total = fromNonDealer * 3L;
+        } else {
+            fromDealer = roundHundred(base * 2L);
+            fromNonDealer = roundHundred(base);
+            total = fromDealer + fromNonDealer * 2L;
+        }
+        return new Points(value.basePoints(), value.limit(),
+                new Payment(asInt(ron), asInt(fromDealer), asInt(fromNonDealer), asInt(total)));
+    }
+
+    /**
+     * The common, confirmed no-kiriage / counted-single-yakuman value policy. This does not
+     * calculate a four-player bill, so a valid three-player bill cannot overflow an unused payer.
+     */
+    public static BasicValue basicValue(int han, int fu, int yakumanUnits) {
         if (han < 0 || fu < 0 || yakumanUnits < 0) {
             throw new IllegalArgumentException("Han, fu, and yakuman units cannot be negative");
         }
@@ -82,23 +116,7 @@ public final class PointCalculator {
             }
         }
 
-        long ron = 0;
-        long fromDealer = 0;
-        long fromNonDealer = 0;
-        long total;
-        if (!tsumo) {
-            ron = roundHundred(base * (dealer ? 6L : 4L));
-            total = ron;
-        } else if (dealer) {
-            fromNonDealer = roundHundred(base * 2L);
-            total = fromNonDealer * 3L;
-        } else {
-            fromDealer = roundHundred(base * 2L);
-            fromNonDealer = roundHundred(base);
-            total = fromDealer + fromNonDealer * 2L;
-        }
-        return new Points(asInt(base), limit,
-                new Payment(asInt(ron), asInt(fromDealer), asInt(fromNonDealer), asInt(total)));
+        return new BasicValue(asInt(base), limit);
     }
 
     private static long roundHundred(long points) {

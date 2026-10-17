@@ -26,5 +26,6 @@ public final class RulesTests {
         FourPlayerMatchTests.main(args);
         TableArchiveStoreTests.main(args);
         ArchiveTests.main(args);
+        ThreePlayerBasicsTests.main(args);
     }
 }

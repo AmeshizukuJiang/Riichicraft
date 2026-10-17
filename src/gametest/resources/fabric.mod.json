@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "riichicraft-test",
-  "version": "0.0.6-dev",
+  "version": "0.0.7-dev",
   "name": "Riichicraft Game Tests",
   "environment": "*",
   "entrypoints": {
