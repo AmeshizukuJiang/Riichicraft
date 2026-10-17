@@ -22,6 +22,8 @@
 
 已保存[37种牌面](images/tiles-faces.png)、[37种原生模型](images/tiles-models.png)、[左右手查看](images/tiles-held.png)、[正常手牌界面](images/tiles-hand.png)、[紧凑手牌界面](images/tiles-hand-compact.png)。资源管线提交`371e4f8`；本阶段开发分支`codex/mahjong-tile-design`，用户已授权验证节点推送／标签，目标origin已核对，实际提交与远程refs以Git为准。不移动旧标签、不上传正式Release。完整外部参考库只在用户授权目录读取并复制到工作区，其他工具、缓存、测试和主动读写均在仓库内。
 
+最终Markdown检查27份／247个本地链接与45役名通过；从已提交Git导出选用源文件后，72份PNG／SVG的SHA-256及许可／上游README原始字节均匹配。游戏与验证提交`900ab76`，本地开发tag`v0.0.9-dev`指向它。两次向指定GitHub目标的原子推送先遇连接重置、后443连接超时，间隔的远程refs查询也超时；远程是否已收齐尚未确认，不记录为推送成功。诊断`.tmp/github-push-tiles-reset.err.log`、`github-push-tiles.err.log`、`github-tiles-remote-refs.err.log`，后续记录提交不改产物或移动tag。
+
 ## v0.0.8-dev 大桌与椅位结构：2026-10-17
 
 用户确认3×3桌面、含椅位5×5、原草案外观与自动分配座位，椅位失效暂停保留、修复为原人数后全员确认继续。新增独立大桌标识与九个部件、麻将椅／空椅子，原单方块桌、三／四麻规则和归档格式保留。摆放和边界见[桌椅说明](TABLE_AND_CHAIRS.md)，原创资源与重建见[资源说明](ASSETS.md)。
