@@ -70,7 +70,7 @@ Windows / PowerShell 7：
 ./tools/Invoke-Gradle.ps1 runClient
 ```
 
-开发客户端里可以使用 `/give @s riichicraft:mahjong_table` 获得桌子，也可在创造模式功能方块分类中找到。普通右键打开大厅、自动入座；初始东位选择单局／东风／半庄，对应人数全部准备后由其点击“开始对局”。三麻拔北位于“操作”菜单，公开显示拔北数。潜行保留原版使用手持物品的行为，同一玩家只能占一桌。具体鸣牌、立直与结算操作见[四人单局](docs/SINGLE_ROUND.md)和[整场说明](docs/MATCHES.md)。
+开发客户端里可以使用 `/give @s riichicraft:mahjong_table` 获得桌子，也可在创造模式功能方块分类中找到。普通右键打开大厅、自动入座；初始东位选择单局／东风／半庄，对应人数全部准备后由其点击“开始对局”。三麻拔北位于“行动选项”菜单，公开显示拔北数。潜行保留原版使用手持物品的行为，同一玩家只能占一桌。具体鸣牌、立直与结算操作见[四人单局](docs/SINGLE_ROUND.md)和[整场说明](docs/MATCHES.md)。
 
 - [开发流程与工具链](docs/DEVELOPMENT.md)
 - [资源来源与重建](docs/ASSETS.md)

@@ -2,6 +2,12 @@
 
 更新日期：2026-10-17（Asia/Shanghai）。继续工作以本文件、根 `AGENTS.md`、Git 和 [验证记录](VALIDATION.md) 为准；不要依赖旧进程或外部记忆。
 
+## 下一步：桌椅设计待确认
+
+- 当前设计分支`codex/table-and-chairs-design`，基于已验证三麻检查点。已整理[桌椅草案](TABLE_AND_CHAIRS.md)：固定四边椅位、普通桌外观、3×3／1×1桌面选择、旧桌兼容与椅子失效处理；尺寸和生命周期已向用户提问，收到答复前不实现新结构或修改牌局行为。
+- 本轮只改文档，并将三麻说明中的菜单名对齐现有“行动选项”。现有jar的SHA-256已重新核对，与下节最终产物一致；没有重建或重跑既有游戏测试，不能把本轮文档检查称为多方块验证。
+- 再次尝试向已授权origin原子推送`codex/three-player-rules`与`v0.0.7-dev`，仍因GitHub443连接超时失败（21.1秒，Git退出128）；本批游戏提交和标签仍待远程同步，设计草案也仅在本地。旧标签没有移动。
+
 ## 当前三麻与四麻游戏
 
 - 分支`codex/three-player-rules`、版本`0.0.7-dev`，已接入三人单局／东风／半庄、主动拔北／抢北、三席网络／界面及正常存档恢复。四麻入口、规则与旧归档保留。操作见 [THREE_PLAYER.md](THREE_PLAYER.md)，核心见 [THREE_PLAYER_CORE.md](THREE_PLAYER_CORE.md)，最终产物／计数／截图／Git见 [VALIDATION.md](VALIDATION.md)。

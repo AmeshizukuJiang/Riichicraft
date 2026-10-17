@@ -1,5 +1,13 @@
 # 验证记录
 
+## 桌椅设计准备：2026-10-17
+
+本轮仅新增[桌椅设计草案](TABLE_AND_CHAIRS.md)、连接规划与接续记录，并将README／三麻说明中的菜单名对齐现有中文语言键“行动选项”。尺寸、结构与椅子失效处理尚待用户确认；未加入模型、材质、结构识别或新生命周期代码。
+
+项目内26份Markdown／210个本地链接与双语45役名检查及`git diff --check`通过。重新计算现有`build/libs/riichicraft-0.0.7-dev.jar`的SHA-256仍为`2eb0ac50bae258f05ef2a817696fe2c293878a93fa693db898838294fa604a4c`；本轮没有重建、重跑规则／GameTest／TCP或新增实机验收，下节保留既有游戏证据。
+
+核对origin后再次尝试原子推送三麻分支及`v0.0.7-dev`，Git退出128，报GitHub443连接超时（21.1秒）。本地提交／标签保留，未声称远程发布成功；本次日志保存为`.tmp/github-push-table-design-retry.err.log`。
+
 ## v0.0.7-dev 三麻完整流程与游戏接入：2026-10-17
 
 用户明确允许接入游戏，并确认大厅人数切换、三票生命周期与主动拔北；后续椅子／“空椅子”多方块仅记录规划。本批加入完整108牌三麻权威单局、整场、独立归档、服务与三席网络／界面，保留旧四麻规则和核心归档。操作见 [THREE_PLAYER.md](THREE_PLAYER.md)，接口与来源见 [THREE_PLAYER_CORE.md](THREE_PLAYER_CORE.md)、[THREE_PLAYER_RULES.md](THREE_PLAYER_RULES.md)。以下旧节保留各批当时状态，不作为当前待实现清单。
