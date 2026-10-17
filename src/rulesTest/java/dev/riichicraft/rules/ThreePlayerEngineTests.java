@@ -195,11 +195,11 @@ public final class ThreePlayerEngineTests {
         if(view.phase()==ThreePlayerRound.Phase.DRAWN_TURN || view.phase()==ThreePlayerRound.Phase.CALL_DISCARD) {
             UUID player=PLAYERS.get(view.actorSeat()); var own=r.view(player); var options=own.turnOptions();
             if(!options.kitas().isEmpty()) r.kita(player,own.command(),options.kitas().stream().min(Integer::compare).orElseThrow());
-            else if(!options.kans().isEmpty()) r.declareKan(player,own.command(),options.kans().iterator().next());
+            else if(!options.kans().isEmpty()) r.declareKan(player,own.command(),options.kans().stream().sorted(Comparator.comparing(Object::toString)).findFirst().orElseThrow());
             else r.discard(player,own.command(),options.discards().stream().max(Integer::compare).orElseThrow(),false);
         } else for(UUID player:PLAYERS) {
             var own=r.view(player); if(own.responses().isEmpty())continue;
-            Choice choice=action%3==0?own.responses().stream().filter(c->c instanceof Call).findFirst().orElse(Simple.PASS):Simple.PASS;
+            Choice choice=action%3==0?own.responses().stream().filter(c->c instanceof Call).sorted(Comparator.comparing(Object::toString)).findFirst().orElse(Simple.PASS):Simple.PASS;
             check(r.respond(player,own.opportunity().orElseThrow().id(),choice)==ThreePlayerRound.Status.ACCEPTED,"stable response accepted"); break;
         }
     }

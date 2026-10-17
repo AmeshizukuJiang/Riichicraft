@@ -118,7 +118,7 @@ final class GamePanel {
         if (rules()!=null && rules().opportunity()!=null) send(option.action(),-1,rules().opportunity().serial(),option.meldIndex(),option.handTiles());
     }
     private void requestOption(GameSnapshot.ActionOption option) {
-        if (isResponse()) requestResponse(option); else send(option.action(),-1,-1,option.meldIndex(),option.handTiles());
+        if (isResponse()) requestResponse(option); else if(option.action()==KITA) send(KITA,option.handTiles().getFirst(),-1,-1,List.of()); else send(option.action(),-1,-1,option.meldIndex(),option.handTiles());
     }
     private void send(int action,int tile,long window,int meld,List<Integer> hand) {
         if (!awaitingReply && LobbyClient.requestGame(screen.snapshot(),action,tile,window,meld,hand)) {
@@ -170,6 +170,7 @@ final class GamePanel {
             if (rules().canTsumo()) result.add(new GameSnapshot.ActionOption(TSUMO,-1,List.of()));
             if (rules().canNineTerminals()) result.add(new GameSnapshot.ActionOption(NINE_TERMINALS,-1,List.of()));
             result.addAll(rules().kans());
+            for(int tile:rules().kitas()) result.add(new GameSnapshot.ActionOption(KITA,-1,List.of(tile)));
         }
         result.sort(Comparator.comparingInt(o->o.action()==RON?-1:o.action()==PASS?99:o.action()));
         // Normal copies with identical faces need one control; red/non-red alternatives remain distinct.
@@ -178,7 +179,7 @@ final class GamePanel {
     }
     private Component optionLabel(GameSnapshot.ActionOption option) {
         String key=switch(option.action()) {
-            case TSUMO -> "tsumo"; case NINE_TERMINALS -> "nine_terminals"; case PASS -> "pass"; case RON -> "ron";
+            case KITA -> "kita"; case TSUMO -> "tsumo"; case NINE_TERMINALS -> "nine_terminals"; case PASS -> "pass"; case RON -> "ron";
             case CHI -> "chi"; case PON -> "pon"; case OPEN_KAN -> "open_kan"; case CLOSED_KAN -> "closed_kan"; case ADDED_KAN -> "added_kan"; default -> "actions";
         };
         MutableComponent label=text(key); for (int tile:option.handTiles()) label.append(" ").append(TileFaces.shortName(tile)); return label;
@@ -193,7 +194,7 @@ final class GamePanel {
         if (rules()!=null) { for (int tile:rules().doraIndicators()) indicators.append(" ").append(TileFaces.shortName(tile)); indicators.append("  ").append(text("deposits",matchFinished()?0:rules().deposits())); }
         graphics.text(font,font.plainSubstrByWidth(indicators.getString(),width-88),8,30,0xFFE2C995);
         graphics.centeredText(font,(currentPage()+1)+"/"+pageCount(),width-39,29,0xFFC3D5C8);
-        if (page==Page.BOARD) for(int seat=0;seat<4;seat++) drawRiver(graphics,seat,mouseX,mouseY);
+        if (page==Page.BOARD) for(int seat=0;seat<game().seats().size();seat++) drawRiver(graphics,seat,mouseX,mouseY);
         else if(page==Page.RESULT) {
             List<Component> lines=resultLines(); resultPage=Math.min(resultPage,Math.max(0,(lines.size()-1)/7));
             for (int line=resultPage*7;line<Math.min(lines.size(),resultPage*7+7);line++) {
@@ -213,10 +214,10 @@ final class GamePanel {
         if (abortArmed) return text(game().match()==null?"abort_prompt":"abort_match_prompt"); if (awaitingReply) return text("processing");
         if (!screen.snapshot().feedbackKey().isEmpty()) return Component.translatable(screen.snapshot().feedbackKey());
         if (intermission()) return game().seats().stream().allMatch(GameSnapshot.Seat::present)
-                ?text("next_round_hint",game().match().confirmations().stream().filter(Boolean::booleanValue).count()):text("next_round_absent");
+                ?text("next_round_hint_count",game().match().confirmations().stream().filter(Boolean::booleanValue).count(),game().seats().size()):text("next_round_absent");
         if (matchFinished()) return text("match_result_hint");
         if (finished()) return text("result_hint"); if (game().paused()) return text("paused");
-        if (isResponse()) return text("response_hint",wind(rules().opportunity().actorSeat()),TileFaces.fullName(rules().opportunity().tileId()));
+        if (isResponse()) return text(rules().phase()==GameSnapshot.NORTH_RESPONSES?"north_response_hint":"response_hint",wind(rules().opportunity().actorSeat()),TileFaces.fullName(rules().opportunity().tileId()));
         if (!game().statusKey().isEmpty()) return Component.translatable(game().statusKey()); return text(isTurn()?"select_hint":"waiting_response");
     }
 
@@ -227,6 +228,7 @@ final class GamePanel {
         if (!state.present()) header.append(" ").append(text("absent")); else if (game().paused() && state.confirmed()) header.append(" ").append(text("confirmed"));
         graphics.text(font,font.plainSubstrByWidth(header.getString(),col-6),left+3,top+1,current?0xFFFFD76E:0xFFC3D5C8);
         MutableComponent groups=Component.empty();
+        if(rules()!=null && !rules().seats().get(seat).norths().isEmpty()) groups.append(text("kita_count",rules().seats().get(seat).norths().size())).append(" ");
         if (rules()!=null) for (var meld:rules().seats().get(seat).melds()) {
             groups.append(text(meld.kind()==3?"closed_kan_short":meld.kind()==2?"kan_short":meld.kind()==1?"pon_short":"chi_short"));
             for (int tile:meld.tiles()) groups.append(TileFaces.shortName(tile)); groups.append(" ");
@@ -250,39 +252,39 @@ final class GamePanel {
         if (matchFinished()) {
             for (var standing:game().match().result().standings()) lines.add(text("standing",standing.rank(),
                     screen.snapshot().seats().get(standing.seat()).name(),standing.points(),tenths(standing.totalTenths())));
-            lines.add(text("ranking_formula"));
+            lines.add(text(game().seats().size()==3?"ranking_formula_three":"ranking_formula"));
             if (game().match().result().depositPoints()>0) lines.add(text("final_deposits",game().match().result().depositPoints(),
                     screen.snapshot().seats().get(game().match().result().depositRecipient()).name()));
-            lines.add(text("last_round_result"));
-        } else if (game().match()!=null) lines.add(text("cumulative_points"));
+            lines.add(text(game().seats().size()==3?"last_round_result_three":"last_round_result"));
+        } else if (game().match()!=null) lines.add(text(game().seats().size()==3?"cumulative_points_three":"cumulative_points"));
         if (!result.winners().isEmpty()) {
             MutableComponent winners=text("winners");
             for (int seat:result.winners()) winners.append(" ").append(wind(seat));
             lines.add(winners);
         }
-        for(int seat=0;seat<4;seat++) { int points=rules().seats().get(seat).points(),delta=points-25_000; lines.add(text("result_points",wind(seat),points,(delta>=0?"+":"")+delta)); }
+        for(int seat=0;seat<game().seats().size();seat++) { int points=rules().seats().get(seat).points(),delta=points-(game().seats().size()==3?35_000:25_000); lines.add(text("result_points",wind(seat),points,(delta>=0?"+":"")+delta)); }
         if (!result.tenpai().isEmpty()) { MutableComponent tenpai=text("tenpai"); for(int seat:result.tenpai()) tenpai.append(" ").append(wind(seat)); lines.add(tenpai); }
         for(var value:result.values()) {
             lines.add(value.yakumanUnits()>0?text("value_yakuman",wind(value.seat()),value.yakumanUnits(),value.totalPoints())
                     :text("value",wind(value.seat()),value.han(),value.fu(),value.totalPoints()));
             MutableComponent awards=Component.empty();
             for(var award:value.yaku()) { if (!awards.getString().isEmpty()) awards.append(" · "); awards.append(Component.translatable("yaku.riichicraft."+award.yaku().toLowerCase(Locale.ROOT))); }
-            lines.add(awards); if(value.yakumanUnits()==0) lines.add(text("bonuses",value.dora(),value.aka(),value.ura()));
+            lines.add(awards); if(value.yakumanUnits()==0) lines.add(text(value.kita()>0?"bonuses_kita":"bonuses",value.dora(),value.aka(),value.ura(),value.kita()));
         }
         for(var payment:result.transfers()) lines.add(text("payment",payment.fromSeat()<0?text("deposit_pool"):wind(payment.fromSeat()),wind(payment.toSeat()),payment.points()));
-        lines.add(text(game().match()==null?"single_round_hint":matchFinished()?"match_result_hint":"next_round_hint",game().match()==null?0:game().match().confirmations().stream().filter(Boolean::booleanValue).count())); return lines;
+        lines.add(text(game().match()==null?"single_round_hint":matchFinished()?"match_result_hint":"next_round_hint_count",game().match()==null?0:game().match().confirmations().stream().filter(Boolean::booleanValue).count(),game().seats().size())); return lines;
     }
     private int displayPoints(int seat) {
         return matchFinished()?game().match().result().standings().stream().filter(s->s.seat()==seat).findFirst().orElseThrow().points():rules().seats().get(seat).points();
     }
     private Component title() {
-        if(game().match()==null) return text("title");
+        if(game().match()==null) return text(game().seats().size()==3?"title_three":"title");
         return text("match_title",Component.translatable("screen.riichicraft.lobby.mode."+(game().match().format()==0?"east":"south")),
-                Component.translatable("screen.riichicraft.lobby."+WINDS[rules().roundWind()-27]),game().match().roundIndex()%4+1,rules().honba());
+                Component.translatable("screen.riichicraft.lobby."+WINDS[rules().roundWind()-27]),game().match().roundIndex()%game().seats().size()+1,rules().honba());
     }
     private static String tenths(int value) { long magnitude=Math.abs((long)value); return (value<0?"-":"+")+magnitude/10+"."+magnitude%10; }
     private GameSnapshot game() { return screen.snapshot().game(); }
     private GameSnapshot.RuleState rules() { return game().rules(); }
-    private Component wind(int seat) { return Component.translatable("screen.riichicraft.lobby."+WINDS[(seat-(rules()==null?0:rules().dealerSeat())+4)%4]); }
+    private Component wind(int seat) { return Component.translatable("screen.riichicraft.lobby."+WINDS[(seat-(rules()==null?0:rules().dealerSeat())+game().seats().size())%game().seats().size()]); }
     private static MutableComponent text(String suffix,Object... arguments) { return Component.translatable("screen.riichicraft.game."+suffix,arguments); }
 }

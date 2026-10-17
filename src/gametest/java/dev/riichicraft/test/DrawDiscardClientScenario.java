@@ -51,7 +51,7 @@ final class DrawDiscardClientScenario {
             List<ConnectedTestPlayer> fixtures = new ArrayList<>();
             List<UUID> views = new ArrayList<>(List.of(playerView));
             try {
-                for (String name : List.of("DrawSouth", "DrawWest", "DrawNorth")) {
+                for (String name : List.of("DrawSouth", "DrawWest", "DrawNorth").subList(0,service.registry().snapshot(id).orElseThrow().seats().size()-1)) {
                     ConnectedTestPlayer fixture = new ConnectedTestPlayer(s, connection.getServerLevel(), target, name);
                     fixtures.add(fixture);
                     ServerPlayer player = fixture.player();
@@ -487,8 +487,8 @@ final class DrawDiscardClientScenario {
         GameSnapshot current = service.gameView(table.tableId(), east.getUUID());
         require(current != null && current.rules().phase() != GameSnapshot.FINISHED,
                 "A finished result cannot be advanced as though it were a live turn");
-        if (current.rules().phase() == GameSnapshot.DISCARD_RESPONSES || current.rules().phase() == GameSnapshot.KAN_RESPONSES) {
-            for (int seat = 0; seat < 4; seat++) {
+        if (current.rules().opportunity()!=null) {
+            for (int seat = 0; seat < current.seats().size(); seat++) {
                 ServerPlayer responder = seat == 0 ? east : table.fixtures().get(seat - 1).player();
                 GameSnapshot own = service.gameView(table.tableId(), responder.getUUID());
                 if (own.rules().responses().isEmpty()) continue;

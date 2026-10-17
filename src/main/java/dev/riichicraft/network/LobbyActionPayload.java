@@ -30,7 +30,7 @@ public record LobbyActionPayload(UUID viewId, long revision, int action, boolean
     }
 
     public LobbyActionPayload {
-        if(viewId==null || revision<0 || mode<0 || mode>2) throw new IllegalArgumentException("Invalid lobby action metadata");
+        if(viewId==null || revision<0 || mode<0 || mode>5) throw new IllegalArgumentException("Invalid lobby action metadata");
     }
 
     @Override

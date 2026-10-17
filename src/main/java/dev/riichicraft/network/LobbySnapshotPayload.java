@@ -19,6 +19,7 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
                 buf.writeUUID(value.tableId());
                 buf.writeBlockPos(value.pos());
                 buf.writeLong(value.revision());
+                buf.writeVarInt(value.seats().size());
                 for (Seat seat : value.seats()) {
                     buf.writeBoolean(seat.playerId() != null);
                     if (seat.playerId() != null) {
@@ -40,8 +41,9 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
                 UUID table = buf.readUUID();
                 BlockPos pos = buf.readBlockPos();
                 long revision = buf.readLong();
-                List<Seat> seats = new ArrayList<>(4);
-                for (int index = 0; index < 4; index++) {
+                int count=buf.readVarInt(); if(count<3 || count>4) throw new io.netty.handler.codec.DecoderException("Invalid lobby seat count");
+                List<Seat> seats = new ArrayList<>(count);
+                for (int index = 0; index < count; index++) {
                     seats.add(buf.readBoolean() ? new Seat(buf.readUUID(), buf.readUtf(64), buf.readBoolean())
                             : new Seat(null, "", false));
                 }
@@ -66,16 +68,17 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
     public LobbySnapshotPayload {
         seats = List.copyOf(seats);
         pos = pos.immutable();
-        if (seats.size() != 4 || ownSeat < -1 || ownSeat > 3 || mode<0 || mode>2) {
+        if (seats.size() != (mode>=3?3:4) || ownSeat < -1 || ownSeat >= seats.size() || mode<0 || mode>5) {
             throw new IllegalArgumentException("A lobby snapshot must contain four seats and a valid own seat");
         }
         if (ownSeat == -1 && game != null && (!game.ownHand().isEmpty() || game.drawnTile() != -1)) {
             throw new IllegalArgumentException("A spectator snapshot cannot contain a private hand or drawn tile");
         }
+        if(game!=null && game.seats().size()!=seats.size()) throw new IllegalArgumentException("Lobby/game count mismatch");
         if (ownSeat == -1 && game != null && game.rules() != null) {
             var rules=game.rules();
             if (!rules.legalDiscards().isEmpty() || !rules.riichiDiscards().isEmpty() || !rules.kans().isEmpty()
-                    || rules.canTsumo() || rules.canNineTerminals() || !rules.responses().isEmpty()) {
+                    || !rules.kitas().isEmpty() || rules.canTsumo() || rules.canNineTerminals() || !rules.responses().isEmpty()) {
                 throw new IllegalArgumentException("A spectator snapshot cannot contain private legal-action information");
             }
         }

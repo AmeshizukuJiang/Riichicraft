@@ -22,6 +22,7 @@ public final class LobbyScreen extends Screen {
     private Button leaveButton;
     private Button startButton;
     private Button modeButton;
+    private Button playerCountButton;
     private GamePanel gamePanel;
     private int panelLeft;
     private int panelTop;
@@ -62,6 +63,7 @@ public final class LobbyScreen extends Screen {
             if (sameSession && updated.game().revision() < snapshot.game().revision()) return;
         }
         boolean hadGame = snapshot.game() != null;
+        boolean changedCount=snapshot.seats().size()!=updated.seats().size();
         snapshot = updated;
         awaitingReply = false;
         if (snapshot.game() != null) {
@@ -77,7 +79,7 @@ public final class LobbyScreen extends Screen {
             rebuildWidgets();
             return;
         }
-        updateButtons();
+        if(changedCount) rebuildWidgets(); else updateButtons();
     }
 
     @Override
@@ -101,10 +103,13 @@ public final class LobbyScreen extends Screen {
         int innerLeft = panelLeft + 12;
         int innerWidth = panelWidth - 24;
         modeButton=addRenderableWidget(Button.builder(modeLabel(),button->{
-            if (!awaitingReply && LobbyClient.request(snapshot,LobbyActionPayload.SET_MODE,false,(snapshot.mode()+1)%3)) {
+            if (!awaitingReply && LobbyClient.request(snapshot,LobbyActionPayload.SET_MODE,false,snapshot.mode()/3*3+(snapshot.mode()+1)%3)) {
                 awaitingReply=true; updateButtons();
             }
-        }).bounds(innerLeft,panelTop+32,innerWidth,18).build());
+        }).bounds(innerLeft+83,panelTop+32,innerWidth-83,18).build());
+        playerCountButton=addRenderableWidget(Button.builder(text("players."+snapshot.seats().size()),button->{
+            if(!awaitingReply && LobbyClient.request(snapshot,LobbyActionPayload.SET_MODE,false,(snapshot.mode()+3)%6)) { awaitingReply=true; updateButtons(); }
+        }).bounds(innerLeft,panelTop+32,79,18).build());
         int buttonWidth = (innerWidth - 8) / 3;
         joinButton = addRenderableWidget(Button.builder(text("join"),
                 button -> request(LobbyActionPayload.JOIN, false))
@@ -157,10 +162,12 @@ public final class LobbyScreen extends Screen {
         startButton.active = available && snapshot.allReady() && snapshot.ownSeat() == 0;
         modeButton.active=available && snapshot.ownSeat()==0;
         modeButton.setMessage(modeLabel());
+        playerCountButton.active=available && snapshot.ownSeat()==0;
+        playerCountButton.setMessage(text("players."+snapshot.seats().size()));
     }
 
     private Component modeLabel() {
-        return text("mode",text("mode."+new String[]{"single","east","south"}[snapshot.mode()]));
+        return text("mode",text("mode."+new String[]{"single","east","south"}[snapshot.mode()%3]));
     }
 
     @Override
@@ -184,7 +191,7 @@ public final class LobbyScreen extends Screen {
         graphics.centeredText(font, text("position", snapshot.pos().getX(), snapshot.pos().getY(),
                 snapshot.pos().getZ()), width / 2, panelTop + 21, 0xFFACBDB4);
 
-        for (int index = 0; index < 4; index++) {
+        for (int index = 0; index < snapshot.seats().size(); index++) {
             drawSeat(graphics, index);
         }
 

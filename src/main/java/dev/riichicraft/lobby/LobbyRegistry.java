@@ -14,7 +14,8 @@ import java.util.UUID;
  */
 public final class LobbyRegistry {
     public static final int SEAT_COUNT = 4;
-    public static final int SINGLE=0, EAST=1, SOUTH=2;
+    public static final int SINGLE=0, EAST=1, SOUTH=2, THREE_SINGLE=3, THREE_EAST=4, THREE_SOUTH=5;
+    public static int seatCount(int mode) { return mode>=3?3:4; }
 
     private final Map<UUID, Lobby> tables = new HashMap<>();
     private final Map<UUID, SeatReference> playerSeats = new HashMap<>();
@@ -28,11 +29,11 @@ public final class LobbyRegistry {
     public Snapshot restoreTable(UUID tableId, long revision, int mode, List<Seat> seats) {
         Objects.requireNonNull(tableId, "tableId");
         seats = List.copyOf(seats);
-        if (revision < 0 || mode < SINGLE || mode > SOUTH || seats.size() != SEAT_COUNT || tables.containsKey(tableId)) {
+        if (revision < 0 || mode < SINGLE || mode > THREE_SOUTH || seats.size() != seatCount(mode) || tables.containsKey(tableId)) {
             throw new IllegalArgumentException("Invalid or duplicate restored lobby");
         }
         var owned = new java.util.HashSet<UUID>();
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(mode); index++) {
             Seat seat = seats.get(index);
             if (seat.index() != index || !seat.occupied() || seat.name().isBlank() || seat.name().length() > 64
                     || !owned.add(seat.playerId()) || playerSeats.containsKey(seat.playerId())) {
@@ -42,12 +43,12 @@ public final class LobbyRegistry {
         Lobby lobby = new Lobby(tableId);
         lobby.revision = revision;
         lobby.mode = mode;
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(mode); index++) {
             Seat seat = seats.get(index);
             lobby.seats[index] = new Occupant(seat.playerId(), seat.name());
         }
         tables.put(tableId, lobby);
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(mode); index++) {
             playerSeats.put(seats.get(index).playerId(), new SeatReference(tableId, index));
         }
         return snapshotOf(lobby);
@@ -83,7 +84,7 @@ public final class LobbyRegistry {
             return result(existingSeat.tableId().equals(tableId)
                     ? Status.UNCHANGED : Status.ALREADY_SEATED_ELSEWHERE, lobby);
         }
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(lobby.mode); index++) {
             if (lobby.seats[index] == null) {
                 lobby.seats[index] = new Occupant(playerId, name);
                 playerSeats.put(playerId, new SeatReference(tableId, index));
@@ -144,8 +145,14 @@ public final class LobbyRegistry {
         if(lobby==null) return new Result(Status.TABLE_NOT_FOUND,null);
         if(lobby.revision!=expectedRevision) return result(Status.STALE_REVISION,lobby);
         if(lobby.seats[0]==null || !lobby.seats[0].playerId.equals(playerId)) return result(Status.NOT_EAST,lobby);
-        if(mode<SINGLE || mode>SOUTH) return result(Status.INVALID_MODE,lobby);
+        if(mode<SINGLE || mode>THREE_SOUTH) return result(Status.INVALID_MODE,lobby);
         if(lobby.mode==mode) return result(Status.UNCHANGED,lobby);
+        if(mode>=3 && java.util.Arrays.stream(lobby.seats).filter(Objects::nonNull).count()>3) return result(Status.TOO_MANY_PLAYERS,lobby);
+        var occupants=java.util.Arrays.stream(lobby.seats).filter(Objects::nonNull).toList();
+        if(seatCount(mode)!=seatCount(lobby.mode)) {
+            java.util.Arrays.fill(lobby.seats,null);
+            for(int index=0;index<occupants.size();index++) { lobby.seats[index]=occupants.get(index); playerSeats.put(occupants.get(index).playerId,new SeatReference(tableId,index)); }
+        }
         lobby.mode=mode;
         for(Occupant occupant:lobby.seats) if(occupant!=null) occupant.ready=false;
         lobby.revision++;
@@ -169,7 +176,7 @@ public final class LobbyRegistry {
         if (lobby == null) {
             return false;
         }
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(lobby.mode); index++) {
             Occupant occupant = lobby.seats[index];
             if (occupant != null) {
                 playerSeats.remove(occupant.playerId, new SeatReference(tableId, index));
@@ -205,7 +212,7 @@ public final class LobbyRegistry {
     private static Snapshot snapshotOf(Lobby lobby) {
         List<Seat> seats = new ArrayList<>(SEAT_COUNT);
         boolean allReady = true;
-        for (int index = 0; index < SEAT_COUNT; index++) {
+        for (int index = 0; index < seatCount(lobby.mode); index++) {
             Occupant occupant = lobby.seats[index];
             if (occupant == null) {
                 seats.add(new Seat(index, null, "", false));
@@ -227,7 +234,8 @@ public final class LobbyRegistry {
         NOT_SEATED,
         TABLE_NOT_FOUND,
         NOT_EAST,
-        INVALID_MODE
+        INVALID_MODE,
+        TOO_MANY_PLAYERS
     }
 
     /** snapshot is null only for TABLE_NOT_FOUND. */
@@ -255,7 +263,7 @@ public final class LobbyRegistry {
         public Snapshot {
             Objects.requireNonNull(tableId, "tableId");
             seats = List.copyOf(seats);
-            if (seats.size() != SEAT_COUNT || mode<SINGLE || mode>SOUTH) {
+            if (seats.size() != seatCount(mode) || mode<SINGLE || mode>THREE_SOUTH) {
                 throw new IllegalArgumentException("A lobby snapshot must contain exactly four seats");
             }
         }

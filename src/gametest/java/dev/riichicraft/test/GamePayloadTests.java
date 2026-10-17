@@ -229,7 +229,7 @@ public final class GamePayloadTests {
             helper.assertTrue(LobbyActionPayload.CODEC.decode(mode).equals(action)&&mode.readableBytes()==0,"South mode selection round-trips as a bound lobby intention"); }
         finally {mode.release();}
         boolean rejected=false;
-        try {new LobbyActionPayload(id(1),8,LobbyActionPayload.SET_MODE,false,3);}catch(IllegalArgumentException expected){rejected=true;}
+        try {new LobbyActionPayload(id(1),8,LobbyActionPayload.SET_MODE,false,6);}catch(IllegalArgumentException expected){rejected=true;}
         helper.assertTrue(rejected,"Mode IDs outside single/east/south are rejected");
         for(int rank:List.of(0,5)) {
             rejected=false;try{new GameSnapshot.Standing(0,rank,25_000,0,150,150);}catch(IllegalArgumentException expected){rejected=true;}
@@ -246,7 +246,7 @@ public final class GamePayloadTests {
         assertDecodeRejected(helper,buf->{
             writeHeader(buf);writeEmptySeats(buf);buf.writeVarInt(0);buf.writeVarInt(-1);buf.writeBoolean(false);buf.writeUtf("");
             buf.writeBoolean(false);buf.writeBoolean(true);buf.writeUUID(id(200));buf.writeVarInt(0);buf.writeVarInt(GameSnapshot.MATCH_RESULT);
-            buf.writeVarInt(0);buf.writeVarInt(7);buf.writeLong(19);for(int seat=0;seat<4;seat++)buf.writeBoolean(false);
+            buf.writeVarInt(0);buf.writeVarInt(7);buf.writeLong(19);buf.writeVarInt(4);for(int seat=0;seat<4;seat++)buf.writeBoolean(false);
             buf.writeBoolean(true);buf.writeUtf("EXTENSION_LIMIT");buf.writeVarInt(Integer.MAX_VALUE);
         },"An unbounded final-standing length must be rejected before allocation");
         helper.succeed();
@@ -412,6 +412,7 @@ public final class GamePayloadTests {
         buf.writeLong(0);
         buf.writeVarInt(0);
         buf.writeVarInt(69);
+        buf.writeVarInt(4);
     }
 
     private static void writeEmptySeats(RegistryFriendlyByteBuf buf) {

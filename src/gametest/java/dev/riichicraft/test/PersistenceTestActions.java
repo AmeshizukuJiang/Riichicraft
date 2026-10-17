@@ -18,11 +18,11 @@ public final class PersistenceTestActions {
         if(own.rules().seats().stream().anyMatch(seat->!seat.melds().isEmpty() || seat.riichiPhase()!=0)) return fallback;
         for(int tile:own.rules().legalDiscards()) {
             int callers=0;
-            for(int seat=0;seat<4;seat++) {
+            for(int seat=0;seat<recipients.size();seat++) {
                 if(seat==actor) continue;
                 var hand=new HandInput(recipients.get(seat).ownHand(),List.of());
                 var context=new CallActions.Context(actor,seat,own.remainingTiles(),0,WinContext.Riichi.NONE);
-                if(!CallActions.options(hand,tile,context).isEmpty()) callers++;
+                if(CallActions.options(hand,tile,context).stream().anyMatch(call->recipients.size()==4 || call.kind()!=dev.riichicraft.rules.Meld.Kind.CHI)) callers++;
             }
             if(callers>=2) return tile;
         }

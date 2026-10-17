@@ -14,7 +14,9 @@
       "dev.riichicraft.test.DrawDiscardServiceGameTests",
       "dev.riichicraft.test.PrototypeLifecycleGameTests",
       "dev.riichicraft.test.MatchServiceGameTests",
-      "dev.riichicraft.server.TablePersistenceGameTests"
+      "dev.riichicraft.server.TablePersistenceGameTests",
+      "dev.riichicraft.test.ThreePlayerServiceGameTests",
+      "dev.riichicraft.server.ThreePlayerPersistenceGameTests"
     ],
     "fabric-client-gametest": [
       "dev.riichicraft.test.MahjongTableClientGameTest"

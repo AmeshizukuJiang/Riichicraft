@@ -46,8 +46,8 @@ public final class TableArchiveStore {
                 throw new IllegalArgumentException("Invalid dimension identifier");
             }
             Objects.requireNonNull(seats,"seats"); Objects.requireNonNull(gameData,"gameData");
-            if(mode<0 || mode>2 || lobbyRevision<0 || gameRevision<0 || seats.size()!=4
-                    || new HashSet<>(seats.stream().map(Seat::playerId).toList()).size()!=4
+            if(mode<0 || mode>5 || lobbyRevision<0 || gameRevision<0 || seats.size()!=(mode>=3?3:4)
+                    || new HashSet<>(seats.stream().map(Seat::playerId).toList()).size()!=(mode>=3?3:4)
                     || gameData.length<1 || gameData.length>MAX_GAME_BYTES) throw new IllegalArgumentException("Invalid saved table");
             seats=List.copyOf(seats); gameData=gameData.clone();
         }
@@ -104,7 +104,8 @@ public final class TableArchiveStore {
                 UUID id=readId(input); String dimension=readString(input);
                 int x=input.readInt(),y=input.readInt(),z=input.readInt(),mode=input.readUnsignedByte();
                 long lobby=input.readLong(),game=input.readLong(); var seats=new ArrayList<Seat>(4);
-                for(int seat=0;seat<4;seat++) seats.add(new Seat(readId(input),readString(input)));
+                if(mode>5) throw new IOException("Invalid table mode");
+                for(int seat=0;seat<(mode>=3?3:4);seat++) seats.add(new Seat(readId(input),readString(input)));
                 int length=bounded(input.readInt(),1,MAX_GAME_BYTES,"game byte count");
                 if(length>input.available()) throw new IOException("Truncated game bytes");
                 byte[] core=new byte[length]; input.readFully(core);

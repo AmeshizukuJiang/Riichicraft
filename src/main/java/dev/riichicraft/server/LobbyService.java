@@ -6,6 +6,10 @@ import dev.riichicraft.lobby.LobbyRegistry;
 import dev.riichicraft.persistence.TableArchiveStore;
 import dev.riichicraft.rules.DiscardResponseWindow;
 import dev.riichicraft.rules.FourPlayerRound;
+import dev.riichicraft.rules.ThreePlayerRound;
+import dev.riichicraft.rules.ThreePlayerMatch;
+import dev.riichicraft.rules.ThreePlayerMatchRules;
+import dev.riichicraft.rules.ThreePlayerArchiveCodec;
 import dev.riichicraft.rules.FourPlayerMatch;
 import dev.riichicraft.rules.GameArchiveCodec;
 import dev.riichicraft.rules.MatchRules;
@@ -71,6 +75,8 @@ public final class LobbyService {
     private static final class Prototype {
         final FourPlayerRound game;
         final FourPlayerMatch match;
+        final ThreePlayerRound threeGame;
+        final ThreePlayerMatch threeMatch;
         UUID gameId;
         final List<UUID> players;
         long revision;
@@ -82,10 +88,16 @@ public final class LobbyService {
 
         Prototype(UUID id,List<UUID> players,long seed,int mode) {
             this.players=List.copyOf(players);
-            if(mode==LobbyRegistry.SINGLE) {
+            if(mode>=3) {
+                game=null; match=null;
+                if(mode%3==0) { threeGame=ThreePlayerRound.shuffled(id,players,0,27,0,List.of(35000,35000,35000),0,seed); threeMatch=null; }
+                else { threeGame=null; threeMatch=new ThreePlayerMatch(id,players,mode%3==1?ThreePlayerMatchRules.Format.EAST:ThreePlayerMatchRules.Format.SOUTH,0,LobbyService::newThreeRound); }
+            } else if(mode==LobbyRegistry.SINGLE) {
+                threeGame=null; threeMatch=null;
                 game=FourPlayerRound.shuffled(id,players,0,27,0,List.of(25_000,25_000,25_000,25_000),0,seed);
                 match=null;
             } else {
+                threeGame=null; threeMatch=null;
                 game=null;
                 match=new FourPlayerMatch(id,players,mode==LobbyRegistry.EAST?MatchRules.Format.EAST:MatchRules.Format.SOUTH,0,
                         LobbyService::newRound);
@@ -95,28 +107,46 @@ public final class LobbyService {
 
         Prototype(TableArchiveStore.Table table) {
             players=table.seats().stream().map(TableArchiveStore.Seat::playerId).toList();
-            if(table.mode()==LobbyRegistry.SINGLE) {
+            if(table.mode()>=3) {
+                game=null; match=null;
+                if(table.mode()%3==0) { threeGame=ThreePlayerArchiveCodec.decodeRound(table.gameData()); threeMatch=null; }
+                else { threeGame=null; threeMatch=ThreePlayerArchiveCodec.decodeMatch(table.gameData(),LobbyService::newThreeRound);
+                    if(threeMatch.view(null).format()!=(table.mode()%3==1?ThreePlayerMatchRules.Format.EAST:ThreePlayerMatchRules.Format.SOUTH)) throw new IllegalArgumentException("Saved sanma format mismatch"); }
+            } else if(table.mode()==LobbyRegistry.SINGLE) {
+                threeGame=null; threeMatch=null;
                 game=GameArchiveCodec.decodeRound(table.gameData()); match=null;
             } else {
-                game=null; match=GameArchiveCodec.decodeMatch(table.gameData(),LobbyService::newRound);
+                threeGame=null; threeMatch=null; game=null; match=GameArchiveCodec.decodeMatch(table.gameData(),LobbyService::newRound);
                 MatchRules.Format expected=table.mode()==LobbyRegistry.EAST?MatchRules.Format.EAST:MatchRules.Format.SOUTH;
                 if(match.view(null).format()!=expected) throw new IllegalArgumentException("Saved format mismatch");
             }
-            if(!roundView(null).seats().stream().map(FourPlayerRound.PublicSeat::playerId).toList().equals(players)) {
+            if(!(three()?threeView(null).seats().stream().map(ThreePlayerRound.PublicSeat::playerId).toList():roundView(null).seats().stream().map(FourPlayerRound.PublicSeat::playerId).toList()).equals(players)) {
                 throw new IllegalArgumentException("Saved participant mismatch");
             }
             revision=Math.incrementExact(table.gameRevision());
             syncStatus();
-            if(intermission()) match.clearNextConfirmations();
+            if(intermission()) clearNext();
             else if(!finished) paused=true;
             unavailable=Set.copyOf(players);
             if(!finished) statusKey="message.riichicraft.game.player_unavailable";
         }
 
         FourPlayerRound.View roundView(UUID recipient) { return match==null?game.view(recipient):match.view(recipient).round(); }
-        boolean intermission() { return match!=null && match.view(null).phase()==FourPlayerMatch.Phase.ROUND_RESULT; }
+        boolean three() { return threeGame!=null || threeMatch!=null; }
+        ThreePlayerRound.View threeView(UUID recipient) { return threeMatch==null?threeGame.view(recipient):threeMatch.view(recipient).round(); }
+        boolean intermission() { return three()?threeMatch!=null && threeMatch.view(null).phase()==ThreePlayerMatch.Phase.ROUND_RESULT:match!=null && match.view(null).phase()==FourPlayerMatch.Phase.ROUND_RESULT; }
+        boolean clearNext() { return three()?threeMatch.clearNextConfirmations():match.clearNextConfirmations(); }
+        byte[] archive() { return three()?(threeMatch==null?ThreePlayerArchiveCodec.encodeRound(threeGame):ThreePlayerArchiveCodec.encodeMatch(threeMatch)):(match==null?GameArchiveCodec.encodeRound(game):GameArchiveCodec.encodeMatch(match)); }
+        FourPlayerRound.Status confirmNext(UUID player,long serial) {
+            if(three()) { var v=threeMatch.view(player); return FourPlayerRound.Status.valueOf(threeMatch.confirmNext(player,new ThreePlayerMatch.ContinueId(v.matchId(),gameId,serial)).name()); }
+            var v=match.view(player); return match.confirmNext(player,new FourPlayerMatch.ContinueId(v.matchId(),gameId,serial));
+        }
 
         void syncStatus() {
+            if(three()) {
+                gameId=threeView(null).roundId(); finished=threeMatch==null?threeView(null).phase()==ThreePlayerRound.Phase.FINISHED:threeMatch.view(null).phase()==ThreePlayerMatch.Phase.MATCH_RESULT;
+                if(finished || intermission()) { paused=false; confirmations.clear(); statusKey=""; } return;
+            }
             gameId=roundView(null).roundId();
             finished=match==null?roundView(null).phase()==FourPlayerRound.Phase.FINISHED
                     :match.view(null).phase()==FourPlayerMatch.Phase.MATCH_RESULT;
@@ -124,6 +154,7 @@ public final class LobbyService {
         }
 
         FourPlayerRound.Status act(UUID player,GameActionPayload payload,KanActions.Choice choice) {
+            if(three()) return FourPlayerRound.Status.valueOf(actThree(player,payload,choice).name());
             if(match!=null) {
                 var command=match.view(player).command();
                 return switch(payload.action()) {
@@ -145,6 +176,32 @@ public final class LobbyService {
                 case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> game.respond(player,
                         new DiscardResponseWindow.Id(gameId,payload.windowSerial()),responseChoice(payload));
                 default -> FourPlayerRound.Status.NOT_OFFERED;
+            };
+        }
+        private ThreePlayerRound.Status actThree(UUID player,GameActionPayload payload,KanActions.Choice choice) {
+            if(threeMatch!=null) {
+                var command=threeMatch.view(player).command();
+                return switch(payload.action()) {
+                    case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> threeMatch.discard(player,command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
+                    case GameActionPayload.KITA -> threeMatch.kita(player,command,payload.tileId());
+                    case GameActionPayload.TSUMO -> threeMatch.tsumo(player,command);
+                    case GameActionPayload.NINE_TERMINALS -> threeMatch.nineTerminals(player,command);
+                    case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> threeMatch.declareKan(player,command,choice);
+                    case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> threeMatch.respond(player,
+                            new DiscardResponseWindow.Id(gameId,payload.windowSerial()),responseChoice(payload));
+                    default -> ThreePlayerRound.Status.NOT_OFFERED;
+                };
+            }
+            var command=threeGame.view(player).command();
+            return switch(payload.action()) {
+                case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> threeGame.discard(player,command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
+                case GameActionPayload.KITA -> threeGame.kita(player,command,payload.tileId());
+                case GameActionPayload.TSUMO -> threeGame.tsumo(player,command);
+                case GameActionPayload.NINE_TERMINALS -> threeGame.nineTerminals(player,command);
+                case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> threeGame.declareKan(player,command,choice);
+                case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> threeGame.respond(player,
+                        new DiscardResponseWindow.Id(gameId,payload.windowSerial()),responseChoice(payload));
+                default -> ThreePlayerRound.Status.NOT_OFFERED;
             };
         }
     }
@@ -173,6 +230,10 @@ public final class LobbyService {
 
     private static FourPlayerRound newRound(FourPlayerMatch.RoundSetup setup) {
         return FourPlayerRound.shuffled(UUID.randomUUID(),setup.players(),setup.dealerSeat(),setup.roundWind(),
+                setup.honba(),setup.points(),setup.deposits(),SEEDS.nextLong());
+    }
+    private static ThreePlayerRound newThreeRound(ThreePlayerMatch.RoundSetup setup) {
+        return ThreePlayerRound.shuffled(UUID.randomUUID(),setup.players(),setup.dealerSeat(),setup.roundWind(),
                 setup.honba(),setup.points(),setup.deposits(),SEEDS.nextLong());
     }
 
@@ -212,7 +273,7 @@ public final class LobbyService {
 
     private static List<LobbyRegistry.Seat> restoredSeats(TableArchiveStore.Table table) {
         List<LobbyRegistry.Seat> seats=new ArrayList<>(4);
-        for(int index=0;index<4;index++) {
+        for(int index=0;index<table.seats().size();index++) {
             var seat=table.seats().get(index);
             seats.add(new LobbyRegistry.Seat(index,seat.playerId(),seat.name(),false));
         }
@@ -228,7 +289,7 @@ public final class LobbyService {
             for(var entry:games.entrySet()) {
                 UUID tableId=entry.getKey(); Prototype prototype=entry.getValue();
                 TableKey key=locations.get(tableId); var lobby=registry.snapshot(tableId).orElseThrow();
-                byte[] core=prototype.match==null?GameArchiveCodec.encodeRound(prototype.game):GameArchiveCodec.encodeMatch(prototype.match);
+                byte[] core=prototype.archive();
                 archived.add(new TableArchiveStore.Table(tableId,key.dimension().identifier().toString(),key.pos().getX(),key.pos().getY(),
                         key.pos().getZ(),lobby.mode(),lobby.revision(),prototype.revision,lobby.seats().stream()
                         .map(seat->new TableArchiveStore.Seat(seat.playerId(),seat.name())).toList(),core));
@@ -410,8 +471,7 @@ public final class LobbyService {
             if(!prototype.intermission()) feedback="message.riichicraft.lobby.invalid_action";
             else if(!prototype.unavailable.isEmpty()) feedback="message.riichicraft.game.players_absent";
             else {
-                var matchView=prototype.match.view(player.getUUID());
-                var result=prototype.match.confirmNext(player.getUUID(),new FourPlayerMatch.ContinueId(matchView.matchId(),prototype.gameId,payload.windowSerial()));
+                var result=prototype.confirmNext(player.getUUID(),payload.windowSerial());
                 if(result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;prototype.syncStatus();
                     broadcast(lobby,null,"");return;
@@ -425,7 +485,7 @@ public final class LobbyService {
             else if (!prototype.unavailable.isEmpty()) feedback = "message.riichicraft.game.players_absent";
             else if (prototype.confirmations.add(player.getUUID())) {
                 prototype.revision++;
-                if (prototype.confirmations.size() == 4) {
+                if (prototype.confirmations.size() == prototype.players.size()) {
                     prototype.paused = false;
                     prototype.statusKey = "";
                     broadcast(lobby, null, "message.riichicraft.game.resumed");
@@ -498,7 +558,7 @@ public final class LobbyService {
         boolean changed = !missing.equals(prototype.unavailable);
         boolean newlyMissing = missing.stream().anyMatch(id -> !prototype.unavailable.contains(id));
         if(prototype.intermission()) {
-            if(newlyMissing) changed|=prototype.match.clearNextConfirmations();
+            if(newlyMissing) changed|=prototype.clearNext();
             prototype.unavailable=Set.copyOf(missing);
             prototype.paused=false;prototype.confirmations.clear();
             String status=missing.isEmpty()?"":"message.riichicraft.game.player_unavailable";
@@ -531,6 +591,7 @@ public final class LobbyService {
     public GameSnapshot gameView(UUID tableId, UUID recipient) {
         Prototype prototype = games.get(tableId);
         if (prototype == null) return null;
+        if(prototype.three()) return threeGameView(tableId,recipient,prototype);
         FourPlayerRound.View gameView = prototype.roundView(recipient);
         List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
                 seat.concealedCount(), seat.river().stream().map(FourPlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
@@ -567,6 +628,43 @@ public final class LobbyService {
                 view.roundIndex(),view.continueEpoch(),view.confirmations(),result);
     }
 
+    private GameSnapshot threeGameView(UUID tableId,UUID recipient,Prototype prototype) {
+        ThreePlayerRound.View gameView = prototype.threeView(recipient);
+        List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
+                seat.concealedCount(), seat.river().stream().map(ThreePlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
+                prototype.confirmations.contains(seat.playerId()))).toList();
+        List<GameSnapshot.SeatRules> seatRules=new ArrayList<>(4);
+        for(var seat:gameView.seats()) {
+            List<GameSnapshot.MeldView> melds=new ArrayList<>();
+            for(int index=0;index<seat.melds().size();index++) {
+                var meld=seat.melds().get(index); var origin=seat.origins().get(index);
+                melds.add(new GameSnapshot.MeldView(meld.kind().ordinal(),meld.tiles(),origin.providerSeat(),origin.claimedTileId()));
+            }
+            seatRules.add(new GameSnapshot.SeatRules(melds,seat.river().stream().map(r->
+                    new GameSnapshot.RiverMark(r.declaration(),r.tsumogiri(),r.claimedBy())).toList(),seat.points(),seat.riichi().ordinal(),seat.norths()));
+        }
+        var options=gameView.turnOptions();
+        List<GameSnapshot.ActionOption> kanOptions=options.kans().stream().map(k->new GameSnapshot.ActionOption(
+                k.kind()==KanActions.Kind.CLOSED?GameActionPayload.CLOSED_KAN:GameActionPayload.ADDED_KAN,k.meldIndex(),k.handTiles()))
+                .sorted(optionOrder()).toList();
+        List<GameSnapshot.ActionOption> responses=gameView.responses().stream().map(LobbyService::responseOption).sorted(optionOrder()).toList();
+        var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
+        var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
+                gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
+                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(LobbyService::resultView).orElse(null),options.kitas().stream().sorted().toList());
+        return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
+                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
+                prototype.threeMatch==null?null:matchInfo(prototype.threeMatch.view(recipient)));
+    }
+
+    private static GameSnapshot.MatchInfo matchInfo(ThreePlayerMatch.View view) {
+        GameSnapshot.MatchResult result=view.result().map(value->new GameSnapshot.MatchResult(value.reason().name(),
+                value.standings().stream().map(s->new GameSnapshot.Standing(s.seat(),s.rank(),s.points(),s.rawTenths(),s.umaTenths(),s.totalTenths())).toList(),
+                value.depositRecipient(),value.depositPoints())).orElse(null);
+        return new GameSnapshot.MatchInfo(view.matchId(),view.format().ordinal(),view.phase().ordinal(),view.initialDealer(),
+                view.roundIndex(),view.continueEpoch(),view.confirmations(),result);
+    }
+
     private static Comparator<GameSnapshot.ActionOption> optionOrder() {
         return Comparator.comparingInt(GameSnapshot.ActionOption::action).thenComparingInt(GameSnapshot.ActionOption::meldIndex)
                 .thenComparing(o->o.handTiles().toString());
@@ -587,6 +685,17 @@ public final class LobbyService {
             return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
                     new GameSnapshot.Award(y.yaku().name(),y.han(),y.yakumanUnits())).toList(),v.han(),v.fu(),v.yakumanUnits(),
                     v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints());
+        }).toList();
+        return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
+                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues());
+    }
+
+    private static GameSnapshot.Result resultView(ThreePlayerRound.End end) {
+        List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
+            var v=entry.getValue();
+            return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
+                    new GameSnapshot.Award(y.yaku().name(),y.han(),y.yakumanUnits())).toList(),v.han(),v.fu(),v.yakumanUnits(),
+                    v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints(),v.kita());
         }).toList();
         return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
                 end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues());
@@ -762,6 +871,7 @@ public final class LobbyService {
             case UPDATED, UNCHANGED -> "";
             case STALE_REVISION -> "message.riichicraft.lobby.stale";
             case TABLE_FULL -> "message.riichicraft.lobby.full";
+            case TOO_MANY_PLAYERS -> "message.riichicraft.lobby.leave_before_three";
             case ALREADY_SEATED_ELSEWHERE -> "message.riichicraft.lobby.other_table";
             case NOT_SEATED -> "message.riichicraft.lobby.not_seated";
             case TABLE_NOT_FOUND -> "message.riichicraft.lobby.unavailable";

@@ -162,7 +162,7 @@ final class PersistenceClientScenario {
         }
     }
 
-    private static TestDedicatedServerContext reopen(ClientGameTestContext context,Properties properties) {
+    static TestDedicatedServerContext reopen(ClientGameTestContext context,Properties properties) {
         return new TestDedicatedServerContextImpl(context,DedicatedServerImplUtil.start(context,properties));
     }
     private static boolean seekPartial(LobbyService service,Session session,TestDedicatedServerConnection connection) {
