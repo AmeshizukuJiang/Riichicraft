@@ -1,6 +1,6 @@
 # 独立四麻规则核心
 
-当前开发版本：`0.0.7-dev`。四麻已有牌形／等待、单手役符、振听／见逃、两类响应、鸣牌、牌山、立直／一发、账本和杠时序，由`FourPlayerRound`串联真实单局，`MatchRules`／`FourPlayerMatch`推进东风／半庄整场，并已接入Minecraft服务端、网络与操作界面；`0.0.6-dev`另完成存档恢复。游戏流程见 [SINGLE_ROUND.md](SINGLE_ROUND.md)、[MATCHES.md](MATCHES.md)，最终证据见 [VALIDATION.md](VALIDATION.md)。本页下方保留四麻各组件当时的接口／验证记录；新增三麻独立牌池、基础支付与手牌计分见 [THREE_PLAYER_CORE.md](THREE_PLAYER_CORE.md)，三麻完整牌局及游戏入口尚未实现。
+当前开发版本：`0.0.7-dev`。四麻已有牌形／等待、单手役符、振听／见逃、两类响应、鸣牌、牌山、立直／一发、账本和杠时序，由`FourPlayerRound`串联真实单局，`MatchRules`／`FourPlayerMatch`推进东风／半庄整场，并已接入Minecraft服务端、网络与操作界面；`0.0.6-dev`另完成存档恢复。游戏流程见 [SINGLE_ROUND.md](SINGLE_ROUND.md)、[MATCHES.md](MATCHES.md)，最终证据见 [VALIDATION.md](VALIDATION.md)。本页下方保留四麻各组件当时的接口／验证记录；新增三麻独立牌池、基础支付与手牌计分见 [THREE_PLAYER_CORE.md](THREE_PLAYER_CORE.md)，三麻完整牌局、整场及游戏入口已接入，操作见 [THREE_PLAYER.md](THREE_PLAYER.md)。
 
 用户已确认以雀魂普通四麻为规则基线，允许一炮三响。来源、已修正差异及后续待核实项见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)。
 

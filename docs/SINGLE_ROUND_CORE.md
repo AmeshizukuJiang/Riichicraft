@@ -2,7 +2,7 @@
 
 开发版本：`0.0.4-dev`。`FourPlayerRound` 已将牌形、役符、振听、摸打与鸣牌、立直、抢杠、翻宝和点数账本接成可独立运行的单局。核心只使用 Java 与项目的 `TileCatalog`，不引用 Minecraft、Fabric、网络、客户端类或真实时钟；现另由服务端、网络与界面适配层接入 Minecraft。玩家流程见 [SINGLE_ROUND.md](SINGLE_ROUND.md)，最终游戏运行与补强菜单后重跑证据见 [VALIDATION.md](VALIDATION.md)，不以本页离线结果代替游戏验收。
 
-规则基线见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)，组件索引见 [RULES_CORE.md](RULES_CORE.md)。本页描述单局权威入口及单局批次证据；东风／半庄整场现由 [整场所有者](MATCHES.md)推进，三麻尚未实现。
+规则基线见 [FOUR_PLAYER_RULES.md](FOUR_PLAYER_RULES.md)，组件索引见 [RULES_CORE.md](RULES_CORE.md)。本页描述单局权威入口及单局批次证据；东风／半庄整场现由 [整场所有者](MATCHES.md)推进，三麻见 [THREE_PLAYER.md](THREE_PLAYER.md)。
 
 ## 当前状态与动作
 
@@ -73,4 +73,4 @@
 
 合计十六套 **1,576,377 个断言**。随机轨迹没有出现和牌／立直，不能把“支持尝试这些动作”当作覆盖；对应实际场景由确定墙测试补充。统一入口重跑、资源检查、构建以及 Minecraft 服务端／客户端结果均以 [VALIDATION.md](VALIDATION.md) 的已执行记录为准。
 
-四人单局批次的35项服务端测试、真实TCP鼠标碰牌／立即弃牌和终局重连均通过；之后整场批次扩至38项，实际完成东风／半庄及局间重连，见 [MATCHES.md](MATCHES.md)与验证记录。TCP另三席是原生服务端内存夹具，并非四真实客户端。三麻、跨重启恢复与超时仍未实现；自动化不代表人工视觉与长期操作手感验收。
+四人单局批次的35项服务端测试、真实TCP鼠标碰牌／立即弃牌和终局重连均通过；之后整场批次扩至38项，实际完成东风／半庄及局间重连，见 [MATCHES.md](MATCHES.md)与验证记录。TCP另三席是原生服务端内存夹具，并非四真实客户端。三麻和正常跨重启恢复已另行实现，见 [THREE_PLAYER.md](THREE_PLAYER.md)及 [PERSISTENCE.md](PERSISTENCE.md)；超时仍未实现。自动化不代表人工视觉与长期操作手感验收。
