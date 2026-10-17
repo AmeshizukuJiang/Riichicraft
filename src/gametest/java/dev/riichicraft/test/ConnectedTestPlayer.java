@@ -25,6 +25,11 @@ public final class ConnectedTestPlayer implements AutoCloseable {
     private boolean closed;
 
     public ConnectedTestPlayer(MinecraftServer server, ServerLevel level, BlockPos tablePos, String name) {
+        this(server,level,tablePos,UUID.randomUUID(),name);
+    }
+
+    /** Reuse the same authenticated identity after a real dedicated-server restart. */
+    public ConnectedTestPlayer(MinecraftServer server, ServerLevel level, BlockPos tablePos, UUID playerId, String name) {
         this.server = Objects.requireNonNull(server, "server");
         Objects.requireNonNull(level, "level");
         Objects.requireNonNull(tablePos, "tablePos");
@@ -34,7 +39,7 @@ public final class ConnectedTestPlayer implements AutoCloseable {
             throw new IllegalArgumentException("The fixture needs its server's level and a non-blank player name");
         }
 
-        GameProfile profile = new GameProfile(UUID.randomUUID(), name);
+        GameProfile profile = new GameProfile(Objects.requireNonNull(playerId,"playerId"), name);
         CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
         player = new ServerPlayer(server, level, profile, ClientInformation.createDefault());
         Connection connection = new Connection(PacketFlow.SERVERBOUND);

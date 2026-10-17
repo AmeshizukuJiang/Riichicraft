@@ -24,6 +24,35 @@ public final class LobbyRegistry {
         return snapshotOf(tables.computeIfAbsent(tableId, Lobby::new));
     }
 
+    /** Restore one archived, fully occupied table before accepting any new joins. Fails atomically. */
+    public Snapshot restoreTable(UUID tableId, long revision, int mode, List<Seat> seats) {
+        Objects.requireNonNull(tableId, "tableId");
+        seats = List.copyOf(seats);
+        if (revision < 0 || mode < SINGLE || mode > SOUTH || seats.size() != SEAT_COUNT || tables.containsKey(tableId)) {
+            throw new IllegalArgumentException("Invalid or duplicate restored lobby");
+        }
+        var owned = new java.util.HashSet<UUID>();
+        for (int index = 0; index < SEAT_COUNT; index++) {
+            Seat seat = seats.get(index);
+            if (seat.index() != index || !seat.occupied() || seat.name().isBlank() || seat.name().length() > 64
+                    || !owned.add(seat.playerId()) || playerSeats.containsKey(seat.playerId())) {
+                throw new IllegalArgumentException("Invalid or conflicting restored occupant");
+            }
+        }
+        Lobby lobby = new Lobby(tableId);
+        lobby.revision = revision;
+        lobby.mode = mode;
+        for (int index = 0; index < SEAT_COUNT; index++) {
+            Seat seat = seats.get(index);
+            lobby.seats[index] = new Occupant(seat.playerId(), seat.name());
+        }
+        tables.put(tableId, lobby);
+        for (int index = 0; index < SEAT_COUNT; index++) {
+            playerSeats.put(seats.get(index).playerId(), new SeatReference(tableId, index));
+        }
+        return snapshotOf(lobby);
+    }
+
     public Optional<Snapshot> snapshot(UUID tableId) {
         Lobby lobby = tables.get(Objects.requireNonNull(tableId, "tableId"));
         return lobby == null ? Optional.empty() : Optional.of(snapshotOf(lobby));

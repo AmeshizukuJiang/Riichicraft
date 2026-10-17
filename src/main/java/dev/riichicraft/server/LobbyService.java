@@ -1,10 +1,13 @@
 package dev.riichicraft.server;
 
+import dev.riichicraft.Riichicraft;
 import dev.riichicraft.block.ModBlocks;
 import dev.riichicraft.lobby.LobbyRegistry;
+import dev.riichicraft.persistence.TableArchiveStore;
 import dev.riichicraft.rules.DiscardResponseWindow;
 import dev.riichicraft.rules.FourPlayerRound;
 import dev.riichicraft.rules.FourPlayerMatch;
+import dev.riichicraft.rules.GameArchiveCodec;
 import dev.riichicraft.rules.MatchRules;
 import dev.riichicraft.rules.KanActions;
 import dev.riichicraft.rules.Meld;
@@ -22,6 +25,8 @@ import java.util.UUID;
 import java.util.HashSet;
 import java.util.Set;
 import java.security.SecureRandom;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -31,12 +36,16 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.storage.LevelResource;
 
-/** Server-thread table ownership, authenticated intentions and temporary round lifecycle. */
+/** Server-thread table ownership, authenticated intentions and durable world lifecycle. */
 public final class LobbyService {
     private static final Map<MinecraftServer, LobbyService> SERVICES = new ConcurrentHashMap<>();
     private final MinecraftServer server;
@@ -47,6 +56,16 @@ public final class LobbyService {
     private final Map<UUID, Prototype> games = new HashMap<>();
     private final Set<UUID> disconnected = new HashSet<>();
     private final Map<UUID, String> pendingNotices = new HashMap<>();
+    private final Path archivePath;
+    private final ArchiveWriter archiveWriter;
+    /** Invalid core records remain byte-for-byte present and continue reserving their player UUIDs. */
+    private final Map<UUID, TableArchiveStore.Table> blockedTables = new HashMap<>();
+    private final Set<UUID> unloadedTables = new HashSet<>();
+    private boolean archiveBlocked;
+    private boolean archiveDirty;
+    private boolean saveFailed;
+    private boolean stopping;
+    private boolean detached;
     private static final SecureRandom SEEDS = new SecureRandom();
 
     private static final class Prototype {
@@ -69,10 +88,29 @@ public final class LobbyService {
             } else {
                 game=null;
                 match=new FourPlayerMatch(id,players,mode==LobbyRegistry.EAST?MatchRules.Format.EAST:MatchRules.Format.SOUTH,0,
-                        setup->FourPlayerRound.shuffled(UUID.randomUUID(),setup.players(),setup.dealerSeat(),setup.roundWind(),
-                                setup.honba(),setup.points(),setup.deposits(),SEEDS.nextLong()));
+                        LobbyService::newRound);
             }
             syncStatus();
+        }
+
+        Prototype(TableArchiveStore.Table table) {
+            players=table.seats().stream().map(TableArchiveStore.Seat::playerId).toList();
+            if(table.mode()==LobbyRegistry.SINGLE) {
+                game=GameArchiveCodec.decodeRound(table.gameData()); match=null;
+            } else {
+                game=null; match=GameArchiveCodec.decodeMatch(table.gameData(),LobbyService::newRound);
+                MatchRules.Format expected=table.mode()==LobbyRegistry.EAST?MatchRules.Format.EAST:MatchRules.Format.SOUTH;
+                if(match.view(null).format()!=expected) throw new IllegalArgumentException("Saved format mismatch");
+            }
+            if(!roundView(null).seats().stream().map(FourPlayerRound.PublicSeat::playerId).toList().equals(players)) {
+                throw new IllegalArgumentException("Saved participant mismatch");
+            }
+            revision=Math.incrementExact(table.gameRevision());
+            syncStatus();
+            if(intermission()) match.clearNextConfirmations();
+            else if(!finished) paused=true;
+            unavailable=Set.copyOf(players);
+            if(!finished) statusKey="message.riichicraft.game.player_unavailable";
         }
 
         FourPlayerRound.View roundView(UUID recipient) { return match==null?game.view(recipient):match.view(recipient).round(); }
@@ -113,16 +151,119 @@ public final class LobbyService {
 
     private record TableKey(ResourceKey<Level> dimension, BlockPos pos) { }
     private record View(UUID id, UUID tableId) { }
+    @FunctionalInterface interface ArchiveWriter {
+        void write(Path path,List<TableArchiveStore.Table> tables) throws IOException;
+    }
 
     private LobbyService(MinecraftServer server) {
+        this(server,server.getWorldPath(LevelResource.ROOT).resolve("data/riichicraft/tables.dat"));
+    }
+
+    /** Package access supports isolated, real-server lifecycle tests with a project-local archive. */
+    LobbyService(MinecraftServer server,Path archivePath) {
+        this(server,archivePath,TableArchiveStore::write);
+    }
+
+    LobbyService(MinecraftServer server,Path archivePath,ArchiveWriter archiveWriter) {
         this.server = server;
+        this.archivePath=archivePath;
+        this.archiveWriter=archiveWriter;
+        restore();
+    }
+
+    private static FourPlayerRound newRound(FourPlayerMatch.RoundSetup setup) {
+        return FourPlayerRound.shuffled(UUID.randomUUID(),setup.players(),setup.dealerSeat(),setup.roundWind(),
+                setup.honba(),setup.points(),setup.deposits(),SEEDS.nextLong());
     }
 
     public static LobbyService get(MinecraftServer server) {
         return SERVICES.computeIfAbsent(server, LobbyService::new);
     }
 
+    private void restore() {
+        final List<TableArchiveStore.Table> archived;
+        try {
+            archived=TableArchiveStore.read(archivePath);
+            // Validate the complete ownership index before publishing any restored seat.
+            LobbyRegistry validation=new LobbyRegistry();
+            for(var table:archived) {
+                Identifier.parse(table.dimension());
+                validation.restoreTable(table.tableId(),table.lobbyRevision(),table.mode(),restoredSeats(table));
+            }
+        } catch(IOException | IllegalArgumentException invalid) {
+            archiveBlocked=true;
+            Riichicraft.LOGGER.error("Riichicraft world archive could not be loaded; table access is blocked until administrator repair: {}",archivePath);
+            return;
+        }
+        for(var table:archived) {
+            TableKey key=new TableKey(ResourceKey.create(Registries.DIMENSION,Identifier.parse(table.dimension())),
+                    new BlockPos(table.x(),table.y(),table.z()));
+            tables.put(key,table.tableId()); locations.put(table.tableId(),key);
+            registry.restoreTable(table.tableId(),table.lobbyRevision(),table.mode(),restoredSeats(table));
+            try {
+                games.put(table.tableId(),new Prototype(table));
+            } catch(RuntimeException invalidCore) {
+                blockedTables.put(table.tableId(),table);
+                Riichicraft.LOGGER.error("Riichicraft table {} has an invalid game archive; its original record and reserved seats are retained for administrator repair",table.tableId());
+            }
+        }
+        archiveDirty=!archived.isEmpty();
+    }
+
+    private static List<LobbyRegistry.Seat> restoredSeats(TableArchiveStore.Table table) {
+        List<LobbyRegistry.Seat> seats=new ArrayList<>(4);
+        for(int index=0;index<4;index++) {
+            var seat=table.seats().get(index);
+            seats.add(new LobbyRegistry.Seat(index,seat.playerId(),seat.name(),false));
+        }
+        return seats;
+    }
+
+    /** Checkpoint only accepted server state. Called on the server thread by native autosave and shutdown. */
+    public boolean save() {
+        if(archiveBlocked || detached) return false;
+        if(!archiveDirty) return !saveFailed;
+        try {
+            List<TableArchiveStore.Table> archived=new ArrayList<>(blockedTables.values());
+            for(var entry:games.entrySet()) {
+                UUID tableId=entry.getKey(); Prototype prototype=entry.getValue();
+                TableKey key=locations.get(tableId); var lobby=registry.snapshot(tableId).orElseThrow();
+                byte[] core=prototype.match==null?GameArchiveCodec.encodeRound(prototype.game):GameArchiveCodec.encodeMatch(prototype.match);
+                archived.add(new TableArchiveStore.Table(tableId,key.dimension().identifier().toString(),key.pos().getX(),key.pos().getY(),
+                        key.pos().getZ(),lobby.mode(),lobby.revision(),prototype.revision,lobby.seats().stream()
+                        .map(seat->new TableArchiveStore.Seat(seat.playerId(),seat.name())).toList(),core));
+            }
+            archived.sort(Comparator.comparing(table->table.tableId().toString()));
+            archiveWriter.write(archivePath,archived);
+            archiveDirty=false; saveFailed=false;
+            return true;
+        } catch(IOException | RuntimeException failure) {
+            if(!saveFailed) Riichicraft.LOGGER.error("Riichicraft world archive could not be saved; the previous record is retained: {}",archivePath);
+            saveFailed=true;
+            // A file changed or damaged after startup must also fail closed, never become an empty replacement.
+            try { TableArchiveStore.read(archivePath); }
+            catch(IOException invalidExisting) { archiveBlocked=true; }
+            for(ServerPlayer player:server.getPlayerList().getPlayers()) {
+                if(registry.tableForPlayer(player.getUUID()).isPresent()) player.sendOverlayMessage(Component.translatable(
+                        archiveBlocked?"message.riichicraft.persistence.corrupt":"message.riichicraft.persistence.save_failed"));
+            }
+            return false;
+        }
+    }
+
+    private boolean blocked(ServerPlayer player,UUID tableId) {
+        String reason=archiveBlocked?"message.riichicraft.persistence.corrupt"
+                :blockedTables.containsKey(tableId)?"message.riichicraft.persistence.table_corrupt":"";
+        if(!reason.isEmpty()) player.sendOverlayMessage(Component.translatable(reason));
+        return stopping || !reason.isEmpty();
+    }
+
     public static void initialize() {
+        ServerLifecycleEvents.SERVER_STARTED.register(LobbyService::get);
+        ServerLifecycleEvents.BEFORE_SAVE.register((server,flush,force)-> {
+            LobbyService service=SERVICES.get(server);
+            if(service!=null) service.save();
+        });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> get(server).disconnect(handler.player));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> get(server).connected(handler.player));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -133,6 +274,10 @@ public final class LobbyService {
             LobbyService service = SERVICES.get(level.getServer());
             if (service != null) service.unloadChunk(level, chunk.getPos().x(), chunk.getPos().z());
         });
+        ServerChunkEvents.CHUNK_LOAD.register((level,chunk,newChunk)-> {
+            LobbyService service=SERVICES.get(level.getServer());
+            if(service!=null) service.loadedChunk(level,chunk);
+        });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             LobbyService service = SERVICES.get(server);
             if (service != null) service.stop();
@@ -141,8 +286,11 @@ public final class LobbyService {
     }
 
     public UUID open(ServerPlayer player, BlockPos pos) {
+        if(blocked(player,null)) return null;
         TableKey key = new TableKey(player.level().dimension(), pos.immutable());
         if (!accessible(player, key)) return null;
+        if(blocked(player,tables.get(key))) return null;
+        unloadedTables.remove(tables.get(key));
         disconnected.remove(player.getUUID());
         UUID tableId = tables.computeIfAbsent(key, ignored -> {
             UUID id = UUID.randomUUID();
@@ -167,6 +315,7 @@ public final class LobbyService {
             views.remove(player.getUUID());
             return;
         }
+        if(blocked(player,view.tableId())) return;
         TableKey location = locations.get(view.tableId());
         if (location == null || !accessible(player, location)) {
             views.remove(player.getUUID());
@@ -223,6 +372,7 @@ public final class LobbyService {
     public void handleGameAction(ServerPlayer player, GameActionPayload payload) {
         View view = views.get(player.getUUID());
         if (view == null || !view.id().equals(payload.viewId())) return;
+        if(blocked(player,view.tableId())) return;
         Prototype prototype = games.get(view.tableId());
         if (prototype == null || !prototype.gameId.equals(payload.gameId())) return;
         // Recheck in the same server action, closing the gap before the next END_SERVER_TICK.
@@ -241,6 +391,7 @@ public final class LobbyService {
             else {
                 games.remove(view.tableId()); clearDisconnected(prototype);
                 broadcast(registry.resetReadiness(view.tableId()),null,"");
+                save();
                 return;
             }
         } else if (payload.action() == GameActionPayload.ABORT && !prototype.finished) {
@@ -252,6 +403,7 @@ public final class LobbyService {
             }
             clearDisconnected(prototype);
             broadcast(registry.resetReadiness(view.tableId()), null, "message.riichicraft.game.aborted");
+            save();
             return;
         } else if (prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
         else if (payload.action()==GameActionPayload.NEXT_ROUND) {
@@ -326,7 +478,8 @@ public final class LobbyService {
     private boolean present(UUID playerId, UUID tableId) {
         ServerPlayer player = server.getPlayerList().getPlayer(playerId);
         TableKey location = locations.get(tableId);
-        return !disconnected.contains(playerId) && player != null && location != null && accessible(player, location);
+        return !stopping && !unloadedTables.contains(tableId) && !disconnected.contains(playerId)
+                && player != null && location != null && accessible(player, location);
     }
 
     private void connected(ServerPlayer player) {
@@ -441,7 +594,9 @@ public final class LobbyService {
 
     public void disconnect(ServerPlayer player) {
         views.remove(player.getUUID());
+        if(stopping || archiveBlocked) return;
         UUID tableId = registry.tableForPlayer(player.getUUID()).orElse(null);
+        if(blockedTables.containsKey(tableId)) return;
         Prototype prototype = games.get(tableId);
         if (prototype != null) {
             disconnected.add(player.getUUID());
@@ -453,8 +608,12 @@ public final class LobbyService {
 
     public void removeTable(ServerLevel level, BlockPos pos) {
         TableKey key = new TableKey(level.dimension(), pos.immutable());
-        UUID id = tables.remove(key);
+        UUID id = tables.get(key);
         if (id == null) return;
+        // Destruction is never an implicit repair operation for a record that failed validation.
+        if(stopping || archiveBlocked || blockedTables.containsKey(id)) return;
+        tables.remove(key);
+        unloadedTables.remove(id);
         locations.remove(id);
         Prototype prototype = games.remove(id);
         String reason = prototype == null ? "message.riichicraft.lobby.unavailable"
@@ -478,21 +637,55 @@ public final class LobbyService {
                 if (player != null) sendClosed(player, entry.getValue(), reason);
             }
         }
+        archiveDirty=true;
+        save();
     }
 
     private void unloadChunk(ServerLevel level, int chunkX, int chunkZ) {
+        if(stopping || archiveBlocked) return;
         for (TableKey key : List.copyOf(tables.keySet())) {
             if (key.dimension().equals(level.dimension()) && key.pos().getX() >> 4 == chunkX
-                    && key.pos().getZ() >> 4 == chunkZ) removeTable(level, key.pos());
+                    && key.pos().getZ() >> 4 == chunkZ) {
+                UUID tableId=tables.get(key);
+                if(blockedTables.containsKey(tableId)) continue;
+                if(games.containsKey(tableId)) {
+                    unloadedTables.add(tableId);
+                    refreshPresence(tableId,games.get(tableId));
+                } else removeTable(level,key.pos());
+            }
+        }
+        save();
+    }
+
+    private void loadedChunk(ServerLevel level,LevelChunk chunk) {
+        if(stopping || archiveBlocked) return;
+        int chunkX=chunk.getPos().x(),chunkZ=chunk.getPos().z();
+        for(TableKey key:List.copyOf(tables.keySet())) {
+            if(key.dimension().equals(level.dimension()) && key.pos().getX()>>4==chunkX && key.pos().getZ()>>4==chunkZ) {
+                UUID tableId=tables.get(key);
+                if(blockedTables.containsKey(tableId)) continue;
+                // FULL's future is still completing here: a world lookup would wait recursively on this callback.
+                if(!chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE)) removeTable(level,key.pos());
+                else {
+                    unloadedTables.remove(tableId);
+                    // Presence and broadcasts run at END_SERVER_TICK, after the chunk can be queried without waiting.
+                }
+            }
         }
     }
 
     public void tick() {
+        if(stopping || archiveBlocked) return;
         for (TableKey key : List.copyOf(tables.keySet())) {
             ServerLevel level = server.getLevel(key.dimension());
-            if (level != null && (!level.isLoaded(key.pos())
-                    || !level.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE))) {
-                removeTable(level, key.pos());
+            UUID tableId=tables.get(key);
+            if(blockedTables.containsKey(tableId)) continue;
+            LevelChunk chunk=level==null?null:level.getChunkSource().getChunkNow(key.pos().getX()>>4,key.pos().getZ()>>4);
+            if(chunk!=null) {
+                unloadedTables.remove(tableId);
+                if(!chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE)) removeTable(level,key.pos());
+            } else if(games.containsKey(tableId)) {
+                unloadedTables.add(tableId);
             }
         }
         for (Map.Entry<UUID, Prototype> entry : List.copyOf(games.entrySet())) {
@@ -509,29 +702,34 @@ public final class LobbyService {
         }
     }
 
-    /** Temporary prototypes intentionally have no saved state in this version. */
+    /** Save before detaching runtime ownership; native shutdown callbacks must never delete the archive. */
     public void stop() {
-        for (TableKey key : List.copyOf(tables.keySet())) {
-            ServerLevel level = server.getLevel(key.dimension());
-            if (level != null) removeTable(level, key.pos());
-        }
+        if(stopping) return;
+        stopping=true;
+        for(var entry:List.copyOf(games.entrySet())) refreshPresence(entry.getKey(),entry.getValue());
+        save();
+        // stopServer subsequently invokes native saves. Cleared runtime maps are never a new empty checkpoint.
+        detached=true;
         games.clear();
         views.clear();
         tables.clear();
         locations.clear();
         disconnected.clear();
         pendingNotices.clear();
+        unloadedTables.clear();
+        blockedTables.clear();
         registry.clear();
     }
 
     private boolean accessible(ServerPlayer player, TableKey key) {
-        return player.isAlive() && !player.isSpectator() && player.level().dimension().equals(key.dimension())
-                && player.level().isLoaded(key.pos())
-                && player.level().getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE)
-                && player.isWithinBlockInteractionRange(key.pos(), 1.0);
+        if(key==null || !player.isAlive() || player.isSpectator() || !player.level().dimension().equals(key.dimension())
+                || !player.isWithinBlockInteractionRange(key.pos(),1.0)) return false;
+        LevelChunk chunk=player.level().getChunkSource().getChunkNow(key.pos().getX()>>4,key.pos().getZ()>>4);
+        return chunk!=null && chunk.getBlockState(key.pos()).is(ModBlocks.MAHJONG_TABLE);
     }
 
     private void broadcast(LobbyRegistry.Snapshot snapshot, UUID actor, String feedback) {
+        archiveDirty=true;
         for (Map.Entry<UUID, View> entry : views.entrySet()) {
             if (!entry.getValue().tableId().equals(snapshot.tableId())) continue;
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());

@@ -194,5 +194,8 @@
   "screen.riichicraft.game.match_end.dealer_win_stop": "整场结束：末庄和了止",
   "screen.riichicraft.game.match_end.dealer_tenpai_stop": "整场结束：末庄听牌止",
   "screen.riichicraft.game.match_end.target_reached": "整场结束：目标点达成",
-  "screen.riichicraft.game.match_end.extension_limit": "整场结束：延长末局完成"
+  "screen.riichicraft.game.match_end.extension_limit": "整场结束：延长末局完成",
+  "message.riichicraft.persistence.corrupt": "麻将存档读取或校验失败，原文件已保留。暂时无法开启牌局，请联系管理员修复存档。",
+  "message.riichicraft.persistence.table_corrupt": "这张桌子的牌局存档无法恢复，原记录和座位已保留；拆桌不会重置损坏记录，请联系管理员修复。",
+  "message.riichicraft.persistence.save_failed": "麻将牌局保存失败，最近的操作可能尚未写入磁盘。请联系管理员检查服务器日志。"
 }

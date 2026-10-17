@@ -194,5 +194,8 @@
   "screen.riichicraft.game.match_end.dealer_win_stop": "Match complete: dealer win stop",
   "screen.riichicraft.game.match_end.dealer_tenpai_stop": "Match complete: dealer tenpai stop",
   "screen.riichicraft.game.match_end.target_reached": "Match complete: target reached",
-  "screen.riichicraft.game.match_end.extension_limit": "Match complete: extension limit"
+  "screen.riichicraft.game.match_end.extension_limit": "Match complete: extension limit",
+  "message.riichicraft.persistence.corrupt": "The mahjong archive could not be read or validated. The original file is retained. Games are unavailable until an administrator repairs it.",
+  "message.riichicraft.persistence.table_corrupt": "This table's saved game could not be restored. Its record and seats are retained; breaking the table will not reset the damaged record. Contact an administrator.",
+  "message.riichicraft.persistence.save_failed": "The mahjong game could not be saved. Recent changes may not be on disk. Ask an administrator to check the server log."
 }

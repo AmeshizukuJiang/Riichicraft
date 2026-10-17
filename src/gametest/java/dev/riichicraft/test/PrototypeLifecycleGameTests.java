@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -249,37 +250,43 @@ public final class PrototypeLifecycleGameTests {
     }
 
     @GameTest
-    public void realBlockRemovalAndChunkUnloadCallbackReleaseActiveGamesAndSeats(GameTestHelper helper) {
+    public void realBlockRemovalClearsButChunkUnloadCallbackPreservesActiveGamesAndSeats(GameTestHelper helper) {
         BlockPos relative = new BlockPos(3, 2, 3);
         try (Scenario scenario = Scenario.create(helper, relative)) {
             helper.setBlock(relative, Blocks.AIR);
             scenario.assertRemoved("Actual table block replacement must remove the active game and all seats");
         }
         try (Scenario scenario = Scenario.create(helper, relative)) {
+            List<PlayState> original=scenario.playStates();
             // Exercises the registered callback with a real loaded chunk; does not claim an engine-driven chunk unload.
             ServerChunkEvents.CHUNK_UNLOAD.invoker().onChunkUnload(helper.getLevel(), helper.getLevel().getChunkAt(scenario.tablePos));
-            scenario.assertRemoved("The chunk-unload listener must remove its active game and all seat indexes");
+            helper.assertTrue(scenario.game(0).paused()
+                            && scenario.players.stream().allMatch(player->scenario.service.registry().tableForPlayer(player.getUUID()).orElseThrow().equals(scenario.tableId)),
+                    "The unload listener pauses and saves the game while preserving every global seat");
+            scenario.assertPlayStates(original,"Chunk unload cannot consume tiles or replace the response window");
+            for(int seat=0;seat<4;seat++) scenario.reopen(seat);
+            scenario.service.tick();
+            for(int seat=0;seat<4;seat++) scenario.gameAction(seat,GameActionPayload.RESUME,-1);
+            helper.assertTrue(!scenario.game(0).paused(),"The loaded table needs and accepts four fresh resume confirmations");
         }
         helper.succeed();
     }
 
     @GameTest
-    public void stoppingClearsEveryActiveTableAndRevokesTheirViews(GameTestHelper helper) {
+    public void nativeAutosaveKeepsEveryLiveTableAndItsCurrentAuthority(GameTestHelper helper) {
         try (Scenario first = Scenario.create(helper, new BlockPos(2, 2, 2));
                 Scenario second = Scenario.create(helper, new BlockPos(4, 2, 4))) {
             GameSnapshot oldFirst = first.game(0);
             GameSnapshot oldSecond = second.game(0);
-            first.service.stop();
-            first.assertRemoved("Stopping must clear the first table's game, lobby and player indexes");
-            second.assertRemoved("Stopping must clear every table rather than only the currently viewed one");
-            first.service.handleAction(first.players.getFirst(), new LobbyActionPayload(first.viewIds[0], 0,
-                    LobbyActionPayload.JOIN, false));
+            ServerLifecycleEvents.BEFORE_SAVE.invoker().onBeforeSave(helper.getLevel().getServer(),true,false);
+            helper.assertTrue(first.game(0).equals(oldFirst) && second.game(0).equals(oldSecond),
+                    "A real registered native save hook snapshots every table without replacing live game state");
             second.service.handleGameAction(second.players.getFirst(), new GameActionPayload(second.viewIds[0],
                     oldSecond.gameId(), oldSecond.revision(), GameActionPayload.DISCARD, oldSecond.drawnTile()));
             first.service.handleGameAction(first.players.getFirst(), new GameActionPayload(first.viewIds[0],
-                    oldFirst.gameId(), oldFirst.revision(), GameActionPayload.RESUME, -1));
-            first.assertRemoved("Old lobby and game intentions must not resurrect state after stop");
-            second.assertRemoved("Stopping must revoke both tables' view authority");
+                    oldFirst.gameId(), oldFirst.revision(), GameActionPayload.DISCARD, oldFirst.drawnTile()));
+            helper.assertTrue(first.game(0).revision()>oldFirst.revision() && second.game(0).revision()>oldSecond.revision(),
+                    "Both authenticated views can continue playing after autosave");
         }
         helper.succeed();
     }
