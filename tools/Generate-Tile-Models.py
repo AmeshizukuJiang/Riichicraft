@@ -59,4 +59,11 @@ for key in KEYS:
 write(ASSETS / 'items/mahjong_tile.json', {
     'model': {'type': 'minecraft:model', 'model': 'riichicraft:item/mahjong_tiles/1m'},
 })
-print('Generated shared 3D tile body, 37 face models, 37 appearance definitions and default item definition.')
+write(ASSETS / 'models/item/mahjong_tiles/hidden.json', {
+    'parent': 'riichicraft:item/mahjong_tiles/body',
+    'textures': {'face': 'riichicraft:item/mahjong_tiles/back'},
+})
+write(ASSETS / 'items/mahjong_tiles/hidden.json', {
+    'model': {'type': 'minecraft:model', 'model': 'riichicraft:item/mahjong_tiles/hidden'},
+})
+print('Generated shared tile body, 37 faces, hidden display model and matching item definitions.')

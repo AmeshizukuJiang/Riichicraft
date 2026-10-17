@@ -72,6 +72,7 @@ final class ThreePlayerPersistenceClientScenario {
                         if(!extracted){context.clickScreenButton("screen.riichicraft.game.return_lobby");sync(connection);start(context,first,connection,session.table);}
                     }
                     require(extracted,"One of eight normal sanma deals establishes kita");
+                    if(furniture) awaitPublic(context,session.table.tableId(),false);
                     first.runOnServer(s->{var service=LobbyService.get(s);session.saved=cores(service,session);session.identities=session.table.fixtures().stream().map(f->new Identity(f.player().getUUID(),f.player().getGameProfile().name())).toList();
                         if(furniture) {s.overworld().setBlockAndUpdate(session.target.south(2),Blocks.AIR.defaultBlockState());service.tick();require(service.gameView(session.table.tableId(),session.player).paused(),"Missing chair pauses before the durable save");}
                         require(service.save(),"Real sanma checkpoint written");});sync(connection);
@@ -96,6 +97,7 @@ final class ThreePlayerPersistenceClientScenario {
                     sync(connection);
                     second.runOnServer(s->require(cores(LobbyService.get(s),session).equals(session.saved),"Actual new server restores all three private hands, live wall, kita and pending draw source without redealing"));
                     require(snapshot(context).game().paused()&&snapshot(context).seats().size()==3,"Restored sanma waits for three confirmations");
+                    if(furniture) awaitPublic(context,tableId,true);
                     shot(context,furniture?"riichicraft-furniture-restored":"riichicraft-three-restored");
                     var current=snapshot(context).game();
                     context.runOnClient(c->ClientPlayNetworking.send(new GameActionPayload(session.obsoleteView,current.gameId(),current.revision(),GameActionPayload.RESUME,-1)));sync(connection);
@@ -135,6 +137,13 @@ final class ThreePlayerPersistenceClientScenario {
             connection.getServerPlayer().teleportTo(center.getX()+4.5,center.getY()+2.5,center.getZ()+4.5);});
         sync(connection);connection.waitForChunksRender();context.getInput().lookAt(center);context.waitTicks(3);
         shot(context,"riichicraft-furniture-world");
+        context.getInput().resizeWindow(1280,960);
+        context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,TableDisplayGameTests.showcase(true)));
+        context.getInput().pressKey(GLFW.GLFW_KEY_F1);context.waitTicks(3);
+        context.takeScreenshot("riichicraft-tabletop-layout-three");
+        context.getInput().pressKey(GLFW.GLFW_KEY_F1);
+        context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.hide());
+        context.getInput().resizeWindow(640,480);
         server.runOnServer(s->connection.getServerPlayer().teleportTo(center.getX()+0.5,center.getY(),center.getZ()+3.5));
         sync(connection);context.waitTicks(2);
     }
@@ -152,5 +161,10 @@ final class ThreePlayerPersistenceClientScenario {
         require(snapshot(context).pos().equals(center),"A real mouse click on the rim opens the canonical table center");
     }
     private static ServerPlayer player(Session session,TestDedicatedServerConnection connection,int seat){return seat==0?connection.getServerPlayer():session.table.fixtures().get(seat-1).player();}
+    private static void awaitPublic(ClientGameTestContext context,UUID id,boolean paused) {
+        context.waitFor(c->dev.riichicraft.client.TableDisplayClient.snapshots().stream().anyMatch(p->p.tableId().equals(id)
+                && p.snapshot().seats().size()==3 && p.snapshot().paused()==paused
+                && p.snapshot().seats().stream().mapToInt(s->s.norths().size()).sum()==1),200);
+    }
     private static List<Core> cores(LobbyService service,Session session){var result=new ArrayList<Core>();result.add(Core.of(service.gameView(session.table.tableId(),session.player)));for(var fixture:session.table.fixtures())result.add(Core.of(service.gameView(session.table.tableId(),fixture.player().getUUID())));return List.copyOf(result);}
 }

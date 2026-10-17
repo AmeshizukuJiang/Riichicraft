@@ -1,6 +1,6 @@
 # 三人麻将
 
-三麻自`0.0.7-dev`接入；当前开发版本`0.0.8-dev`。沿用实体麻将桌与手牌界面，支持三人单局、东风、半庄；规则来源和用户裁定见 [三麻规则表](THREE_PLAYER_RULES.md)，独立接口见 [三麻核心](THREE_PLAYER_CORE.md)，最终执行证据见 [验证记录](VALIDATION.md)。
+三麻自`0.0.7-dev`接入；当前开发版本`0.0.10-dev`。沿用实体麻将桌与手牌界面，支持三人单局、东风、半庄；规则来源和用户裁定见 [三麻规则表](THREE_PLAYER_RULES.md)，独立接口见 [三麻核心](THREE_PLAYER_CORE.md)，最终执行证据见 [验证记录](VALIDATION.md)。
 
 ## 入座与赛制
 
@@ -36,3 +36,5 @@
 ![拔北后继续摸打](images/three-kita.png)
 
 ![正常停服后恢复原三麻牌局](images/three-restored.png)
+
+`0.0.10-dev`大桌已加入[公开牌面与附近旁观](TABLETOP_DISPLAY.md)，包含三席暗手牌背和已拔北；开局、动作与恢复仍按本文流程。

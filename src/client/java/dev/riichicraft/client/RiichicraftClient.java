@@ -6,5 +6,6 @@ public final class RiichicraftClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         LobbyClient.initialize();
+        TableDisplayClient.initialize();
     }
 }

@@ -49,6 +49,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
                 DrawDiscardClientScenario.runFinishedReconnect(context, server);
                 MatchClientScenario.run(context, server);
                 ThreePlayerClientScenario.run(context, server);
+                TabletopClientScenario.run(context, server);
             }
             PersistenceClientScenario.run(context,properties);
             ThreePlayerPersistenceClientScenario.run(context,properties);
