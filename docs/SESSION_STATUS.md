@@ -9,7 +9,7 @@
 - `GameArchiveCodec`重放当前小局已接受动作；整场保留原起始账本／元数据，不重新随机发牌、不重复扣棒或支付。`TableArchiveStore`带版本、长度上限及完整性校验，同目录原子替换；世界文件`<世界>/data/riichicraft/tables.dat`。损坏核心仍保留原记录和UUID占座；全文件损坏阻止新桌覆盖。
 - 独立脚本20套共**2,346,331**断言，最终离线构建55秒共**2,346,334**断言（多3个项目内类路径校验），**42 required GameTest／11.19秒全过**。最终真实TCP回归**1分44秒**通过，含原完整东风／半庄及同世界正常停服／新专用服务实例恢复部分响应、四票继续、旧视图拒绝和明确终止。全新Java进程另验证核心归档字节稳定；TCP服务器重建在同一JVM内，不能称为操作系统重启或强杀崩溃测试。
 - 首轮真实TCP发现区块加载回调同步查询世界而死锁，已只读传入`LevelChunk`，tick／权限检查使用`getChunkNow`，presence延后ENDtick；上述最终构建／TCP均为修复后回归，未放宽看门狗。
-- 当前产物`build/libs/riichicraft-0.0.6-dev.jar`，388,298字节，SHA-256 `40376e82f7b02243b2822aa104bcb6c94354df7f13ab69c25cff452f10970c83`。jar219条目、121规则class、零测试条目；截图`docs/images/persistence-*.png`。静态检查／Git最终状态见 [VALIDATION.md](VALIDATION.md)。
+- 当前产物`build/libs/riichicraft-0.0.6-dev.jar`，388,298字节，SHA-256 `40376e82f7b02243b2822aa104bcb6c94354df7f13ab69c25cff452f10970c83`。jar219条目、121规则class、零测试条目；截图`docs/images/persistence-*.png`。资源／语言／Markdown／差异检查通过，Gradle daemon已停止；证据见 [VALIDATION.md](VALIDATION.md)。
 - 一个真实TCP客户端＋三服务端内存夹具，不是四真人验收；未做正式启动器安装、整台机器重启或硬崩溃测试。外部文件、全局配置、启动器、玩家存档和外部记忆均无访问授权。
 
 ## 上一个已验证节点：四人单局
@@ -46,5 +46,5 @@
 - 使用 `tools/Invoke-Gradle.ps1` 和项目内 JDK 25.0.4.1、Gradle 9.7.1／缓存；不要并发运行 Gradle。独立验证：`tools/Test-Rules.ps1`。
 - 资源检查：`tools/Check-Resources.ps1`；构建可传 `--offline '-Ploom_fabric_repository=https://maven2.fabricmc.net/' build`。
 - 用户已同意本项目本地测试服务器 EULA，实际 TCP：`tools/Invoke-Gradle.ps1 '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' runClientGameTest`。仅一真实客户端＋三名原生 `ServerPlayer`／`EmbeddedChannel` 夹具；运行世界和日志只在项目内忽略目录。
-- 用户已授权验证节点直接commit／push／tag。远程目标`https://github.com/AmeshizukuJiang/Riichicraft.git`；当前准备发布`codex/game-persistence`及开发tag`v0.0.6-dev`，最终同步状态见本页与验证记录的Git段。已有`v0.0.5-dev`与旧正式`v0.0.3`不移动；不强推、不修改全局Git配置。
+- 用户已授权验证节点直接commit／push／tag。远程目标`https://github.com/AmeshizukuJiang/Riichicraft.git`；已成功推送`codex/game-persistence`并建立上游，开发tag`v0.0.6-dev`指向含最终文档／截图的`74d036f`（2026-10-17）。后续纯记录同步提交不改变产物或移动tag；已有`v0.0.5-dev`与旧正式`v0.0.3`不移动。没有正式`v0.0.6`发布、强推或全局Git配置修改。
 - 截图测试会重建生成目录，保留证据复制到 `docs/images`；原创资源和代码提交，工具／缓存／世界／构建／日志不提交。当前接入没有新生产依赖。

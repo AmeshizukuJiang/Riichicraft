@@ -23,7 +23,7 @@
 
 截图复制到`docs/images/persistence-before-stop.png`、`persistence-restored.png`、`persistence-resumed.png`，旧单局与整场截图保留。异常崩溃仅保证到最近成功保存，不在每次动作强制落盘；损坏记录保留、提示且阻止自动开新局覆盖。没有三麻、NPC、倒计时或跨世界长期点数账户。
 
-Git：世界容器`5063e95`、核心归档`b6513d9`、服务接入及实际重启修复`f1786f3`已本地提交；文档／截图提交、开发分支／tag最终推送状态在完成后补记。用户授权目标仍为`https://github.com/AmeshizukuJiang/Riichicraft.git`，不强推或移动已发布标签；主动文件读写仅限工作文件夹。
+Git：世界容器`5063e95`、核心归档`b6513d9`、服务接入及实际重启修复`f1786f3`、文档／截图`74d036f`均已提交。已成功推送`codex/game-persistence`并建立上游，开发tag`v0.0.6-dev`指向`74d036f`；后续纯记录同步提交不改变产物或移动tag。用户授权目标仍为`https://github.com/AmeshizukuJiang/Riichicraft.git`，没有正式`v0.0.6`发布、强推或旧标签移动；主动文件读写仅限工作文件夹。
 
 ## v0.0.5-dev 四人东风／半庄整场：2026-10-17
 
