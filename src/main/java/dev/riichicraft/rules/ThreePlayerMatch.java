@@ -91,6 +91,9 @@ public final class ThreePlayerMatch {
 
     static ThreePlayerMatch restore(ThreePlayerArchiveCodec.MatchArchive archive,RoundFactory factory) { return new ThreePlayerMatch(archive,factory); }
 
+    /** Read-only metadata from the current round's accepted public declarations. */
+    public int addedKanTile(int seat, int meldIndex) { return round.addedKanTile(seat, meldIndex); }
+
     /** Current round only: earlier rounds contribute identity/progression metadata, not unbounded action history. */
     ThreePlayerArchiveCodec.MatchArchive archive() {
         return new ThreePlayerArchiveCodec.MatchArchive(matchId,format,initialDealer,roundIndex,revision,continueEpoch,phase,

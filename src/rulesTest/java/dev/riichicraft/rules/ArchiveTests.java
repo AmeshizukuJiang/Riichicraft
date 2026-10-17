@@ -150,9 +150,12 @@ public final class ArchiveTests {
             var a=addedKanRound(); var own=a.view(PLAYERS.get(1));
             var choice=own.turnOptions().kans().stream().filter(k->k.kind()==KanActions.Kind.ADDED).findFirst().orElseThrow();
             List<Integer> originalPon=a.serverState().hands().get(1).melds().getFirst().tiles();
+            check(a.addedKanTile(1,0)==-1,"a pon has no established added tile");
             check(a.declareKan(PLAYERS.get(1),own.command(),choice)==Status.ACCEPTED,"actual original pon upgrades only through its red-fourth-copy proposal");
             check(a.view(PLAYERS.get(2)).responses().contains(Simple.RON) && a.view(PLAYERS.get(3)).responses().contains(Simple.RON),"both real hands have cleared earlier temporary no-yaku misses on their intervening draws");
             respond(a,2,Simple.PASS); var b=restore(a); bothRespond(a,b,3,robbery?Simple.RON:Simple.PASS);
+            check(b.addedKanTile(1,0)==(robbery?-1:16),"only an established added kan exposes its exact lowest-ID red fourth copy");
+            check(restore(b).addedKanTile(1,0)==b.addedKanTile(1,0),"public added-kan metadata survives native archive replay without changing the archive format");
             if(robbery) {
                 check(b.serverState().hands().get(1).melds().getFirst().tiles().equals(originalPon)
                         && b.serverState().robbedTile().orElseThrow()==16 && b.serverState().wall().replacementDraws()==0,"robbed kakan retains its original physical pon and removes only the red fourth tile");

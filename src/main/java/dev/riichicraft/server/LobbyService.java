@@ -21,6 +21,9 @@ import dev.riichicraft.network.GameSnapshot;
 import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.network.LobbyClosedPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
+import dev.riichicraft.network.TableDisplaySnapshot;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
+import net.minecraft.core.Direction;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +70,9 @@ public final class LobbyService {
     private final Map<UUID, TableArchiveStore.Table> blockedTables = new HashMap<>();
     private final Set<UUID> unloadedTables = new HashSet<>();
     private final Map<UUID,Integer> structureCounts = new HashMap<>();
+    private final TableDisplaySync tableDisplaySync = new TableDisplaySync();
+    private final Map<UUID,List<Integer>> displaySides = new HashMap<>();
+    private int displayTicks;
     private boolean archiveBlocked;
     private boolean archiveDirty;
     private boolean saveFailed;
@@ -136,6 +142,10 @@ public final class LobbyService {
         FourPlayerRound.View roundView(UUID recipient) { return match==null?game.view(recipient):match.view(recipient).round(); }
         boolean three() { return threeGame!=null || threeMatch!=null; }
         ThreePlayerRound.View threeView(UUID recipient) { return threeMatch==null?threeGame.view(recipient):threeMatch.view(recipient).round(); }
+        int addedKanTile(int seat, int index) {
+            if (three()) return threeMatch == null ? threeGame.addedKanTile(seat,index) : threeMatch.addedKanTile(seat,index);
+            return match == null ? game.addedKanTile(seat,index) : match.addedKanTile(seat,index);
+        }
         boolean intermission() { return three()?threeMatch!=null && threeMatch.view(null).phase()==ThreePlayerMatch.Phase.ROUND_RESULT:match!=null && match.view(null).phase()==FourPlayerMatch.Phase.ROUND_RESULT; }
         boolean clearNext() { return three()?threeMatch.clearNextConfirmations():match.clearNextConfirmations(); }
         byte[] archive() { return three()?(threeMatch==null?ThreePlayerArchiveCodec.encodeRound(threeGame):ThreePlayerArchiveCodec.encodeMatch(threeMatch)):(match==null?GameArchiveCodec.encodeRound(game):GameArchiveCodec.encodeMatch(match)); }
@@ -329,6 +339,10 @@ public final class LobbyService {
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> get(server).disconnect(handler.player));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> get(server).connected(handler.player));
+        ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, previous, current) -> {
+            LobbyService service = SERVICES.get(current.getServer());
+            if (service != null) service.tableDisplaySync.forget(player.getUUID());
+        });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             LobbyService service = SERVICES.get(server);
             if (service != null) service.tick();
@@ -859,6 +873,51 @@ public final class LobbyService {
                 sendClosed(player, entry.getValue(), "message.riichicraft.lobby.unavailable");
             }
         }
+        if (++displayTicks % 5 == 0) tableDisplaySync.tick(server, publicTableDisplays());
+    }
+
+    /** No private hand/action data leaves this spectator-only adapter. Does not load chunks. */
+    List<TableDisplaySync.Table> publicTableDisplays() {
+        List<TableDisplaySync.Table> result = new ArrayList<>();
+        displaySides.keySet().retainAll(games.keySet());
+        for (var entry : games.entrySet()) {
+            UUID id = entry.getKey(); var prototype = entry.getValue(); var key = locations.get(id);
+            if (key == null || blockedTables.containsKey(id)) continue;
+            var level = server.getLevel(key.dimension());
+            var root = level == null ? null : TableStructure.loadedState(level, key.pos());
+            if (root == null || !root.is(ModBlocks.LARGE_MAHJONG_TABLE)) continue;
+            var layout = TableStructure.inspect(level, key.pos());
+            if (!layout.loaded() || !layout.bodyComplete()) continue;
+            var facing = root.getValue(dev.riichicraft.block.LargeMahjongTableBlock.FACING);
+            var front = facing.getOpposite();
+            if (layout.matches(prototype.players.size()) || !displaySides.containsKey(id)) {
+                int empties = 0;
+                for (var side : Direction.Plane.HORIZONTAL)
+                    if (TableStructure.loadedState(level, key.pos().relative(side, 2)).is(ModBlocks.EMPTY_CHAIR)) empties++;
+                // A missing ordinary chair still leaves the empty side unambiguous after restart.
+                if (prototype.players.size() == 3 && empties != 1) continue;
+                List<Integer> sides = new ArrayList<>(); var direction = front;
+                for (int i = 0; i < 4; i++, direction = direction.getCounterClockWise()) {
+                    var chair = TableStructure.loadedState(level, key.pos().relative(direction, 2));
+                    if (prototype.players.size() == 4 || !chair.is(ModBlocks.EMPTY_CHAIR)) sides.add(displaySide(direction));
+                }
+                displaySides.put(id, List.copyOf(sides));
+            }
+            var sides = displaySides.get(id);
+            if (sides == null || sides.size() != prototype.players.size()) continue;
+            var snapshot = TableDisplaySnapshot.fromSpectator(gameView(id, null), displaySide(front), sides, prototype::addedKanTile);
+            result.add(new TableDisplaySync.Table(key.dimension(), id, key.pos(), snapshot));
+        }
+        return List.copyOf(result);
+    }
+
+    private static int displaySide(Direction side) {
+        return switch (side) { case SOUTH -> 0; case EAST -> 1; case NORTH -> 2; case WEST -> 3; default -> throw new IllegalArgumentException("horizontal side"); };
+    }
+
+    /** Read-only public integration view, including when no participant has a GUI open. */
+    public TableDisplaySnapshot tableDisplay(UUID tableId) {
+        return publicTableDisplays().stream().filter(t -> t.id().equals(tableId)).map(TableDisplaySync.Table::snapshot).findFirst().orElse(null);
     }
 
     /** Save before detaching runtime ownership; native shutdown callbacks must never delete the archive. */
@@ -877,6 +936,7 @@ public final class LobbyService {
         pendingNotices.clear();
         unloadedTables.clear();
         structureCounts.clear();
+        displaySides.clear();
         blockedTables.clear();
         registry.clear();
     }

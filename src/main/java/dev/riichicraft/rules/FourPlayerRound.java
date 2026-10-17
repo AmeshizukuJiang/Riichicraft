@@ -346,6 +346,14 @@ public final class FourPlayerRound {
         acceptedActions.add(action); revision=Math.incrementExact(revision); assertConservation(); return Status.ACCEPTED;
     }
 
+    /** Read-only established public declaration metadata, also reconstructed by archive replay. */
+    public int addedKanTile(int seat, int meldIndex) {
+        if (seat < 0 || seat >= 4 || meldIndex < 0 || meldIndex >= hands.get(seat).melds().size()) throw new IllegalArgumentException("meld index");
+        if (hands.get(seat).melds().get(meldIndex).kind() != Meld.Kind.OPEN_KAN) return -1;
+        return acceptedActions.stream().filter(a -> a.kind() == GameArchiveCodec.ActionKind.ADDED_KAN && a.seat() == seat && a.meldIndex() == meldIndex)
+                .map(a -> a.tiles().getFirst()).findFirst().orElse(-1);
+    }
+
     /** Frozen server archive; callers must capture it on the owning server thread. */
     GameArchiveCodec.RoundArchive archive() {
         return new GameArchiveCodec.RoundArchive(archiveStart,acceptedActions,archiveFingerprint());

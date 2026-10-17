@@ -12,6 +12,7 @@ public final class LobbyNetworking {
         PayloadTypeRegistry.serverboundPlay().register(GameActionPayload.TYPE, GameActionPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(LobbySnapshotPayload.TYPE, LobbySnapshotPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(LobbyClosedPayload.TYPE, LobbyClosedPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(TableDisplayPayload.TYPE, TableDisplayPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(LobbyActionPayload.TYPE, (payload, context) ->
                 LobbyService.get(context.server()).handleAction(context.player(), payload));
         ServerPlayNetworking.registerGlobalReceiver(GameActionPayload.TYPE, (payload, context) ->

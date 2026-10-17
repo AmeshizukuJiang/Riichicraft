@@ -390,6 +390,14 @@ public final class ThreePlayerRound {
         acceptedActions.add(action); revision=Math.incrementExact(revision); assertConservation(); return Status.ACCEPTED;
     }
 
+    /** Established added-kan tile, derived from accepted history without changing archive state. */
+    public int addedKanTile(int seat, int meldIndex) {
+        if (seat < 0 || seat >= 3 || meldIndex < 0 || meldIndex >= hands.get(seat).melds().size()) throw new IllegalArgumentException("meld index");
+        if (hands.get(seat).melds().get(meldIndex).kind() != Meld.Kind.OPEN_KAN) return -1;
+        return acceptedActions.stream().filter(a -> a.kind() == ThreePlayerArchiveCodec.ActionKind.ADDED_KAN && a.seat() == seat && a.meldIndex() == meldIndex)
+                .map(a -> a.tiles().getFirst()).findFirst().orElse(-1);
+    }
+
     /** Frozen server archive; callers must capture it on the owning server thread. */
     ThreePlayerArchiveCodec.RoundArchive archive() {
         return new ThreePlayerArchiveCodec.RoundArchive(archiveStart,acceptedActions,archiveFingerprint());

@@ -91,6 +91,9 @@ public final class FourPlayerMatch {
 
     static FourPlayerMatch restore(GameArchiveCodec.MatchArchive archive,RoundFactory factory) { return new FourPlayerMatch(archive,factory); }
 
+    /** Read-only metadata from the current round's accepted public declarations. */
+    public int addedKanTile(int seat, int meldIndex) { return round.addedKanTile(seat, meldIndex); }
+
     /** Current round only: earlier rounds contribute identity/progression metadata, not unbounded action history. */
     GameArchiveCodec.MatchArchive archive() {
         return new GameArchiveCodec.MatchArchive(matchId,format,initialDealer,roundIndex,revision,continueEpoch,phase,
