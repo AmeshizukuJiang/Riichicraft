@@ -10,6 +10,7 @@
 - 最终离线`build`1分2秒、23套2,369,584断言与67 required GameTest／15.17秒成功。最终`jar sourcesJar runClientGameTest`2分28秒成功，保留原三／四麻、家具和存档回归；新增一名未入座真实TCP旁观者＋四名原生服务端内存夹具，合法鸣牌／摸打、私手集合不泄露、范围进出、下界往返、暂停／四票恢复、终局保留、重连与回大厅／破桌清空。三麻正常停服重开后的公开三席、已拔北和暂停也核对通过。
 - 四张`docs/images/tabletop-*.png`已保存查看；`live`为真实引擎牌局，`layout`为仅替换渲染输入的测试总览，不冒充同局成立所有鸣牌。107 JSON／105本地引用／45 PNG、双语键及117份生成资源重建哈希通过；JAR474条目、199规则class、零测试条目，原许可随包且字节校验相同；Gradle已停止。
 - 产物`build/libs/riichicraft-0.0.10-dev.jar`，784,428字节，SHA-256 `577da65c58d91e543755ef67acae26eefcafff597d43186b50cf1ff4f4cdd07d`。公开同步与布局提交`855358b`；最终客户端／文档和Git远程状态以实时refs为准，origin仍为用户指定仓库。上一版`codex/mahjong-tile-design`与`v0.0.9-dev`已在本轮开工时成功原子同步，旧标签未移动。
+- 完整客户端／截图／验证提交`71cd2f4`，本地tag`v0.0.10-dev`指向它。三次原子推送前两次低速超时、最后GitHub443连接失败，**本批远程同步尚未确认**；日志`.tmp/github-push-tabletop-first-slow.err.log`、`github-push-tabletop-second-slow.err.log`、`github-push-tabletop.err.log`。下一次先查远程refs再普通推送该分支／tag，不移动标签。后续纯记录提交不改变产物。
 - 没有人工三／四真人长期验收、坐姿实体、生存配方、点棒／骰子、牌墙或动作动画。正常重开证据仍为同JVM内不同原生专用服务器实例，不称为整机重启或硬崩溃。下一步讨论牌墙布局和三／四麻补牌显示路径。
 
 ## 上一节点：麻将牌模型与手牌

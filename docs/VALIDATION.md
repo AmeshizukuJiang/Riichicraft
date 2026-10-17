@@ -22,6 +22,8 @@
 
 [真实四麻旁观](images/tabletop-live-four.png)、[真实终局保留](images/tabletop-live-result.png)、[四麻布局总览](images/tabletop-layout-four.png)、[三麻布局总览](images/tabletop-layout-three.png)。公开适配／网络／几何提交`855358b`，后续完整提交以Git记录为准；本轮开工已成功同步上一版分支和`v0.0.9-dev`至指定origin。新开发检查点不移动旧标签，不上传正式Release。主动工具、缓存、测试与文件读写均限工作区，未读外部记忆、启动器或玩家存档。
 
+最终Markdown检查28份／265个本地链接与45役名通过。完整客户端、截图和验证提交`71cd2f4`，本地tag`v0.0.10-dev`指向它。新分支／tag三次原子推送先后报两次低速超时与一次GitHub443连接失败，远程是否收齐尚未确认，不记录为成功；日志`.tmp/github-push-tabletop-first-slow.err.log`、`github-push-tabletop-second-slow.err.log`、`github-push-tabletop.err.log`。后续记录提交不改JAR或移动tag；上一版已同步的事实保持不变。
+
 ## v0.0.9-dev 麻将牌模型、物品与图案手牌：2026-10-17
 
 用户确认深绿素面背、乳白牌体、原素材赤五与纯白无框白板；本批为37种外观、统一立体模型、可拿取物品和手牌图案，世界桌面留到下一步。范围、获取与资源许可见[麻将牌说明](MAHJONG_TILES.md)。没有改动规则核心、牌局协议或归档格式，也没有新增生产依赖。
