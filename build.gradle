@@ -28,6 +28,7 @@ sourceSets {
         java {
             srcDir 'src/main/java'
             include 'dev/riichicraft/rules/**'
+            include 'dev/riichicraft/persistence/**'
             include 'dev/riichicraft/game/TileCatalog.java'
         }
         compileClasspath = files()

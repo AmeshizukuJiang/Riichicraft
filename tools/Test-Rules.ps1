@@ -31,6 +31,7 @@ try {
 
     $sources = @((Join-Path $projectRoot 'src/main/java/dev/riichicraft/game/TileCatalog.java'))
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/main/java/dev/riichicraft/rules') -Filter '*.java' -File -Recurse | ForEach-Object FullName)
+    $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/main/java/dev/riichicraft/persistence') -Filter '*.java' -File -Recurse | ForEach-Object FullName)
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/rulesTest/java') -Filter '*.java' -File -Recurse | ForEach-Object FullName)
 
     # A fresh, empty classpath ensures that no game or globally installed test library is needed.
