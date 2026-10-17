@@ -45,5 +45,5 @@
 - 使用 `tools/Invoke-Gradle.ps1` 和项目内 JDK 25.0.4.1、Gradle 9.7.1／缓存；不要并发运行 Gradle。独立验证：`tools/Test-Rules.ps1`。
 - 资源检查：`tools/Check-Resources.ps1`；构建可传 `--offline '-Ploom_fabric_repository=https://maven2.fabricmc.net/' build`。
 - 用户已同意本项目本地测试服务器 EULA，实际 TCP：`tools/Invoke-Gradle.ps1 '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' runClientGameTest`。仅一真实客户端＋三名原生 `ServerPlayer`／`EmbeddedChannel` 夹具；运行世界和日志只在项目内忽略目录。
-- 用户已授权验证节点直接 commit／push／tag。远程目标 `https://github.com/AmeshizukuJiang/Riichicraft.git`；本分支最初推送遇GitHub443连接失败，最终同步结果以本文件后续记录和Git为准。不强推、不移动旧tag、不修改全局Git配置；不要因一次网络失败改用外部配置或凭据文件。
+- 用户已授权验证节点直接 commit／push／tag。远程目标 `https://github.com/AmeshizukuJiang/Riichicraft.git`；本分支最初遇GitHub443连接失败，最终已成功推送`codex/four-player-matches`并建立上游；开发tag `v0.0.5-dev`指向含最终文档／截图的`d494a94`（2026-10-17）。没有移动旧tag，没有发布正式`v0.0.5`。后续纯文档同步提交见Git日志；不强推、不修改全局Git配置。
 - 截图测试会重建生成目录，保留证据复制到 `docs/images`；原创资源和代码提交，工具／缓存／世界／构建／日志不提交。当前接入没有新生产依赖。

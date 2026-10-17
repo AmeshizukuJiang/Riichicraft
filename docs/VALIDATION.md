@@ -22,7 +22,7 @@
 
 截图已从生成目录复制到 `docs/images/match-lobby.png`、`match-intermission-reconnected.png`、`match-next-round.png`、`match-final-reconnected.png`、`match-south-round.png`、`match-south-final.png`；原单局历史截图保留。本轮没有新依赖、三麻、NPC、倒计时或跨停服存档恢复，仍是开发检查点而非四真人验收后的正式玩法发布。
 
-Git：排名核心 `20c0280`、设计接续 `62223cf`、完整推进与跨局验证 `e7e8817`、游戏接入与完整双赛制回归`750e1a1`已本地提交。最初推送因GitHub443约21秒连接失败；最终同步状态以当前Git与接续记录为准，不强推、不移动旧标签。主动文件读写均限仓库内。
+Git：排名核心`20c0280`、设计接续`62223cf`、完整推进与跨局验证`e7e8817`、游戏接入与完整双赛制回归`750e1a1`、最终文档／截图`d494a94`已提交。最初推送因GitHub443约21秒连接失败，最终已成功推送`codex/four-player-matches`并建立上游，开发tag `v0.0.5-dev`指向`d494a94`。后续仅同步记录的文档提交不改变产物或移动该tag；没有正式`v0.0.5`发布、强推或旧标签移动。主动文件读写均限仓库内。
 
 ## v0.0.4-dev 统一四人单局与游戏接入：2026-10-17
 
