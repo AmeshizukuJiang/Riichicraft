@@ -56,6 +56,54 @@ public final class FourPlayerMatch {
         usedRoundIds.add(round.view(null).roundId());
     }
 
+    /** Restore an isolated owner without creating/dealing a replacement round or paying any account twice. */
+    private FourPlayerMatch(GameArchiveCodec.MatchArchive archive,RoundFactory factory) {
+        matchId=archive.matchId(); format=archive.format(); initialDealer=archive.initialDealer(); this.factory=Objects.requireNonNull(factory,"factory");
+        players=archive.round().start().players(); roundIndex=archive.roundIndex(); revision=archive.revision(); continueEpoch=archive.continueEpoch();
+        round=FourPlayerRound.restore(archive.round()); var actual=round.view(null); var ledger=round.serverState().ledger();
+        // Validate outer metadata independently of the replayed current-round receipt.
+        new MatchRules.Context(format,initialDealer,roundIndex,ledger.honba(),ledger.points(),ledger.depositSticks());
+        usedRoundIds.addAll(archive.usedRoundIds()); confirmations.addAll(archive.confirmations());
+        if(revision<actual.revision() || continueEpoch<0 || continueEpoch>revision || usedRoundIds.isEmpty()
+                || usedRoundIds.size()!=archive.usedRoundIds().size() || !usedRoundIds.contains(actual.roundId())
+                || (long)usedRoundIds.size()-1>revision || roundIndex>usedRoundIds.size()-1
+                || confirmations.size()!=archive.confirmations().size() || confirmations.size()>3
+                || confirmations.stream().anyMatch(seat->seat<0 || seat>3)
+                || actual.dealerSeat()!=(initialDealer+roundIndex%4)%4 || actual.roundWind()!=27+roundIndex/4
+                || archive.round().start().points().stream().anyMatch(point->point<0)) {
+            throw new IllegalArgumentException("Invalid saved match metadata");
+        }
+        if(usedRoundIds.size()==1 && (roundIndex!=0 || archive.round().start().honba()!=0 || archive.round().start().deposits()!=0
+                || !archive.round().start().points().equals(List.of(25_000,25_000,25_000,25_000)))) {
+            throw new IllegalArgumentException("Initial match round must use initial accounts");
+        }
+        if(actual.phase()==FourPlayerRound.Phase.FINISHED) {
+            var decision=MatchRules.afterRound(new MatchRules.Context(format,initialDealer,roundIndex,ledger.honba(),ledger.points(),ledger.depositSticks()),actual.end().orElseThrow());
+            if(decision.finished()) { result=decision.result().orElseThrow(); phase=Phase.MATCH_RESULT; }
+            else { next=decision.next().orElseThrow(); phase=Phase.ROUND_RESULT; }
+        } else phase=Phase.PLAYING;
+        if(phase!=archive.phase() || phase!=Phase.ROUND_RESULT && !confirmations.isEmpty()
+                || phase==Phase.ROUND_RESULT && (continueEpoch==0 || revision-actual.revision()<confirmations.size())
+                || !java.security.MessageDigest.isEqual(archiveFingerprint(),archive.fingerprint())) {
+            throw new IllegalArgumentException("Saved match continuation/result does not match its receipt");
+        }
+    }
+
+    static FourPlayerMatch restore(GameArchiveCodec.MatchArchive archive,RoundFactory factory) { return new FourPlayerMatch(archive,factory); }
+
+    /** Current round only: earlier rounds contribute identity/progression metadata, not unbounded action history. */
+    GameArchiveCodec.MatchArchive archive() {
+        return new GameArchiveCodec.MatchArchive(matchId,format,initialDealer,roundIndex,revision,continueEpoch,phase,
+                usedRoundIds.stream().sorted().toList(),confirmations.stream().sorted().toList(),round.archive(),archiveFingerprint());
+    }
+
+    private byte[] archiveFingerprint() {
+        return GameArchiveCodec.fingerprint(List.of(matchId.toString(),players.toString(),format.name(),
+                initialDealer+":"+roundIndex+":"+revision+":"+continueEpoch+":"+phase,
+                usedRoundIds.stream().sorted().toList().toString(),confirmations.stream().sorted().toList().toString(),
+                String.valueOf(next),String.valueOf(result)));
+    }
+
     public View view(UUID recipient) {
         List<Boolean> votes=new ArrayList<>(); for(int seat=0;seat<4;seat++) votes.add(confirmations.contains(seat));
         return new View(matchId,format,phase,initialDealer,roundIndex,revision,round.view(recipient),continueEpoch,votes,Optional.ofNullable(result));
