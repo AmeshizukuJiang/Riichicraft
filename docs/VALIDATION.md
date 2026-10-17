@@ -17,7 +17,7 @@
 
 日志`.tmp/three-player-scoring-rules.log`、`three-player-scoring-build.log`、`three-player-scoring-artifact.json`、`three-player-scoring-gradle-stop.log`。全部主动文件读写仍限本仓库，无外部记忆、缓存、启动器或存档访问。
 
-代码与测试已本地提交`886af26`；规则／验证说明另作小提交。GitHub推送最终状态见接续页，不提前建立代表完整三麻已完成的tag。
+代码／测试`886af26`、规则／验证说明`161fe76`已提交。重试GitHub成功，`codex/three-player-rules`已推送至用户指定origin并建立上游，亦包含此前因网络失败未同步的三麻设计／基础提交；最后另提交同步记录。不提前建立代表完整三麻已完成的tag，不移动旧标签。
 
 ## v0.0.7-dev 三麻牌池与基础支付：2026-10-17
 
