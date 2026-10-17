@@ -10,7 +10,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long revision,
-        List<Seat> seats, int ownSeat, boolean allReady, String feedbackKey, GameSnapshot game)
+        List<Seat> seats, int ownSeat, boolean allReady, String feedbackKey, GameSnapshot game, int mode)
         implements CustomPacketPayload {
     public static final Type<LobbySnapshotPayload> TYPE = new Type<>(Riichicraft.id("lobby_snapshot"));
     public static final StreamCodec<RegistryFriendlyByteBuf, LobbySnapshotPayload> CODEC = StreamCodec.of(
@@ -34,6 +34,7 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
                 if (value.game() != null) {
                     GameSnapshot.CODEC.encode(buf, value.game());
                 }
+                buf.writeVarInt(value.mode());
             }, buf -> {
                 UUID view = buf.readUUID();
                 UUID table = buf.readUUID();
@@ -49,18 +50,23 @@ public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long
                 String feedbackKey = buf.readUtf(128);
                 GameSnapshot game = buf.readBoolean() ? GameSnapshot.CODEC.decode(buf) : null;
                 return new LobbySnapshotPayload(view, table, pos, revision, seats, ownSeat,
-                        allReady, feedbackKey, game);
+                        allReady, feedbackKey, game, buf.readVarInt());
             });
 
     public LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long revision,
             List<Seat> seats, int ownSeat, boolean allReady, String feedbackKey) {
-        this(viewId, tableId, pos, revision, seats, ownSeat, allReady, feedbackKey, null);
+        this(viewId, tableId, pos, revision, seats, ownSeat, allReady, feedbackKey, null,0);
+    }
+
+    public LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long revision,
+            List<Seat> seats, int ownSeat, boolean allReady, String feedbackKey, GameSnapshot game) {
+        this(viewId,tableId,pos,revision,seats,ownSeat,allReady,feedbackKey,game,0);
     }
 
     public LobbySnapshotPayload {
         seats = List.copyOf(seats);
         pos = pos.immutable();
-        if (seats.size() != 4 || ownSeat < -1 || ownSeat > 3) {
+        if (seats.size() != 4 || ownSeat < -1 || ownSeat > 3 || mode<0 || mode>2) {
             throw new IllegalArgumentException("A lobby snapshot must contain four seats and a valid own seat");
         }
         if (ownSeat == -1 && game != null && (!game.ownHand().isEmpty() || game.drawnTile() != -1)) {

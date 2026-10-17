@@ -29,7 +29,7 @@ import org.lwjgl.glfw.GLFW;
 
 /** One real client plus three native in-memory server fixtures, never four real clients. */
 final class DrawDiscardClientScenario {
-    private record TableFixtures(List<ConnectedTestPlayer> fixtures, List<UUID> viewIds, UUID tableId) { }
+    record TableFixtures(List<ConnectedTestPlayer> fixtures, List<UUID> viewIds, UUID tableId) { }
 
     static void run(ClientGameTestContext context, TestServerContext server, TestServerConnection connection,
             BlockPos target, boolean dedicated) {
@@ -43,7 +43,7 @@ final class DrawDiscardClientScenario {
         }
     }
 
-    private static TableFixtures createFixtures(TestServerContext server, TestServerConnection connection,
+    static TableFixtures createFixtures(TestServerContext server, TestServerConnection connection,
             BlockPos target, UUID playerView) {
         return server.computeOnServer(s -> {
             LobbyService service = LobbyService.get(s);
@@ -473,7 +473,7 @@ final class DrawDiscardClientScenario {
                 "All recipient hands, actual melds, unclaimed rivers, live count and fourteen dead tiles conserve the full wall");
     }
 
-    private static void closeFixtures(TestServerContext server, TableFixtures table) {
+    static void closeFixtures(TestServerContext server, TableFixtures table) {
         server.runOnServer(s -> {
             LobbyService service = LobbyService.get(s);
             for (ConnectedTestPlayer fixture : table.fixtures()) {
@@ -483,7 +483,7 @@ final class DrawDiscardClientScenario {
         });
     }
 
-    private static void advance(LobbyService service, TableFixtures table, ServerPlayer east) {
+    static void advance(LobbyService service, TableFixtures table, ServerPlayer east) {
         GameSnapshot current = service.gameView(table.tableId(), east.getUUID());
         require(current != null && current.rules().phase() != GameSnapshot.FINISHED,
                 "A finished result cannot be advanced as though it were a live turn");

@@ -21,6 +21,7 @@ public final class LobbyScreen extends Screen {
     private Button readyButton;
     private Button leaveButton;
     private Button startButton;
+    private Button modeButton;
     private GamePanel gamePanel;
     private int panelLeft;
     private int panelTop;
@@ -54,10 +55,11 @@ public final class LobbyScreen extends Screen {
                 || updated.revision() < snapshot.revision()) {
             return;
         }
-        if (snapshot.game() != null && updated.game() != null
-                && snapshot.game().gameId().equals(updated.game().gameId())
-                && updated.game().revision() < snapshot.game().revision()) {
-            return;
+        if (snapshot.game() != null && updated.game() != null) {
+            boolean sameSession=snapshot.game().gameId().equals(updated.game().gameId())
+                    || snapshot.game().match()!=null && updated.game().match()!=null
+                    && snapshot.game().match().matchId().equals(updated.game().match().matchId());
+            if (sameSession && updated.game().revision() < snapshot.game().revision()) return;
         }
         boolean hadGame = snapshot.game() != null;
         snapshot = updated;
@@ -92,12 +94,17 @@ public final class LobbyScreen extends Screen {
         panelHeight = Math.min(228, height - 8);
         panelLeft = (width - panelWidth) / 2;
         panelTop = (height - panelHeight) / 2;
-        seatTop = panelTop + 36;
+        seatTop = panelTop + 54;
 
         int actionsY = panelTop + panelHeight - 48;
         seatRowHeight = Math.max(14, Math.min(24, (actionsY - seatTop - 46) / 4));
         int innerLeft = panelLeft + 12;
         int innerWidth = panelWidth - 24;
+        modeButton=addRenderableWidget(Button.builder(modeLabel(),button->{
+            if (!awaitingReply && LobbyClient.request(snapshot,LobbyActionPayload.SET_MODE,false,(snapshot.mode()+1)%3)) {
+                awaitingReply=true; updateButtons();
+            }
+        }).bounds(innerLeft,panelTop+32,innerWidth,18).build());
         int buttonWidth = (innerWidth - 8) / 3;
         joinButton = addRenderableWidget(Button.builder(text("join"),
                 button -> request(LobbyActionPayload.JOIN, false))
@@ -148,6 +155,12 @@ public final class LobbyScreen extends Screen {
         readyButton.setMessage(text(ownReady() ? "cancel_ready" : "prepare"));
         leaveButton.active = available && seated;
         startButton.active = available && snapshot.allReady() && snapshot.ownSeat() == 0;
+        modeButton.active=available && snapshot.ownSeat()==0;
+        modeButton.setMessage(modeLabel());
+    }
+
+    private Component modeLabel() {
+        return text("mode",text("mode."+new String[]{"single","east","south"}[snapshot.mode()]));
     }
 
     @Override

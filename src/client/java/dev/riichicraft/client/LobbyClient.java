@@ -76,11 +76,15 @@ final class LobbyClient {
     }
 
     static boolean request(LobbySnapshotPayload snapshot, int action, boolean ready) {
+        return request(snapshot,action,ready,0);
+    }
+
+    static boolean request(LobbySnapshotPayload snapshot, int action, boolean ready, int mode) {
         if (!snapshot.viewId().equals(activeViewId) || DISMISSED_VIEWS.contains(snapshot.viewId())
                 || snapshot.game() != null || !canSend()) {
             return false;
         }
-        ClientPlayNetworking.send(new LobbyActionPayload(snapshot.viewId(), snapshot.revision(), action, ready));
+        ClientPlayNetworking.send(new LobbyActionPayload(snapshot.viewId(), snapshot.revision(), action, ready,mode));
         return true;
     }
 

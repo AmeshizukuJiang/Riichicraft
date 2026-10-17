@@ -13,16 +13,23 @@ import net.minecraft.network.codec.StreamCodec;
 
 /** Recipient-only bounded DTO. No wall order, shuffle seed, hidden indicators or other private hands. */
 public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remainingTiles,
-        List<Seat> seats, List<Integer> ownHand, int drawnTile, boolean paused, String statusKey, RuleState rules) {
+        List<Seat> seats, List<Integer> ownHand, int drawnTile, boolean paused, String statusKey, RuleState rules, MatchInfo match) {
     public static final int DRAWN_TURN=0, CALL_DISCARD=1, DISCARD_RESPONSES=2, KAN_RESPONSES=3, FINISHED=4;
     public static final int MELD_CHI=0, MELD_PON=1, MELD_OPEN_KAN=2, MELD_CLOSED_KAN=3;
+    public static final int FORMAT_EAST=0, FORMAT_SOUTH=1;
+    public static final int MATCH_PLAYING=0, MATCH_ROUND_RESULT=1, MATCH_RESULT=2;
     private static final int MAX_HAND_SIZE=14, MAX_DISCARDS=136, MAX_STATUS_LENGTH=128;
     public static final StreamCodec<RegistryFriendlyByteBuf,GameSnapshot> CODEC=StreamCodec.of(GameSnapshot::encode,GameSnapshot::decode);
 
     /** Kept for isolated legacy DTO fixtures. Live service snapshots always contain rules. */
     public GameSnapshot(UUID gameId,long revision,int turnSeat,int remainingTiles,List<Seat> seats,
                         List<Integer> ownHand,int drawnTile,boolean paused,String statusKey) {
-        this(gameId,revision,turnSeat,remainingTiles,seats,ownHand,drawnTile,paused,statusKey,null);
+        this(gameId,revision,turnSeat,remainingTiles,seats,ownHand,drawnTile,paused,statusKey,null,null);
+    }
+
+    public GameSnapshot(UUID gameId,long revision,int turnSeat,int remainingTiles,List<Seat> seats,
+                        List<Integer> ownHand,int drawnTile,boolean paused,String statusKey,RuleState rules) {
+        this(gameId,revision,turnSeat,remainingTiles,seats,ownHand,drawnTile,paused,statusKey,rules,null);
     }
 
     public GameSnapshot {
@@ -37,10 +44,35 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
             for(ActionOption option:rules.responses()) if(!ownHand.containsAll(option.handTiles())) fail("response selection ownership");
             for(int seat=0;seat<4;seat++) if(rules.seats().get(seat).river().size()!=seats.get(seat).discards().size()) fail("river marks length");
         }
+        if(match!=null && (rules==null || (match.phase()==MATCH_PLAYING
+                ? rules.phase()==FINISHED : rules.phase()!=FINISHED))) fail("match/round phase agreement");
     }
 
     public record Seat(int handCount,List<Integer> discards,boolean present,boolean confirmed) {
         public Seat { if(!range(handCount,0,14)) fail("concealed count"); discards=tiles(discards,MAX_DISCARDS,"river"); }
+    }
+    /** Public match progress; single-round tables have no MatchInfo. Epoch revokes old continuation votes. */
+    public record MatchInfo(UUID matchId,int format,int phase,int initialDealer,int roundIndex,long continueEpoch,
+                            List<Boolean> confirmations,MatchResult result) {
+        public MatchInfo {
+            Objects.requireNonNull(matchId,"matchId"); confirmations=bounded(confirmations,4,"next-round confirmations");
+            if(!range(format,FORMAT_EAST,FORMAT_SOUTH) || !range(phase,MATCH_PLAYING,MATCH_RESULT)
+                    || !range(initialDealer,0,3) || !range(roundIndex,0,format==FORMAT_EAST?7:11) || continueEpoch<0 || confirmations.size()!=4
+                    || (result!=null)!=(phase==MATCH_RESULT)) fail("match progress");
+        }
+    }
+    public record Standing(int seat,int rank,int points,int rawTenths,int umaTenths,int totalTenths) {
+        public Standing { if(!range(seat,0,3) || !range(rank,1,4) || points%100!=0) fail("standing"); }
+    }
+    public record MatchResult(String reason,List<Standing> standings,int depositRecipient,int depositPoints) {
+        public MatchResult {
+            standings=bounded(standings,4,"standings");
+            if(reason==null || reason.isEmpty() || reason.length()>64 || standings.size()!=4
+                    || new HashSet<>(standings.stream().map(Standing::seat).toList()).size()!=4
+                    || new HashSet<>(standings.stream().map(Standing::rank).toList()).size()!=4
+                    || !range(depositRecipient,-1,3) || depositPoints<0 || depositPoints%1_000!=0
+                    || (depositRecipient==-1)!=(depositPoints==0)) fail("match result");
+        }
     }
     public record MeldView(int kind,List<Integer> tiles,int providerSeat,int claimedTileId) {
         public MeldView {
@@ -124,6 +156,7 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
         writeTiles(buf,value.ownHand()); buf.writeVarInt(value.drawnTile()); buf.writeBoolean(value.paused());
         buf.writeUtf(value.statusKey(),MAX_STATUS_LENGTH); buf.writeBoolean(value.rules()!=null);
         if(value.rules()!=null) writeRules(buf,value.rules());
+        buf.writeBoolean(value.match()!=null); if(value.match()!=null) writeMatch(buf,value.match());
     }
     private static GameSnapshot decode(RegistryFriendlyByteBuf buf) {
         UUID game=buf.readUUID(); long revision=buf.readLong(); int actor=readRange(buf,0,3,"turn seat"), live=readRange(buf,0,69,"live tiles");
@@ -131,7 +164,35 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
         for(int seat=0;seat<4;seat++) seats.add(new Seat(readRange(buf,0,14,"concealed count"),readTiles(buf,MAX_DISCARDS,"river"),buf.readBoolean(),buf.readBoolean()));
         List<Integer> hand=readTiles(buf,14,"own hand"); int drawn=readRange(buf,-1,135,"drawn tile");
         boolean paused=buf.readBoolean(); String status=buf.readUtf(MAX_STATUS_LENGTH);
-        return new GameSnapshot(game,revision,actor,live,seats,hand,drawn,paused,status,buf.readBoolean()?readRules(buf):null);
+        RuleState rules=buf.readBoolean()?readRules(buf):null;
+        return new GameSnapshot(game,revision,actor,live,seats,hand,drawn,paused,status,rules,buf.readBoolean()?readMatch(buf):null);
+    }
+    private static void writeMatch(RegistryFriendlyByteBuf b,MatchInfo m) {
+        b.writeUUID(m.matchId());b.writeVarInt(m.format());b.writeVarInt(m.phase());b.writeVarInt(m.initialDealer());
+        b.writeVarInt(m.roundIndex());b.writeLong(m.continueEpoch());
+        for(boolean confirmed:m.confirmations()) b.writeBoolean(confirmed);
+        b.writeBoolean(m.result()!=null);
+        if(m.result()!=null) {
+            var result=m.result(); b.writeUtf(result.reason(),64);
+            writeList(b,result.standings(),(buf,s)->{
+                buf.writeVarInt(s.seat());buf.writeVarInt(s.rank());buf.writeInt(s.points());
+                buf.writeInt(s.rawTenths());buf.writeInt(s.umaTenths());buf.writeInt(s.totalTenths());
+            });
+            b.writeVarInt(result.depositRecipient());b.writeVarInt(result.depositPoints());
+        }
+    }
+    private static MatchInfo readMatch(RegistryFriendlyByteBuf b) {
+        UUID matchId=b.readUUID();int format=readRange(b,0,1,"match format"),phase=readRange(b,0,2,"match phase");
+        int dealer=readRange(b,0,3,"initial dealer"),round=readRange(b,0,11,"round index");long epoch=b.readLong();
+        List<Boolean> confirmed=new ArrayList<>(4);for(int seat=0;seat<4;seat++) confirmed.add(b.readBoolean());
+        MatchResult result=null;
+        if(b.readBoolean()) {
+            String reason=b.readUtf(64);
+            List<Standing> standings=readList(b,4,"standings",buf->new Standing(readRange(buf,0,3,"standing seat"),
+                    readRange(buf,1,4,"rank"),buf.readInt(),buf.readInt(),buf.readInt(),buf.readInt()));
+            result=new MatchResult(reason,standings,readRange(b,-1,3,"deposit recipient"),positive(b,"final deposits"));
+        }
+        return new MatchInfo(matchId,format,phase,dealer,round,epoch,confirmed,result);
     }
     private static void writeRules(RegistryFriendlyByteBuf b,RuleState r) {
         b.writeVarInt(r.phase()); b.writeVarInt(r.dealerSeat()); b.writeVarInt(r.roundWind()); b.writeVarInt(r.honba()); b.writeVarInt(r.deposits());

@@ -2,6 +2,7 @@ package dev.riichicraft.test;
 
 import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.GameSnapshot;
+import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
@@ -174,7 +175,8 @@ public final class GamePayloadTests {
                 new GameActionPayload(id(1), id(100), 9, GameActionPayload.OPEN_KAN, -1, 8, -1, List.of(16, 17, 18)),
                 new GameActionPayload(id(1), id(100), 9, GameActionPayload.CLOSED_KAN, -1, -1, -1, List.of(16, 17, 18, 19)),
                 new GameActionPayload(id(1), id(100), 9, GameActionPayload.ADDED_KAN, -1, -1, 2, List.of(19)),
-                new GameActionPayload(id(1), id(100), 9, GameActionPayload.RETURN_LOBBY, -1))) {
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.RETURN_LOBBY, -1),
+                new GameActionPayload(id(1), id(100), 9, GameActionPayload.NEXT_ROUND, -1, 7, -1, List.of()))) {
             RegistryFriendlyByteBuf buf = buffer(helper);
             try {
                 GameActionPayload.CODEC.encode(buf, action);
@@ -187,7 +189,66 @@ public final class GamePayloadTests {
         assertActionRejected(helper, GameActionPayload.DISCARD, -1);
         assertActionRejected(helper, GameActionPayload.DISCARD, 136);
         assertActionRejected(helper, GameActionPayload.RESUME, 0);
-        assertActionRejected(helper, 14, -1);
+        assertActionRejected(helper, 15, -1);
+        assertActionRejected(helper, GameActionPayload.NEXT_ROUND, -1);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void publicMatchProgressRanksModeAndContinuationEpochRoundTripWithBounds(GameTestHelper helper) {
+        List<GameSnapshot.Seat> seats=List.of(new GameSnapshot.Seat(13,List.of(),true,false),new GameSnapshot.Seat(13,List.of(),true,false),
+                new GameSnapshot.Seat(13,List.of(),true,false),new GameSnapshot.Seat(13,List.of(),true,false));
+        List<GameSnapshot.SeatRules> ruleSeats=List.of(new GameSnapshot.SeatRules(List.of(),List.of(),25_000,0),
+                new GameSnapshot.SeatRules(List.of(),List.of(),25_000,0),new GameSnapshot.SeatRules(List.of(),List.of(),25_000,0),
+                new GameSnapshot.SeatRules(List.of(),List.of(),25_000,0));
+        var result=new GameSnapshot.Result(2,List.of(),List.of(),List.of(),List.of(),false);
+        var rules=new GameSnapshot.RuleState(GameSnapshot.FINISHED,0,28,3,0,List.of(40),ruleSeats,List.of(),List.of(),List.of(),
+                false,false,null,List.of(),result);
+        List<GameSnapshot.Standing> standings=List.of(new GameSnapshot.Standing(0,1,25_000,0,150,150),new GameSnapshot.Standing(1,2,25_000,0,50,50),
+                new GameSnapshot.Standing(2,3,25_000,0,-50,-50),new GameSnapshot.Standing(3,4,25_000,0,-150,-150));
+        var finalResult=new GameSnapshot.MatchResult("EXTENSION_LIMIT",standings,-1,0);
+        List<Boolean> votes=new ArrayList<>(List.of(true,false,true,false));
+        var intermission=new GameSnapshot.MatchInfo(id(200),GameSnapshot.FORMAT_EAST,GameSnapshot.MATCH_ROUND_RESULT,0,4,17,votes,null);
+        votes.clear();
+        helper.assertTrue(intermission.confirmations().equals(List.of(true,false,true,false)),"Match vote snapshots must not alias reused mutable service collections");
+        var ended=new GameSnapshot.MatchInfo(id(200),GameSnapshot.FORMAT_EAST,GameSnapshot.MATCH_RESULT,0,7,19,List.of(false,false,false,false),finalResult);
+        for(GameSnapshot.MatchInfo match:List.of(intermission,ended)) {
+            var snapshot=new GameSnapshot(id(100),99,0,0,seats,List.of(),-1,false,"",rules,match);
+            assertRoundTrip(helper,snapshot);
+            List<LobbySnapshotPayload.Seat> occupants=List.of(new LobbySnapshotPayload.Seat(id(1),"East",true),new LobbySnapshotPayload.Seat(id(2),"South",true),
+                    new LobbySnapshotPayload.Seat(id(3),"West",true),new LobbySnapshotPayload.Seat(id(4),"North",true));
+            LobbySnapshotPayload payload=new LobbySnapshotPayload(id(10),id(20),BlockPos.ZERO,8,occupants,-1,true,"",snapshot,1);
+            RegistryFriendlyByteBuf buf=buffer(helper);
+            try { LobbySnapshotPayload.CODEC.encode(buf,payload); helper.assertTrue(LobbySnapshotPayload.CODEC.decode(buf).equals(payload)&&buf.readableBytes()==0,
+                    "The complete public match/result packet retains the table mode and reveals no observer hand or action mask"); }
+            finally {buf.release();}
+        }
+        assertUnmodifiable(helper,intermission.confirmations()::clear);assertUnmodifiable(helper,finalResult.standings()::clear);
+        RegistryFriendlyByteBuf mode=buffer(helper);
+        try { var action=new LobbyActionPayload(id(1),8,LobbyActionPayload.SET_MODE,false,2);LobbyActionPayload.CODEC.encode(mode,action);
+            helper.assertTrue(LobbyActionPayload.CODEC.decode(mode).equals(action)&&mode.readableBytes()==0,"South mode selection round-trips as a bound lobby intention"); }
+        finally {mode.release();}
+        boolean rejected=false;
+        try {new LobbyActionPayload(id(1),8,LobbyActionPayload.SET_MODE,false,3);}catch(IllegalArgumentException expected){rejected=true;}
+        helper.assertTrue(rejected,"Mode IDs outside single/east/south are rejected");
+        for(int rank:List.of(0,5)) {
+            rejected=false;try{new GameSnapshot.Standing(0,rank,25_000,0,150,150);}catch(IllegalArgumentException expected){rejected=true;}
+            helper.assertTrue(rejected,"Final ranks must stay in the four-player range");
+        }
+        for(int index:List.of(8,11)) {
+            rejected=false;
+            try {new GameSnapshot.MatchInfo(id(200),GameSnapshot.FORMAT_EAST,GameSnapshot.MATCH_PLAYING,0,index,0,List.of(false,false,false,false),null);}
+            catch(IllegalArgumentException expected){rejected=true;}
+            helper.assertTrue(rejected,"An east match cannot advertise a round position beyond its south-four extension boundary");
+        }
+        helper.assertTrue(new GameSnapshot.MatchInfo(id(200),GameSnapshot.FORMAT_SOUTH,GameSnapshot.MATCH_PLAYING,0,11,0,
+                List.of(false,false,false,false),null).roundIndex()==11,"A south match retains its valid west-four maximum position");
+        assertDecodeRejected(helper,buf->{
+            writeHeader(buf);writeEmptySeats(buf);buf.writeVarInt(0);buf.writeVarInt(-1);buf.writeBoolean(false);buf.writeUtf("");
+            buf.writeBoolean(false);buf.writeBoolean(true);buf.writeUUID(id(200));buf.writeVarInt(0);buf.writeVarInt(GameSnapshot.MATCH_RESULT);
+            buf.writeVarInt(0);buf.writeVarInt(7);buf.writeLong(19);for(int seat=0;seat<4;seat++)buf.writeBoolean(false);
+            buf.writeBoolean(true);buf.writeUtf("EXTENSION_LIMIT");buf.writeVarInt(Integer.MAX_VALUE);
+        },"An unbounded final-standing length must be rejected before allocation");
         helper.succeed();
     }
 

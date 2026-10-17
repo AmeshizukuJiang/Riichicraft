@@ -14,6 +14,7 @@ import java.util.UUID;
  */
 public final class LobbyRegistry {
     public static final int SEAT_COUNT = 4;
+    public static final int SINGLE=0, EAST=1, SOUTH=2;
 
     private final Map<UUID, Lobby> tables = new HashMap<>();
     private final Map<UUID, SeatReference> playerSeats = new HashMap<>();
@@ -107,6 +108,21 @@ public final class LobbyRegistry {
         return result(Status.UPDATED, lobby);
     }
 
+    /** The lobby's initial east controls format; a real change atomically clears every preparation flag. */
+    public Result setMode(UUID tableId,UUID playerId,int mode,long expectedRevision) {
+        Objects.requireNonNull(tableId,"tableId"); Objects.requireNonNull(playerId,"playerId");
+        Lobby lobby=tables.get(tableId);
+        if(lobby==null) return new Result(Status.TABLE_NOT_FOUND,null);
+        if(lobby.revision!=expectedRevision) return result(Status.STALE_REVISION,lobby);
+        if(lobby.seats[0]==null || !lobby.seats[0].playerId.equals(playerId)) return result(Status.NOT_EAST,lobby);
+        if(mode<SINGLE || mode>SOUTH) return result(Status.INVALID_MODE,lobby);
+        if(lobby.mode==mode) return result(Status.UNCHANGED,lobby);
+        lobby.mode=mode;
+        for(Occupant occupant:lobby.seats) if(occupant!=null) occupant.ready=false;
+        lobby.revision++;
+        return result(Status.UPDATED,lobby);
+    }
+
     /** Lifecycle cleanup ignores UI revisions and returns the changed table for broadcasting. */
     public Optional<Snapshot> disconnect(UUID playerId) {
         SeatReference seat = playerSeats.remove(Objects.requireNonNull(playerId, "playerId"));
@@ -170,7 +186,7 @@ public final class LobbyRegistry {
                 allReady &= occupant.ready;
             }
         }
-        return new Snapshot(lobby.tableId, lobby.revision, seats, allReady);
+        return new Snapshot(lobby.tableId, lobby.revision, seats, allReady, lobby.mode);
     }
 
     public enum Status {
@@ -180,7 +196,9 @@ public final class LobbyRegistry {
         TABLE_FULL,
         ALREADY_SEATED_ELSEWHERE,
         NOT_SEATED,
-        TABLE_NOT_FOUND
+        TABLE_NOT_FOUND,
+        NOT_EAST,
+        INVALID_MODE
     }
 
     /** snapshot is null only for TABLE_NOT_FOUND. */
@@ -201,11 +219,14 @@ public final class LobbyRegistry {
         }
     }
 
-    public record Snapshot(UUID tableId, long revision, List<Seat> seats, boolean allReady) {
+    public record Snapshot(UUID tableId, long revision, List<Seat> seats, boolean allReady, int mode) {
+        public Snapshot(UUID tableId,long revision,List<Seat> seats,boolean allReady) {
+            this(tableId,revision,seats,allReady,SINGLE);
+        }
         public Snapshot {
             Objects.requireNonNull(tableId, "tableId");
             seats = List.copyOf(seats);
-            if (seats.size() != SEAT_COUNT) {
+            if (seats.size() != SEAT_COUNT || mode<SINGLE || mode>SOUTH) {
                 throw new IllegalArgumentException("A lobby snapshot must contain exactly four seats");
             }
         }
@@ -235,6 +256,7 @@ public final class LobbyRegistry {
         private final UUID tableId;
         private final Occupant[] seats = new Occupant[SEAT_COUNT];
         private long revision;
+        private int mode=SINGLE;
 
         private Lobby(UUID tableId) {
             this.tableId = tableId;

@@ -47,6 +47,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
                 server.waitFor(s -> LobbyService.get(s).registry().tableForPlayer(playerId).isEmpty());
                 DrawDiscardClientScenario.runReconnect(context, server);
                 DrawDiscardClientScenario.runFinishedReconnect(context, server);
+                MatchClientScenario.run(context, server);
             }
             return;
         }

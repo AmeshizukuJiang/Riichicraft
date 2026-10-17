@@ -16,7 +16,7 @@ public record GameActionPayload(UUID viewId, UUID gameId, long revision, int act
                                 long windowSerial, int meldIndex, List<Integer> handTiles)
         implements CustomPacketPayload {
     public static final int DISCARD=0, RESUME=1, ABORT=2, RIICHI=3, TSUMO=4, NINE_TERMINALS=5,
-            PASS=6, RON=7, CHI=8, PON=9, OPEN_KAN=10, CLOSED_KAN=11, ADDED_KAN=12, RETURN_LOBBY=13;
+            PASS=6, RON=7, CHI=8, PON=9, OPEN_KAN=10, CLOSED_KAN=11, ADDED_KAN=12, RETURN_LOBBY=13, NEXT_ROUND=14;
     public static final Type<GameActionPayload> TYPE = new Type<>(Riichicraft.id("game_action"));
     public static final StreamCodec<RegistryFriendlyByteBuf, GameActionPayload> CODEC = StreamCodec.of(
             (buf, value) -> {
@@ -47,9 +47,9 @@ public record GameActionPayload(UUID viewId, UUID gameId, long revision, int act
         Objects.requireNonNull(viewId, "viewId");
         Objects.requireNonNull(gameId, "gameId");
         handTiles=List.copyOf(handTiles);
-        if(revision<0 || action<DISCARD || action>RETURN_LOBBY
+        if(revision<0 || action<DISCARD || action>NEXT_ROUND
                 || (action==DISCARD || action==RIICHI ? tileId<0 || tileId>135 : tileId!=-1)
-                || (isResponse(action) ? windowSerial<0 : windowSerial!=-1)
+                || (isStableAction(action) ? windowSerial<0 : windowSerial!=-1)
                 || (action==ADDED_KAN ? meldIndex<0 || meldIndex>3 : meldIndex!=-1)) {
             throw new IllegalArgumentException("Invalid game action metadata");
         }
@@ -57,6 +57,7 @@ public record GameActionPayload(UUID viewId, UUID gameId, long revision, int act
     }
 
     public static boolean isResponse(int action) { return action>=PASS && action<=OPEN_KAN; }
+    public static boolean isStableAction(int action) { return isResponse(action) || action==NEXT_ROUND; }
 
     static void validateChoice(int action,int meldIndex,List<Integer> tiles) {
         int count=switch(action) { case CHI,PON->2; case OPEN_KAN->3; case CLOSED_KAN->4; case ADDED_KAN->1; default->0; };

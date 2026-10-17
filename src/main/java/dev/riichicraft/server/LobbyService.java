@@ -4,6 +4,8 @@ import dev.riichicraft.block.ModBlocks;
 import dev.riichicraft.lobby.LobbyRegistry;
 import dev.riichicraft.rules.DiscardResponseWindow;
 import dev.riichicraft.rules.FourPlayerRound;
+import dev.riichicraft.rules.FourPlayerMatch;
+import dev.riichicraft.rules.MatchRules;
 import dev.riichicraft.rules.KanActions;
 import dev.riichicraft.rules.Meld;
 import dev.riichicraft.network.GameActionPayload;
@@ -49,7 +51,8 @@ public final class LobbyService {
 
     private static final class Prototype {
         final FourPlayerRound game;
-        final UUID gameId;
+        final FourPlayerMatch match;
+        UUID gameId;
         final List<UUID> players;
         long revision;
         boolean paused;
@@ -58,10 +61,53 @@ public final class LobbyService {
         final Set<UUID> confirmations = new HashSet<>();
         Set<UUID> unavailable = Set.of();
 
-        Prototype(UUID gameId,List<UUID> players,long seed) {
-            this.gameId=gameId;
+        Prototype(UUID id,List<UUID> players,long seed,int mode) {
             this.players=List.copyOf(players);
-            game=FourPlayerRound.shuffled(gameId,players,0,27,0,List.of(25_000,25_000,25_000,25_000),0,seed);
+            if(mode==LobbyRegistry.SINGLE) {
+                game=FourPlayerRound.shuffled(id,players,0,27,0,List.of(25_000,25_000,25_000,25_000),0,seed);
+                match=null;
+            } else {
+                game=null;
+                match=new FourPlayerMatch(id,players,mode==LobbyRegistry.EAST?MatchRules.Format.EAST:MatchRules.Format.SOUTH,0,
+                        setup->FourPlayerRound.shuffled(UUID.randomUUID(),setup.players(),setup.dealerSeat(),setup.roundWind(),
+                                setup.honba(),setup.points(),setup.deposits(),SEEDS.nextLong()));
+            }
+            syncStatus();
+        }
+
+        FourPlayerRound.View roundView(UUID recipient) { return match==null?game.view(recipient):match.view(recipient).round(); }
+        boolean intermission() { return match!=null && match.view(null).phase()==FourPlayerMatch.Phase.ROUND_RESULT; }
+
+        void syncStatus() {
+            gameId=roundView(null).roundId();
+            finished=match==null?roundView(null).phase()==FourPlayerRound.Phase.FINISHED
+                    :match.view(null).phase()==FourPlayerMatch.Phase.MATCH_RESULT;
+            if(finished || intermission()) { paused=false; confirmations.clear(); statusKey=""; }
+        }
+
+        FourPlayerRound.Status act(UUID player,GameActionPayload payload,KanActions.Choice choice) {
+            if(match!=null) {
+                var command=match.view(player).command();
+                return switch(payload.action()) {
+                    case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> match.discard(player,command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
+                    case GameActionPayload.TSUMO -> match.tsumo(player,command);
+                    case GameActionPayload.NINE_TERMINALS -> match.nineTerminals(player,command);
+                    case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> match.declareKan(player,command,choice);
+                    case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> match.respond(player,
+                            new DiscardResponseWindow.Id(gameId,payload.windowSerial()),responseChoice(payload));
+                    default -> FourPlayerRound.Status.NOT_OFFERED;
+                };
+            }
+            var command=game.view(player).command();
+            return switch(payload.action()) {
+                case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> game.discard(player,command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
+                case GameActionPayload.TSUMO -> game.tsumo(player,command);
+                case GameActionPayload.NINE_TERMINALS -> game.nineTerminals(player,command);
+                case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> game.declareKan(player,command,choice);
+                case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> game.respond(player,
+                        new DiscardResponseWindow.Id(gameId,payload.windowSerial()),responseChoice(payload));
+                default -> FourPlayerRound.Status.NOT_OFFERED;
+            };
         }
     }
 
@@ -142,6 +188,7 @@ public final class LobbyService {
             case LobbyActionPayload.SET_READY -> registry.setReady(view.tableId(), player.getUUID(),
                     payload.ready(), payload.revision());
             case LobbyActionPayload.LEAVE -> registry.leave(view.tableId(), player.getUUID(), payload.revision());
+            case LobbyActionPayload.SET_MODE -> registry.setMode(view.tableId(),player.getUUID(),payload.mode(),payload.revision());
             default -> null;
         };
         if (result == null) {
@@ -169,7 +216,7 @@ public final class LobbyService {
             return;
         }
         List<UUID> players = lobby.seats().stream().map(LobbyRegistry.Seat::playerId).toList();
-        games.put(view.tableId(), new Prototype(UUID.randomUUID(), players, SEEDS.nextLong()));
+        games.put(view.tableId(), new Prototype(UUID.randomUUID(), players, SEEDS.nextLong(),lobby.mode()));
         broadcast(lobby, null, "");
     }
 
@@ -183,8 +230,8 @@ public final class LobbyService {
         LobbyRegistry.Snapshot lobby = registry.snapshot(view.tableId()).orElseThrow();
         String feedback = "";
         // Other replies advance the visible revision but never invalidate this same opportunity.
-        boolean response=GameActionPayload.isResponse(payload.action());
-        if ((!response && payload.revision()!=prototype.revision) || payload.revision()>prototype.revision) feedback = "message.riichicraft.lobby.stale";
+        boolean stable=GameActionPayload.isStableAction(payload.action());
+        if ((!stable && payload.revision()!=prototype.revision) || payload.revision()>prototype.revision) feedback = "message.riichicraft.lobby.stale";
         else if (!prototype.players.contains(player.getUUID())) {
             feedback = "message.riichicraft.game.spectator";
         } else if (!accessible(player, locations.get(view.tableId()))) {
@@ -207,8 +254,22 @@ public final class LobbyService {
             broadcast(registry.resetReadiness(view.tableId()), null, "message.riichicraft.game.aborted");
             return;
         } else if (prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
+        else if (payload.action()==GameActionPayload.NEXT_ROUND) {
+            if(!prototype.intermission()) feedback="message.riichicraft.lobby.invalid_action";
+            else if(!prototype.unavailable.isEmpty()) feedback="message.riichicraft.game.players_absent";
+            else {
+                var matchView=prototype.match.view(player.getUUID());
+                var result=prototype.match.confirmNext(player.getUUID(),new FourPlayerMatch.ContinueId(matchView.matchId(),prototype.gameId,payload.windowSerial()));
+                if(result==FourPlayerRound.Status.ACCEPTED) {
+                    prototype.revision++;prototype.syncStatus();
+                    broadcast(lobby,null,"");return;
+                }
+                feedback=result==FourPlayerRound.Status.ALREADY_RESPONDED?"":"message.riichicraft.lobby.stale";
+            }
+        }
         else if (payload.action() == GameActionPayload.RESUME) {
-            if (!prototype.paused) feedback = "message.riichicraft.game.resumed";
+            if (prototype.intermission()) feedback="message.riichicraft.lobby.invalid_action";
+            else if (!prototype.paused) feedback = "message.riichicraft.game.resumed";
             else if (!prototype.unavailable.isEmpty()) feedback = "message.riichicraft.game.players_absent";
             else if (prototype.confirmations.add(player.getUUID())) {
                 prototype.revision++;
@@ -222,7 +283,6 @@ public final class LobbyService {
         } else {
             if (prototype.paused) feedback = "message.riichicraft.game.paused";
             else {
-                var command=new FourPlayerRound.Command(prototype.gameId,prototype.game.view(player.getUUID()).revision());
                 KanActions.Choice kanChoice=null;
                 if (payload.action()==GameActionPayload.CLOSED_KAN || payload.action()==GameActionPayload.ADDED_KAN) {
                     try {
@@ -233,18 +293,10 @@ public final class LobbyService {
                         return;
                     }
                 }
-                FourPlayerRound.Status result=switch(payload.action()) {
-                    case GameActionPayload.DISCARD,GameActionPayload.RIICHI -> prototype.game.discard(player.getUUID(),command,payload.tileId(),payload.action()==GameActionPayload.RIICHI);
-                    case GameActionPayload.TSUMO -> prototype.game.tsumo(player.getUUID(),command);
-                    case GameActionPayload.NINE_TERMINALS -> prototype.game.nineTerminals(player.getUUID(),command);
-                    case GameActionPayload.CLOSED_KAN,GameActionPayload.ADDED_KAN -> prototype.game.declareKan(player.getUUID(),command,kanChoice);
-                    case GameActionPayload.PASS,GameActionPayload.RON,GameActionPayload.CHI,GameActionPayload.PON,GameActionPayload.OPEN_KAN -> prototype.game.respond(player.getUUID(),
-                            new DiscardResponseWindow.Id(prototype.gameId,payload.windowSerial()),responseChoice(payload));
-                    default -> FourPlayerRound.Status.NOT_OFFERED;
-                };
+                FourPlayerRound.Status result=prototype.act(player.getUUID(),payload,kanChoice);
                 if (result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;
-                    prototype.finished=prototype.game.view(player.getUUID()).phase()==FourPlayerRound.Phase.FINISHED;
+                    prototype.syncStatus();
                     broadcast(lobby, null, "");
                     return;
                 }
@@ -292,6 +344,16 @@ public final class LobbyService {
         }
         boolean changed = !missing.equals(prototype.unavailable);
         boolean newlyMissing = missing.stream().anyMatch(id -> !prototype.unavailable.contains(id));
+        if(prototype.intermission()) {
+            if(newlyMissing) changed|=prototype.match.clearNextConfirmations();
+            prototype.unavailable=Set.copyOf(missing);
+            prototype.paused=false;prototype.confirmations.clear();
+            String status=missing.isEmpty()?"":"message.riichicraft.game.player_unavailable";
+            if(!status.equals(prototype.statusKey)) changed=true;
+            prototype.statusKey=status;
+            if(changed) { prototype.revision++;broadcast(registry.snapshot(tableId).orElseThrow(),null,""); }
+            return;
+        }
         if (!missing.isEmpty() && (!prototype.paused || newlyMissing)) {
             prototype.paused = true;
             prototype.confirmations.clear();
@@ -316,7 +378,7 @@ public final class LobbyService {
     public GameSnapshot gameView(UUID tableId, UUID recipient) {
         Prototype prototype = games.get(tableId);
         if (prototype == null) return null;
-        FourPlayerRound.View gameView = prototype.game.view(recipient);
+        FourPlayerRound.View gameView = prototype.roundView(recipient);
         List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
                 seat.concealedCount(), seat.river().stream().map(FourPlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
                 prototype.confirmations.contains(seat.playerId()))).toList();
@@ -340,7 +402,16 @@ public final class LobbyService {
                 gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
                 kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(LobbyService::resultView).orElse(null));
         return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
-                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules);
+                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
+                prototype.match==null?null:matchInfo(prototype.match.view(recipient)));
+    }
+
+    private static GameSnapshot.MatchInfo matchInfo(FourPlayerMatch.View view) {
+        GameSnapshot.MatchResult result=view.result().map(value->new GameSnapshot.MatchResult(value.reason().name(),
+                value.standings().stream().map(s->new GameSnapshot.Standing(s.seat(),s.rank(),s.points(),s.rawTenths(),s.umaTenths(),s.totalTenths())).toList(),
+                value.depositRecipient(),value.depositPoints())).orElse(null);
+        return new GameSnapshot.MatchInfo(view.matchId(),view.format().ordinal(),view.phase().ordinal(),view.initialDealer(),
+                view.roundIndex(),view.continueEpoch(),view.confirmations(),result);
     }
 
     private static Comparator<GameSnapshot.ActionOption> optionOrder() {
@@ -479,7 +550,7 @@ public final class LobbyService {
                 new LobbySnapshotPayload.Seat(seat.playerId(), seat.name(), seat.ready())).toList();
         ServerPlayNetworking.send(player, new LobbySnapshotPayload(view.id(), view.tableId(),
                 locations.get(view.tableId()).pos(), snapshot.revision(), seats, ownSeat, snapshot.allReady(), feedback,
-                gameView(view.tableId(), player.getUUID())));
+                gameView(view.tableId(), player.getUUID()),snapshot.mode()));
     }
 
     private void sendClosed(ServerPlayer player, View view, String reason) {
@@ -496,6 +567,8 @@ public final class LobbyService {
             case ALREADY_SEATED_ELSEWHERE -> "message.riichicraft.lobby.other_table";
             case NOT_SEATED -> "message.riichicraft.lobby.not_seated";
             case TABLE_NOT_FOUND -> "message.riichicraft.lobby.unavailable";
+            case NOT_EAST -> "message.riichicraft.game.east_starts";
+            case INVALID_MODE -> "message.riichicraft.lobby.invalid_action";
         };
     }
 
