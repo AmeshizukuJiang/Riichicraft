@@ -29,7 +29,7 @@
 - [牌局存档](docs/PERSISTENCE.md)：正常保存／恢复、损坏保护、版本与崩溃边界。
 - [四麻规则基线](docs/FOUR_PLAYER_RULES.md)：雀魂官方来源、用户裁定与已实现的规则边界。
 - [三麻规则表](docs/THREE_PLAYER_RULES.md)：雀魂三麻基线、已确认裁定、牌山静态来源及动画边界。
-- [三麻独立核心](docs/THREE_PLAYER_CORE.md)：当前`0.0.7-dev`完成108牌池、宝牌映射与自摸损基础支付；尚无三麻游戏入口。
+- [三麻独立核心](docs/THREE_PLAYER_CORE.md)：当前`0.0.7-dev`完成108牌池、手牌役符、表／里／拔北明细与自摸损支付；尚无三麻游戏入口。
 - [独立规则核心](docs/RULES_CORE.md)：牌形、计分、振听与各组件的代码契约和验证索引。
 - [独立单局引擎](docs/SINGLE_ROUND_CORE.md)：阶段、身份、稳定响应窗、私有视图与守恒。
 - [振听与和牌检查](docs/FURITEN.md)：历史状态、无役见逃及指定机会裁决。
