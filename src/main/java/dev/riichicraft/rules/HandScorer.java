@@ -56,15 +56,14 @@ public final class HandScorer {
 
     private static ScoreResult scoreInterpretation(HandInput hand, WinContext context,
                                                    WinningInterpretation interpretation) {
-        List<YakuAward> awards = yakuman(hand, context, interpretation);
-        int units = awards.stream().mapToInt(YakuAward::yakumanUnits).sum();
+        HandValue value = explainValue(hand, context, interpretation);
+        List<YakuAward> awards = value.yaku();
+        int units = value.yakumanUnits();
         if (units > 0) {
-            FuCalculator.FuResult noFu = new FuCalculator.FuResult(0, 0, List.of());
             return new ScoreResult(interpretation, context.winningTileId(), awards, 0, 0, units,
-                    0, 0, 0, PointCalculator.calculate(0, 0, units, context.dealer(), context.tsumo()), noFu);
+                    0, 0, 0, PointCalculator.calculate(0, 0, units, context.dealer(), context.tsumo()), value.fu());
         }
 
-        awards = ordinaryYaku(hand, context, interpretation);
         int yakuHan = awards.stream().mapToInt(YakuAward::han).sum();
         if (yakuHan == 0) return null; // Dora, aka and ura never satisfy the one-yaku requirement.
         int[] counts = hand.tileCounts();
@@ -73,10 +72,22 @@ public final class HandScorer {
         int aka = (int) hand.concealedTiles().stream().filter(TileCatalog::isRed).count();
         aka += hand.melds().stream().mapToInt(meld -> (int) meld.tiles().stream().filter(TileCatalog::isRed).count()).sum();
         int han = yakuHan + dora + aka + ura;
-        FuCalculator.FuResult fu = FuCalculator.calculate(hand, context, interpretation);
+        FuCalculator.FuResult fu = value.fu();
         return new ScoreResult(interpretation, context.winningTileId(), awards, han, fu.fu(), 0,
                 dora, aka, ura, PointCalculator.calculate(han, fu.fu(), 0, context.dealer(), context.tsumo()), fu);
     }
+
+    /** Shared shape/yaku/fu explanation, before any player-count-specific bonuses or payments. */
+    static HandValue explainValue(HandInput hand, WinContext context, WinningInterpretation interpretation) {
+        WinInterpreter.requireValid(hand, context, interpretation);
+        List<YakuAward> awards = yakuman(hand, context, interpretation);
+        int units = awards.stream().mapToInt(YakuAward::yakumanUnits).sum();
+        if (units > 0) return new HandValue(awards, units, new FuCalculator.FuResult(0, 0, List.of()));
+        return new HandValue(ordinaryYaku(hand, context, interpretation), 0,
+                FuCalculator.calculate(hand, context, interpretation));
+    }
+
+    record HandValue(List<YakuAward> yaku, int yakumanUnits, FuCalculator.FuResult fu) { }
 
     private static List<YakuAward> yakuman(HandInput hand, WinContext context,
                                          WinningInterpretation interpretation) {
