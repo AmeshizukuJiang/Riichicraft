@@ -17,3 +17,6 @@
 *.iml
 Thumbs.db
 .DS_Store
+
+# Full user-provided reference library; selected licensed sources are versioned separately
+/art/reference/

@@ -1,0 +1,476 @@
+{
+  "imported": "2026-10-17",
+  "assets": [
+    {
+      "key": "1m",
+      "files": {
+        "png": {
+          "sha256": "f8ada398b6eb1c01c7ec05b5b57ccd026d2b90f241bd4cc628d806923b74d460",
+          "path": "png/1m.png"
+        },
+        "svg": {
+          "sha256": "bc4efedeb11fddbd6be582aaab9392aa7a2e6f4cc7b36020ad69ac7a52485c18",
+          "path": "svg/1m.svg"
+        }
+      }
+    },
+    {
+      "key": "2m",
+      "files": {
+        "png": {
+          "sha256": "292094c390db832a7cd4f04f600130ee1b8515496331e25f719c7eccfb411cd2",
+          "path": "png/2m.png"
+        },
+        "svg": {
+          "sha256": "046831736d6598f5ebcac62b0d7c12136e02e48ed4b61550e21e88924c38b8ba",
+          "path": "svg/2m.svg"
+        }
+      }
+    },
+    {
+      "key": "3m",
+      "files": {
+        "png": {
+          "sha256": "8345311e56b61e215df3bccf35292f8628c90047f32c366b884f6daffbf99a69",
+          "path": "png/3m.png"
+        },
+        "svg": {
+          "sha256": "ff9b015450f038d5d200db2ac9e79265e76d132d24df7d4d2a12a93b54698de6",
+          "path": "svg/3m.svg"
+        }
+      }
+    },
+    {
+      "key": "4m",
+      "files": {
+        "png": {
+          "sha256": "e6c13ad17b614efca8fa09e2656bb5bf9da3cb716759f8f9195bb8ffdedb4d0c",
+          "path": "png/4m.png"
+        },
+        "svg": {
+          "sha256": "3f580738e6ead641f140eff18c987ef30d65567088261360216aef279ff271b4",
+          "path": "svg/4m.svg"
+        }
+      }
+    },
+    {
+      "key": "5m",
+      "files": {
+        "png": {
+          "sha256": "a44a6b237f0c9325468994fa87a829d7b35b471c3e5a0ccfb3feabfd92cd04c3",
+          "path": "png/5m.png"
+        },
+        "svg": {
+          "sha256": "c0275be6adcba0a59e13a752ec360b97b5805aa0e4e047e575c00e6c77742e29",
+          "path": "svg/5m.svg"
+        }
+      }
+    },
+    {
+      "key": "6m",
+      "files": {
+        "png": {
+          "sha256": "ceff41b074b50dc34a0dca9cc86dbe2c9f17d315829624d8bc2185ba0838bab1",
+          "path": "png/6m.png"
+        },
+        "svg": {
+          "sha256": "3e70b7075076b8b099f88570ce6a62c3e73969476a0fcf4b1fcbf689e8727dae",
+          "path": "svg/6m.svg"
+        }
+      }
+    },
+    {
+      "key": "7m",
+      "files": {
+        "png": {
+          "sha256": "62d408f70806424948a2470e2405aea187ae594b8ce423086ca1e34dd6da8f48",
+          "path": "png/7m.png"
+        },
+        "svg": {
+          "sha256": "959bf26da563b8b21a5f4418a3a3b097dcc42950a195603577d35cb19e283fc4",
+          "path": "svg/7m.svg"
+        }
+      }
+    },
+    {
+      "key": "8m",
+      "files": {
+        "png": {
+          "sha256": "c6bd4fce3e8f76abf42d52fea5ab3a94877ca0ca33ecfd97838e7a2c446dd510",
+          "path": "png/8m.png"
+        },
+        "svg": {
+          "sha256": "df73b82c7288c3630abaa15d6c3328ce2d88bf5abb38047eb14492055728dfca",
+          "path": "svg/8m.svg"
+        }
+      }
+    },
+    {
+      "key": "9m",
+      "files": {
+        "png": {
+          "sha256": "e386c9fe81a0ea5cf436a9145b59bcd72febf08a462b6095e59ae89cd37c0e7a",
+          "path": "png/9m.png"
+        },
+        "svg": {
+          "sha256": "975e13d9a3ed8fbc51630561d037e273d18ce4f17b65ba23eeed428c2bf0964b",
+          "path": "svg/9m.svg"
+        }
+      }
+    },
+    {
+      "key": "1p",
+      "files": {
+        "png": {
+          "sha256": "63c5b8eae3f8f4777ab042d25d289b0248468e8fdd4de9e5662c8f7d9ea5d0f5",
+          "path": "png/1p.png"
+        },
+        "svg": {
+          "sha256": "b4e7464ed909258552dc795bb52559433fad21abbcba4dda2bf4cbefb527b786",
+          "path": "svg/1p.svg"
+        }
+      }
+    },
+    {
+      "key": "2p",
+      "files": {
+        "png": {
+          "sha256": "b38f502d011ffe6a5cd3159bbc2a60315ce9ad91e9296ca68e1b721519b8df20",
+          "path": "png/2p.png"
+        },
+        "svg": {
+          "sha256": "f1800300f70e0b59f66c6134ffe56b06810eba82c4448e5043e6f82c8fb99c96",
+          "path": "svg/2p.svg"
+        }
+      }
+    },
+    {
+      "key": "3p",
+      "files": {
+        "png": {
+          "sha256": "609882f529ba91bbd69f05c66269b830ae55ed21ea9281ada03c6f7e83623808",
+          "path": "png/3p.png"
+        },
+        "svg": {
+          "sha256": "3fa045b721026ecc8d5e6c70852cb74b0564204f79d82ae44aeac146b37c2bfe",
+          "path": "svg/3p.svg"
+        }
+      }
+    },
+    {
+      "key": "4p",
+      "files": {
+        "png": {
+          "sha256": "d708589f818a7412a2dbe365c848b348b653342b87c5f8b4ac0fa1a41230ac09",
+          "path": "png/4p.png"
+        },
+        "svg": {
+          "sha256": "fbd38714a150824313e837c78d154b0b1ed04ad501815cf411b1898e9663d302",
+          "path": "svg/4p.svg"
+        }
+      }
+    },
+    {
+      "key": "5p",
+      "files": {
+        "png": {
+          "sha256": "6267ba06dacd2e71dddf2158c5806ef853cf4c9a42b73d9f52896df35280e8ac",
+          "path": "png/5p.png"
+        },
+        "svg": {
+          "sha256": "5ae607676a65359e58daaede0b3873c5e276cfaf39b0935a1444a0170b804486",
+          "path": "svg/5p.svg"
+        }
+      }
+    },
+    {
+      "key": "6p",
+      "files": {
+        "png": {
+          "sha256": "993621dd201755bea810ebc75c92bfb42d24e68df201f39b3c8bfb6c67f8b2a8",
+          "path": "png/6p.png"
+        },
+        "svg": {
+          "sha256": "e73c7ca37626cf0e6b4d9cb2dd461c9e7eff7149c19d92b13c21681f4ce16713",
+          "path": "svg/6p.svg"
+        }
+      }
+    },
+    {
+      "key": "7p",
+      "files": {
+        "png": {
+          "sha256": "436b1ca9f814d5f5f7f2e5222405469b8be09fcafd17f1d68bea090974bda2d6",
+          "path": "png/7p.png"
+        },
+        "svg": {
+          "sha256": "b355308c26807252f7806b7f8ba99c13b2b8254b23b66ce9adb7a7fa47f7548f",
+          "path": "svg/7p.svg"
+        }
+      }
+    },
+    {
+      "key": "8p",
+      "files": {
+        "png": {
+          "sha256": "f5d203a2d53d634c560e4ae772463a297f92dba41f5e93db8cfa7dba6b4bf63f",
+          "path": "png/8p.png"
+        },
+        "svg": {
+          "sha256": "ed577a8937add71330cd55100fdd752fad92c927d1120a6e911431b87b9806e6",
+          "path": "svg/8p.svg"
+        }
+      }
+    },
+    {
+      "key": "9p",
+      "files": {
+        "png": {
+          "sha256": "9fce1ed4764099d2ef199ce9d6072b72855fcf38d7b204388ad397ae3969000e",
+          "path": "png/9p.png"
+        },
+        "svg": {
+          "sha256": "69fde8733cd2e6e51f91b47b948f87ddb23f3cddac8857f55ef3a8deac1ec684",
+          "path": "svg/9p.svg"
+        }
+      }
+    },
+    {
+      "key": "1s",
+      "files": {
+        "png": {
+          "sha256": "747ff11a92ac33cfc66fe136f317c1fe7086b58d2324841c8a252158a4046fdf",
+          "path": "png/1s.png"
+        },
+        "svg": {
+          "sha256": "fcbf0aeccb4a4d48cc00a54acb33aab3a3bf7e062440e75521738028742fb3df",
+          "path": "svg/1s.svg"
+        }
+      }
+    },
+    {
+      "key": "2s",
+      "files": {
+        "png": {
+          "sha256": "60d585d73672323eee2df8f945008e23c19b74c988037b9ceb9c0b91246bc713",
+          "path": "png/2s.png"
+        },
+        "svg": {
+          "sha256": "d796ab3b2933f1d2f3c1a383541bcef8ad4d209a6629c2c886610b129191ea53",
+          "path": "svg/2s.svg"
+        }
+      }
+    },
+    {
+      "key": "3s",
+      "files": {
+        "png": {
+          "sha256": "5d8f019d65353d95e641ece427c5b3da9fa1615e5e3d3c7ebbea6c36d446ff3a",
+          "path": "png/3s.png"
+        },
+        "svg": {
+          "sha256": "44331c02d705bf95ae62adf8b550659d8b97eaf8881a34ab02779fed40c62777",
+          "path": "svg/3s.svg"
+        }
+      }
+    },
+    {
+      "key": "4s",
+      "files": {
+        "png": {
+          "sha256": "12a4502a0a91638e6befca06238d1f739122821d18453769f212d75e0ae49080",
+          "path": "png/4s.png"
+        },
+        "svg": {
+          "sha256": "5a7b854a75c442619b42cfab8e5c8a0f653f89a9faadde4ff5ff7347d1f8429c",
+          "path": "svg/4s.svg"
+        }
+      }
+    },
+    {
+      "key": "5s",
+      "files": {
+        "png": {
+          "sha256": "fb8696cdd00ad0390a1914c6dacd7dd0259ed132d9654e70e7f8ac674b34c5bd",
+          "path": "png/5s.png"
+        },
+        "svg": {
+          "sha256": "5247e1a2491a3428f4c318b84895fba613c6d6c1f475c7e27e9c36c5f69cf57e",
+          "path": "svg/5s.svg"
+        }
+      }
+    },
+    {
+      "key": "6s",
+      "files": {
+        "png": {
+          "sha256": "4ad139c3116987c825d30e0fae9f9adf9da0334a1e101caf1909e17c5cf94bd5",
+          "path": "png/6s.png"
+        },
+        "svg": {
+          "sha256": "6b0014ae3ec8fcc71a183cb552d97821e0f0bca4de70e74c370fd1ce24e7c3d8",
+          "path": "svg/6s.svg"
+        }
+      }
+    },
+    {
+      "key": "7s",
+      "files": {
+        "png": {
+          "sha256": "c1e158dcb8872c192cfe03590be7f418b12e099f896f27044dca6d516239175d",
+          "path": "png/7s.png"
+        },
+        "svg": {
+          "sha256": "d4b43315c68ac82ea7f610afcb4503e3da7a5dc9a89ea7818ba9cd24296ab031",
+          "path": "svg/7s.svg"
+        }
+      }
+    },
+    {
+      "key": "8s",
+      "files": {
+        "png": {
+          "sha256": "d125764bd0cb449dd495b55b015389f689a8ef26e52063d46d3f4f75c2c0356e",
+          "path": "png/8s.png"
+        },
+        "svg": {
+          "sha256": "507413d33beec8de2381a6dcfe07760452bf5f9cd7f46e44f2fc5bd49dab4c71",
+          "path": "svg/8s.svg"
+        }
+      }
+    },
+    {
+      "key": "9s",
+      "files": {
+        "png": {
+          "sha256": "4e0b0041b9f6d49784a324ecf2ac35302a2fb42651ba06260210b4f0ecbb15c2",
+          "path": "png/9s.png"
+        },
+        "svg": {
+          "sha256": "fa9ff4f21596ed6afe158939e3a87b060a4cdd704b678daa24f64515cf1203ae",
+          "path": "svg/9s.svg"
+        }
+      }
+    },
+    {
+      "key": "1z",
+      "files": {
+        "png": {
+          "sha256": "a5c5fc98ad242e5a84074a1ee6bf322c7aefde85c5c8a0f5af4767df200a761e",
+          "path": "png/1z.png"
+        },
+        "svg": {
+          "sha256": "f381974e5d499a839a0caefef878dd2954e56255d6df510248ed0407e8b91767",
+          "path": "svg/1z.svg"
+        }
+      }
+    },
+    {
+      "key": "2z",
+      "files": {
+        "png": {
+          "sha256": "b1dcb352b2ee7dadf8b4751a7fc2ed65912f3b0e4e665143d115538d6995d45f",
+          "path": "png/2z.png"
+        },
+        "svg": {
+          "sha256": "709c12ace122358169d3f32c17d984af35b7238c171580f60c9a7abf3271c684",
+          "path": "svg/2z.svg"
+        }
+      }
+    },
+    {
+      "key": "3z",
+      "files": {
+        "png": {
+          "sha256": "5357e714d8baa8753202fd1f7fbbc220dfbc7acf41104050df44ce21e3b2d1bd",
+          "path": "png/3z.png"
+        },
+        "svg": {
+          "sha256": "c323b83b7765bb775c9ff2d3c8450bd7aa3d46e58234f82e792a495612143844",
+          "path": "svg/3z.svg"
+        }
+      }
+    },
+    {
+      "key": "4z",
+      "files": {
+        "png": {
+          "sha256": "6a221e417354e45e6a436f4a8d89096444c7d745de6ff5aa351c8697c1dda885",
+          "path": "png/4z.png"
+        },
+        "svg": {
+          "sha256": "e892222d034f1901a1d7cda3f386c0f81b0427ee8ac7b1937f3ef07cbd31d27c",
+          "path": "svg/4z.svg"
+        }
+      }
+    },
+    {
+      "key": "6z",
+      "files": {
+        "png": {
+          "sha256": "03c7fe2154a683525fc678c7f3cefe028c7f6298e7c8658848bd76c6b676c502",
+          "path": "png/6z.png"
+        },
+        "svg": {
+          "sha256": "5e4cd55dd24c70d1b10b02e0a97c37e50323a589db013eb50c5430bcd9f47f44",
+          "path": "svg/6z.svg"
+        }
+      }
+    },
+    {
+      "key": "7z",
+      "files": {
+        "png": {
+          "sha256": "54ceaabd35d54f64e967ff977c74909bac1b196241ef222a46c0d97e8afe9485",
+          "path": "png/7z.png"
+        },
+        "svg": {
+          "sha256": "978a6c639987a8424c7b2aa7bcc1a1fbc1e03c80075294ea1703ac8f7a973e92",
+          "path": "svg/7z.svg"
+        }
+      }
+    },
+    {
+      "key": "0m",
+      "files": {
+        "png": {
+          "sha256": "b18b1e5fc2b7f69c201a471a9c32d8582925eab000021043516dfbb903b7a243",
+          "path": "png/0m.png"
+        },
+        "svg": {
+          "sha256": "d1febbb0db0cef5fbe43aeba678c66cf9f91be14218004ad5af1f3a22ae6d65f",
+          "path": "svg/0m.svg"
+        }
+      }
+    },
+    {
+      "key": "0p",
+      "files": {
+        "png": {
+          "sha256": "08b1804f6314c64562fbc5ae92da5266ff99ecfa5ded42ed44325430f9b2699e",
+          "path": "png/0p.png"
+        },
+        "svg": {
+          "sha256": "dca1b715c1216e2439efafff1cfa458ebb414379e83587dfde6c4850d33ddd24",
+          "path": "svg/0p.svg"
+        }
+      }
+    },
+    {
+      "key": "0s",
+      "files": {
+        "png": {
+          "sha256": "45c4015f5035c6c98147498769032f506d5cbe949b3e1db3aae940988bb656eb",
+          "path": "png/0s.png"
+        },
+        "svg": {
+          "sha256": "b4a83d95ff4c83540aa73478eede5002e3f66c9052d9fc4177322b93c75e33bc",
+          "path": "svg/0s.svg"
+        }
+      }
+    }
+  ],
+  "white_dragon": "5z is intentionally blank and generated locally",
+  "source": "https://github.com/lietxia/mahjong_graphic",
+  "glyph_source": "https://github.com/SyaoranHinata/I.Mahjong"
+}

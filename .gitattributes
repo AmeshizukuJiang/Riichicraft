@@ -9,3 +9,8 @@ gradlew text eol=lf
 gradlew.bat text eol=crlf
 *.jar binary
 *.png binary
+
+# Preserve licensed upstream input bytes for the SHA-256 provenance manifest.
+/art/tiles/mahjong_graphic/** -text whitespace=-blank-at-eol
+/art/tiles/mahjong_graphic/manifest.json text eol=lf
+/src/main/resources/licenses/mahjong_graphic/LICENSE -text whitespace=-blank-at-eol

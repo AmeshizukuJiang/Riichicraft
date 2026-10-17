@@ -1,0 +1,6 @@
+{
+  "parent": "riichicraft:item/mahjong_tiles/body",
+  "textures": {
+    "face": "riichicraft:item/mahjong_tiles/4z"
+  }
+}
