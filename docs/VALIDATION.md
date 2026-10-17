@@ -21,7 +21,7 @@
 
 最终日志`.tmp/furniture-build-final.log`、`furniture-client-final.log`、`furniture-artifact.json`、`furniture-gradle-stop.log`。测试站位／桌面准星的两次失败分别保留为`furniture-client-placement-ray-failed.log`、`furniture-client-tabletop-ray-failed.log`；之后发现“缺椅→另一有效人数布局”仍暂停时没有更新公开人数，已修复并加修订断言，失败保留为`furniture-client-public-layout-failed.log`。该问题没有将三麻实际改成四麻；失败记录不作通过证据。最终重跑均成功。主动文件读写、工具、缓存与测试世界均限本仓库。
 
-[世界桌椅](images/furniture-world.png)、[椅位三麻大厅](images/furniture-lobby.png)、[缺椅暂停提示](images/furniture-paused.png)、[正常重开后](images/furniture-restored.png)、[修复并恢复](images/furniture-resumed.png)。Git同步结果见[接续记录](SESSION_STATUS.md)，开发标签不代表正式发布。
+[世界桌椅](images/furniture-world.png)、[椅位三麻大厅](images/furniture-lobby.png)、[缺椅暂停提示](images/furniture-paused.png)、[正常重开后](images/furniture-restored.png)、[修复并恢复](images/furniture-resumed.png)。实现／截图／验证已提交`177edbb`并建立`v0.0.8-dev`；GitHub已原子接收三麻分支、新桌椅分支、`v0.0.7-dev`与`v0.0.8-dev`，原标签保持原位。推送成功日志`.tmp/github-push-furniture-checkpoint.err.log`；最新接续见[接续记录](SESSION_STATUS.md)。开发标签不代表正式Release上传。
 
 ## 桌椅设计准备：2026-10-17
 
@@ -51,7 +51,7 @@
 
 最终日志`.tmp/three-player-game-rules-final.log`、`three-player-game-build-final.log`、`three-player-client-final.log`、`three-player-game-artifact.json`、`three-player-game-gradle-stop.log`。重启测试夹具第一次在区块不可访问前开桌得到空view，已改为等待真实客户端正常加载后再开，不强载、不放宽超时；失败诊断保留为`three-player-client-restart-fixture-failed.log`，不当通过证据。开发测试身份profile-key401及Windows系统采样警告未改变验证结论，也未因此检查外部配置。
 
-核心／测试`d206aef`、游戏／实际验证`73e5c04`、最终文档／截图`b30f7a6`已本地提交；本地开发tag`v0.0.7-dev`指向`b30f7a6`。最终两次GitHub推送均报443连接超时（约21秒），本批提交与标签尚未推送，失败日志`.tmp/github-push-three-player-release.err.log`；网络恢复后继续同步。原tag保持原位，没有正式`v0.0.7`发布。所有研究、测试世界、缓存、工具和主动文件读写均限本仓库。
+核心／测试`d206aef`、游戏／实际验证`73e5c04`、最终文档／截图`b30f7a6`已本地提交；本地开发tag`v0.0.7-dev`指向`b30f7a6`。当时最终两次GitHub推送报443连接超时（约21秒），失败日志`.tmp/github-push-three-player-release.err.log`；后续桌椅步骤已成功同步本批提交与标签，见本页最新节。原tag保持原位，没有正式`v0.0.7`发布。所有研究、测试世界、缓存、工具和主动文件读写均限本仓库。
 
 ## v0.0.7-dev 三麻手牌计分与拔北明细：2026-10-17
 
