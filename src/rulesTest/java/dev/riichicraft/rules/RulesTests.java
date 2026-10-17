@@ -28,5 +28,6 @@ public final class RulesTests {
         ArchiveTests.main(args);
         ThreePlayerBasicsTests.main(args);
         ThreePlayerScoringTests.main(args);
+        ThreePlayerEngineTests.main(args);
     }
 }

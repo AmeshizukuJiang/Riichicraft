@@ -15,6 +15,17 @@ import java.util.Objects;
 public record ThreePlayerWinContext(WinContext context, List<Integer> extractedNorths, NorthEvent northEvent) {
     public enum NorthEvent { NONE, SUPPLEMENT, ROBBERY }
 
+    public boolean tsumo() { return context.tsumo(); }
+    public boolean dealer() { return context.dealer(); }
+    public int winningTileId() { return context.winningTileId(); }
+    public int seatWind() { return context.seatWind(); }
+    public int roundWind() { return context.roundWind(); }
+    public WinContext.Riichi riichi() { return context.riichi(); }
+    public boolean ippatsu() { return context.ippatsu(); }
+    public WinContext.WinEvent event() { return context.event(); }
+    public List<Integer> doraIndicators() { return context.doraIndicators(); }
+    public List<Integer> uraIndicators() { return context.uraIndicators(); }
+
     public ThreePlayerWinContext {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(northEvent, "northEvent");

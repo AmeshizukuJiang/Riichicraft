@@ -79,6 +79,11 @@ public final class KanActions {
     private KanActions() { }
 
     public static Set<Choice> options(HandInput hand,int drawnTileId,Context context) {
+        return options(hand,drawnTileId,context,HandAnalyzer::waits);
+    }
+
+    static Set<Choice> options(HandInput hand,int drawnTileId,Context context,
+                               java.util.function.Function<HandInput,Set<Integer>> waits) {
         Objects.requireNonNull(context,"context");
         DiscardActions.afterDrawOptions(hand,drawnTileId,context.riichi());
         long ownKans=hand.melds().stream().filter(m->m.tiles().size()==4).count();
@@ -87,7 +92,7 @@ public final class KanActions {
         Set<Integer> precedingWaits=Set.of();
         if (context.riichi()!=WinContext.Riichi.NONE) {
             var held=new ArrayList<>(hand.concealedTiles()); held.remove(Integer.valueOf(drawnTileId));
-            preceding=new HandInput(held,hand.melds()); precedingWaits=HandAnalyzer.waits(preceding);
+            preceding=new HandInput(held,hand.melds()); precedingWaits=waits.apply(preceding);
             if (precedingWaits.isEmpty()) throw new IllegalArgumentException("An established riichi hand must have a preceding structural wait");
         }
         if (context.liveTilesRemaining()==0 || context.establishedKans()==4) return Set.of();
@@ -100,7 +105,7 @@ public final class KanActions {
             if (context.riichi()!=WinContext.Riichi.NONE) {
                 if (!held.contains(drawnTileId)) continue; // No okurikan of an old concealed four.
                 HandInput after=new Proposal(hand,drawnTileId,context,choice).handIfEstablished();
-                Set<Integer> afterWaits=HandAnalyzer.waits(after);
+                Set<Integer> afterWaits=waits.apply(after);
                 if (!precedingWaits.equals(afterWaits)) continue;
                 int[] oldCounts=preceding.tileCounts(),newCounts=after.tileCounts();
                 if (precedingWaits.stream().anyMatch(wait->4-oldCounts[wait]!=4-newCounts[wait])) continue;
@@ -117,8 +122,13 @@ public final class KanActions {
     }
 
     public static Proposal propose(HandInput hand,int drawnTileId,Context context,Choice choice) {
+        return propose(hand,drawnTileId,context,choice,HandAnalyzer::waits);
+    }
+
+    static Proposal propose(HandInput hand,int drawnTileId,Context context,Choice choice,
+                            java.util.function.Function<HandInput,Set<Integer>> waits) {
         Objects.requireNonNull(choice,"choice");
-        if (!options(hand,drawnTileId,context).contains(choice)) throw new IllegalArgumentException("Kan is not legal on this drawn-turn snapshot");
+        if (!options(hand,drawnTileId,context,waits).contains(choice)) throw new IllegalArgumentException("Kan is not legal on this drawn-turn snapshot");
         return new Proposal(hand,drawnTileId,context,choice);
     }
 }
