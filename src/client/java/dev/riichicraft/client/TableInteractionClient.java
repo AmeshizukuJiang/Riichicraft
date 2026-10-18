@@ -109,6 +109,9 @@ public final class TableInteractionClient {
         return reopenKey != null && reopenKey.matches(event);
     }
 
+    static net.minecraft.network.chat.Component controlsKeyName() { return reopenKey.getTranslatedKeyMessage(); }
+    static net.minecraft.network.chat.Component perspectiveKeyName() { return perspectiveKey.getTranslatedKeyMessage(); }
+
     public static TableScenePayload scene() { return scene; }
     public static LobbySnapshotPayload snapshot() { return snapshot; }
     public static boolean active() { return scene != null && snapshot != null; }

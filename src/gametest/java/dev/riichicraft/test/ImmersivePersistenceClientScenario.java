@@ -116,6 +116,7 @@ final class ImmersivePersistenceClientScenario {
                 connection.waitForClientboundPackets();context.waitFor(c->TableInteractionClient.scene()!=null && TableInteractionClient.scene().mounted()
                         && !TableInteractionClient.snapshot().game().paused(),200);
                 context.takeScreenshot("riichicraft-immersive-restored");
+                context.clickScreenButton("screen.riichicraft.table.menu");
                 context.clickScreenButton("screen.riichicraft.game.abort");
                 context.clickScreenButton("screen.riichicraft.game.confirm_abort");
                 connection.waitForServerboundPackets();connection.waitForClientboundPackets();

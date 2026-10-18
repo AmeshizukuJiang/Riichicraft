@@ -18,6 +18,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import org.lwjgl.glfw.GLFW;
 import static dev.riichicraft.network.GameActionPayload.*;
 
 /** Transparent controls over the actual table. No inventory or second copy of the hand. */
@@ -28,10 +29,15 @@ public final class TableScreen extends Screen {
     private final List<Button> actionButtons = new ArrayList<>();
     private final List<Button> choiceButtons = new ArrayList<>();
     private LobbySnapshotPayload snapshot;
-    private boolean awaitingReply, riichiArmed, abortArmed;
-    private int selectedTile = -1, expandedAction = -1, resultPage;
+    private boolean awaitingReply, riichiArmed, abortArmed, menuOpen;
+    private int selectedTile = -1, hoveredTile = -1, expandedAction = -1, resultPage, detailPage;
+    private int detail; // 0: menu, 1: help, 2: complete discard history
     private int resultLeft, resultTop, resultWidth, resultHeight;
     private List<Component> resultLines = List.of();
+    private final List<ScoreBadge> scoreBadges = new ArrayList<>();
+    private record ScoreBadge(int seat, int x, int y, int width, int height) {
+        boolean contains(double mouseX, double mouseY) { return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height; }
+    }
 
     public TableScreen(LobbySnapshotPayload snapshot) {
         super(text("title"));
@@ -43,6 +49,14 @@ public final class TableScreen extends Screen {
     public int selectedTileId() { return selectedTile; }
     public boolean riichiArmed() { return riichiArmed; }
 
+    /** Only this recipient's hand can receive a hover/selection/riichi outline. */
+    public int tileOutlineColor(int tile) {
+        if (menuOpen || game() == null || finished() || snapshot.ownSeat() < 0 || !game().ownHand().contains(tile)) return 0;
+        if (selectedTile == tile) return 0xFFEAC577;
+        if (riichiArmed) return !awaitingReply && !game().paused() && rules().riichiDiscards().contains(tile) ? 0xFF7FE5B0 : 0;
+        return hoveredTile == tile ? 0xFFF8EED1 : 0;
+    }
+
     void acceptSnapshot(LobbySnapshotPayload updated) {
         boolean sameGame = game() != null && updated.game() != null && game().gameId().equals(updated.game().gameId());
         boolean unchangedTurn = sameGame && game().revision() == updated.game().revision();
@@ -52,7 +66,7 @@ public final class TableScreen extends Screen {
             selectedTile = -1;
             expandedAction = -1;
         }
-        if (!sameGame) resultPage = 0;
+        if (!sameGame) { resultPage = 0; detailPage = 0; menuOpen = false; }
         snapshot = updated;
         awaitingReply = false;
         abortArmed = false;
@@ -63,43 +77,123 @@ public final class TableScreen extends Screen {
     protected void init() {
         actionButtons.clear();
         choiceButtons.clear();
-        addRenderableWidget(Button.builder(text("perspective"), button -> {
+        scoreBadges.clear();
+        int toolbarHeight = finished() ? 14 : 20;
+        Button perspective = button(text("perspective_short"), width - 119, 6, 42, toolbarHeight, () -> {
             discardGate.reset();
             TableCamera.toggle();
-        }).bounds(width - 105, 7, 61, 18).build()).active = TableInteractionClient.scene() != null
-                && (TableInteractionClient.scene().mounted() || snapshot.ownSeat() < 0);
-        addRenderableWidget(Button.builder(text("hide"), button -> onClose()).bounds(width - 40, 7, 33, 18).build())
-                .setTooltip(Tooltip.create(text("controls_hint")));
+        });
+        perspective.active = TableInteractionClient.scene() != null && (TableInteractionClient.scene().mounted() || snapshot.ownSeat() < 0);
+        perspective.setTooltip(Tooltip.create(text("perspective_key", TableInteractionClient.perspectiveKeyName())));
+        button(text("hide"), width - 74, 6, 32, toolbarHeight, this::onClose)
+                .setTooltip(Tooltip.create(controlsHint()));
+        button(text("menu"), width - 39, 6, 32, toolbarHeight, () -> {
+            menuOpen = !menuOpen;
+            detail = 0;
+            abortArmed = false;
+            selectedTile = -1;
+            hoveredTile = -1;
+            discardGate.reset();
+            rebuildWidgets();
+        });
+        if (menuOpen) { initMenu(); return; }
         if (game() == null) initLobby();
         else if (finished()) initResult();
         else initActions();
+    }
+
+    private Button button(Component label, int x, int y, int buttonWidth, int buttonHeight, Runnable action) {
+        return addRenderableWidget(new TableButton(label, x, y, buttonWidth, buttonHeight, ignored -> action.run()));
+    }
+
+    private void initMenu() {
+        resultWidth = Math.min(220, width - 16);
+        resultLeft = width - resultWidth - 8;
+        resultTop = 36;
+        resultHeight = Math.min(156, height - resultTop - 9);
+        if (detail != 0) {
+            resultLines = detail == 1 ? helpLines() : historyLines();
+            detailPage = Math.min(detailPage, resultPageCount() - 1);
+            button(Component.literal("‹"), resultLeft + 5, resultTop + resultHeight - 22, 20, 17,
+                    () -> { detailPage--; rebuildWidgets(); }).active = detailPage > 0;
+            button(Component.literal("›"), resultLeft + 29, resultTop + resultHeight - 22, 20, 17,
+                    () -> { detailPage++; rebuildWidgets(); }).active = detailPage + 1 < resultPageCount();
+            button(text("back_menu"), resultLeft + 55, resultTop + resultHeight - 22, resultWidth - 60, 17,
+                    () -> { detail = 0; rebuildWidgets(); });
+            return;
+        }
+        button(text("help"), resultLeft + 7, resultTop + 9, resultWidth - 14, 20,
+                () -> { detail = 1; detailPage = 0; rebuildWidgets(); });
+        button(text("history"), resultLeft + 7, resultTop + 33, resultWidth - 14, 20,
+                () -> { detail = 2; detailPage = 0; rebuildWidgets(); }).active = game() != null;
+        if (game() != null && snapshot.ownSeat() >= 0 && (!finished()
+                || game().match() != null && game().match().phase() == GameSnapshot.MATCH_ROUND_RESULT)) {
+            button(gameText(abortArmed ? "confirm_abort" : game().match() == null ? "abort" : "abort_match"),
+                    resultLeft + 7, resultTop + 65, resultWidth - 14, 20, () -> {
+                        if (abortArmed) send(ABORT, -1, -1, -1, List.of());
+                        else { abortArmed = true; discardGate.reset(); rebuildWidgets(); }
+                    }).active = available();
+            if (abortArmed) button(gameText("cancel_abort"), resultLeft + 7, resultTop + 89, resultWidth - 14, 20,
+                    () -> { abortArmed = false; rebuildWidgets(); }).active = available();
+        }
+        button(text("back_table"), resultLeft + 7, resultTop + resultHeight - 27, resultWidth - 14, 20,
+                () -> { menuOpen = false; abortArmed = false; rebuildWidgets(); });
+    }
+
+    private List<Component> helpLines() {
+        List<Component> lines = new ArrayList<>();
+        for (Component paragraph : List.of(text("help_select"), text("help_riichi"), text("help_actions"), text("help_menu"), controlsHint()))
+            for (var line : font.getSplitter().splitLines(paragraph, resultWidth - 14, net.minecraft.network.chat.Style.EMPTY))
+                lines.add(Component.literal(line.getString()));
+        return List.copyOf(lines);
+    }
+
+    private Component controlsHint() {
+        return text("controls_keys", TableInteractionClient.controlsKeyName(), TableInteractionClient.perspectiveKeyName(),
+                minecraft.options.keyShift.getTranslatedKeyMessage());
+    }
+
+    private List<Component> historyLines() {
+        if (game() == null) return List.of();
+        List<Component> lines = new ArrayList<>();
+        for (int seat = 0; seat < game().seats().size(); seat++) {
+            lines.add(text("history_seat", wind(snapshot, seat), snapshot.seats().get(seat).name()));
+            var river = game().seats().get(seat).discards();
+            if (river.isEmpty()) lines.add(text("history_empty"));
+            for (int index = 0; index < river.size(); index++) {
+                MutableComponent line = Component.literal((index + 1) + ". ").append(TileFaces.fullName(river.get(index)));
+                if (rules() != null) {
+                    var mark = rules().seats().get(seat).river().get(index);
+                    if (mark.declaration()) line.append(" · ").append(gameText("riichi"));
+                    if (mark.claimedBy() >= 0) line.append(" · ").append(text("history_claimed", wind(snapshot, mark.claimedBy())));
+                    if (mark.tsumogiri()) line.append(" · ").append(text("history_tsumogiri"));
+                }
+                lines.add(line);
+            }
+        }
+        return List.copyOf(lines);
     }
 
     private void initLobby() {
         int left = 9, top = height - 62;
         boolean participant = snapshot.ownSeat() >= 0;
         boolean ownReady = participant && snapshot.seats().get(snapshot.ownSeat()).ready();
-        Button ready = addRenderableWidget(Button.builder(lobbyText(ownReady ? "cancel_ready" : "prepare"),
-                button -> requestLobby(LobbyActionPayload.SET_READY, !ownReady, 0)).bounds(left, top, 77, 20).build());
+        Button ready = button(lobbyText(ownReady ? "cancel_ready" : "prepare"), left, top, 77, 20,
+                () -> requestLobby(LobbyActionPayload.SET_READY, !ownReady, 0));
         ready.active = available() && participant && (structureValid() || ownReady);
-        Button start = addRenderableWidget(Button.builder(lobbyText("start"), button -> requestLobby(LobbyActionPayload.START, false, 0))
-                .bounds(left + 81, top, 73, 20).build());
+        Button start = button(lobbyText("start"), left + 81, top, 73, 20, () -> requestLobby(LobbyActionPayload.START, false, 0));
         start.active = available() && snapshot.ownSeat() == 0 && snapshot.allReady() && structureValid();
         int nextMode = snapshot.mode() / 3 * 3 + (snapshot.mode() + 1) % 3;
-        Button mode = addRenderableWidget(Button.builder(lobbyText("mode." + new String[]{"single", "east", "south"}[snapshot.mode() % 3]),
-                button -> requestLobby(LobbyActionPayload.SET_MODE, false, nextMode)).bounds(left, top + 24, 77, 18).build());
+        Button mode = button(lobbyText("mode." + new String[]{"single", "east", "south"}[snapshot.mode() % 3]), left, top + 24, 77, 18,
+                () -> requestLobby(LobbyActionPayload.SET_MODE, false, nextMode));
         mode.active = available() && snapshot.ownSeat() == 0 && structureValid();
-        Button leave = addRenderableWidget(Button.builder(text("leave_lobby"), button -> requestLobby(LobbyActionPayload.LEAVE, false, 0))
-                .bounds(left + 81, top + 24, 73, 18).build());
+        Button leave = button(text("leave_lobby"), left + 81, top + 24, 73, 18, () -> requestLobby(LobbyActionPayload.LEAVE, false, 0));
         leave.active = available() && participant;
     }
 
     private void initActions() {
         if (snapshot.ownSeat() < 0) return;
-        if (abortArmed) {
-            addAction(gameText("confirm_abort"), () -> send(ABORT, -1, -1, -1, List.of()), true);
-            addAction(gameText("cancel_abort"), () -> { abortArmed = false; rebuildWidgets(); }, true);
-        } else if (game().paused()) {
+        if (game().paused()) {
             boolean confirmed = game().seats().get(snapshot.ownSeat()).confirmed();
             addAction(gameText(confirmed ? "confirmed" : "resume"), () -> send(RESUME, -1, -1, -1, List.of()),
                     !confirmed && structureValid() && game().seats().stream().allMatch(GameSnapshot.Seat::present));
@@ -129,20 +223,12 @@ public final class TableScreen extends Screen {
                 choiceButtons.add(addRenderableWidget(choice));
             }
         }
-        if (!abortArmed) {
-            Button abort = addRenderableWidget(Button.builder(gameText(game().match() == null ? "abort" : "abort_match"), button -> {
-                abortArmed = true;
-                discardGate.reset();
-                rebuildWidgets();
-            }).bounds(7, height - 23, 70, 16).build());
-            abort.active = available();
-        }
         layoutActions();
     }
 
     private void addAction(Component label, Runnable action, boolean enabled) {
         int buttonWidth = Math.max(36, Math.min(84, font.width(label) + 14));
-        Button button = addRenderableWidget(Button.builder(label, ignored -> action.run()).bounds(0, 0, buttonWidth, 20).build());
+        Button button = button(label, 0, 0, buttonWidth, 20, action);
         button.active = available() && enabled;
         actionButtons.add(button);
     }
@@ -170,34 +256,26 @@ public final class TableScreen extends Screen {
     private void initResult() {
         resultWidth = Math.max(144, Math.min(220, width * 2 / 5));
         resultLeft = width - resultWidth - 8;
-        resultTop = 34;
+        resultTop = 50;
         resultHeight = Math.max(88, Math.min(140, height - 67));
         resultLines = resultLines(snapshot);
         int pageCount = resultPageCount();
         resultPage = Math.min(resultPage, pageCount - 1);
-        Button previous = addRenderableWidget(Button.builder(Component.literal("‹"), ignored -> { resultPage--; rebuildWidgets(); })
-                .bounds(resultLeft + 5, resultTop + resultHeight - 21, 19, 17).build());
+        Button previous = button(Component.literal("‹"), resultLeft + 5, resultTop + resultHeight - 21, 19, 17,
+                () -> { resultPage--; rebuildWidgets(); });
         previous.active = resultPage > 0;
-        Button next = addRenderableWidget(Button.builder(Component.literal("›"), ignored -> { resultPage++; rebuildWidgets(); })
-                .bounds(resultLeft + 28, resultTop + resultHeight - 21, 19, 17).build());
+        Button next = button(Component.literal("›"), resultLeft + 28, resultTop + resultHeight - 21, 19, 17,
+                () -> { resultPage++; rebuildWidgets(); });
         next.active = resultPage + 1 < pageCount;
         boolean intermission = game().match() != null && game().match().phase() == GameSnapshot.MATCH_ROUND_RESULT;
         boolean confirmed = intermission && snapshot.ownSeat() >= 0 && game().match().confirmations().get(snapshot.ownSeat());
-        Button continueButton = addRenderableWidget(Button.builder(gameText(intermission ? confirmed ? "confirmed" : "next_round" : "return_lobby"), ignored -> {
+        Button continueButton = button(gameText(intermission ? confirmed ? "confirmed" : "next_round" : "return_lobby"),
+                resultLeft + 53, resultTop + resultHeight - 21, resultWidth - 58, 17, () -> {
             if (intermission) send(NEXT_ROUND, -1, game().match().continueEpoch(), -1, List.of());
             else send(RETURN_LOBBY, -1, -1, -1, List.of());
-        }).bounds(resultLeft + 53, resultTop + resultHeight - 21, resultWidth - 58, 17).build());
+        });
         continueButton.active = available() && !abortArmed && snapshot.ownSeat() >= 0 && (!intermission
                 || !confirmed && structureValid() && game().seats().stream().allMatch(GameSnapshot.Seat::present));
-        if (intermission) {
-            Button abort = addRenderableWidget(Button.builder(gameText(abortArmed ? "confirm_abort" : "abort_match"), ignored -> {
-                if (abortArmed) send(ABORT, -1, -1, -1, List.of());
-                else { abortArmed = true; rebuildWidgets(); }
-            }).bounds(7, height - 23, 82, 16).build());
-            abort.active = available() && snapshot.ownSeat() >= 0;
-            if (abortArmed) addRenderableWidget(Button.builder(gameText("cancel_abort"), ignored -> { abortArmed = false; rebuildWidgets(); })
-                    .bounds(93, height - 23, 60, 16).build()).active = available();
-        }
     }
 
     @Override
@@ -207,35 +285,122 @@ public final class TableScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        Component status = game() == null ? lobbyText(snapshot.allReady() ? "all_ready" : "waiting")
-                : finished() ? gameText("end." + ENDS[rules().result().kind()])
-                : game().paused() ? gameText("paused") : gameText("turn", wind(snapshot, game().turnSeat()), game().remainingTiles());
-        graphics.fill(6, 5, Math.min(width - 110, 9 + font.width(status) + 8), 27, 0xB01A2925);
-        graphics.text(font, font.plainSubstrByWidth(status.getString(), Math.max(20, width - 122)), 11, 12, 0xFFF2E9CE);
-        if (game() == null) drawLobby(graphics);
-        else if (finished()) drawResult(graphics, mouseX, mouseY);
+        drawSituation(graphics, mouseX, mouseY);
+        hoveredTile = -1;
+        if (game() != null && !finished()) drawScores(graphics, mouseX, mouseY);
+        if (menuOpen) drawMenu(graphics, mouseX, mouseY);
+        else if (game() == null) drawLobby(graphics);
+        else if (finished()) drawResult(graphics, mouseX, mouseY, resultPage);
         else {
             layoutActions();
-            int hovered = TableCamera.pickTile(mouseX, mouseY);
+            int hovered = uiContains(mouseX, mouseY) ? -1 : TableCamera.pickTile(mouseX, mouseY);
             if (hovered >= 0 && game().ownHand().contains(hovered)) {
+                hoveredTile = hovered;
                 graphics.setTooltipForNextFrame(Component.empty().append(TileFaces.fullName(hovered)).append(" · ")
-                        .append(text(riichiArmed ? "riichi_hint" : "double_click_hint")), mouseX, mouseY);
+                        .append(text(canDiscard(hovered) ? riichiArmed ? "riichi_hint" : "discard_hint"
+                                : riichiArmed ? "not_riichi_tile" : "view_only")), mouseX, mouseY);
                 int previewX = Math.min(width - 37, Math.max(5, mouseX + 13)), previewY = Math.max(30, mouseY - 62);
                 TileFaces.drawHand(graphics, font, hovered, previewX, previewY, 32, 47, hovered == selectedTile, true);
             }
             Component note = awaitingReply ? gameText("processing") : riichiArmed ? text("riichi_hint")
-                    : selectedTile >= 0 ? text("selected", TileFaces.fullName(selectedTile)) : text("double_click_hint");
-            graphics.text(font, font.plainSubstrByWidth(note.getString(), Math.max(40, width - 96)), 85, height - 24, 0xFFE8D3A5);
+                    : selectedTile >= 0 ? text("selected", TileFaces.fullName(selectedTile)) : Component.empty();
+            if (!note.getString().isEmpty()) {
+                int noteWidth = Math.max(1, width - 94);
+                graphics.text(font, font.plainSubstrByWidth(note.getString(), noteWidth), 7, height - 13, 0xFFE8D3A5);
+                if (mouseY >= height - 15 && mouseX < width - 84) graphics.setTooltipForNextFrame(note, mouseX, mouseY);
+            }
         }
-        if (!snapshot.feedbackKey().isEmpty()) {
+        if (!menuOpen && !snapshot.feedbackKey().isEmpty()) {
             Component feedback = Component.translatable(snapshot.feedbackKey());
-            graphics.centeredText(font, feedback, width / 2, 29, 0xFFFFCF8A);
+            graphics.centeredText(font, font.plainSubstrByWidth(feedback.getString(), width - 16), width / 2, 35, 0xFFFFCF8A);
         }
-        int hintLeft = game() == null ? 8 : 85;
-        Component hint = text("controls_hint");
-        graphics.text(font, font.plainSubstrByWidth(hint.getString(), Math.max(20, width - hintLeft - 7)), hintLeft, height - 10, 0xFFD1D6C8);
-        if (mouseY >= height - 11) graphics.setTooltipForNextFrame(hint, mouseX, mouseY);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public Component roundSummary() {
+        if (rules() == null) return lobbyText(snapshot.allReady() ? "all_ready" : "waiting");
+        int hand = game().match() == null ? 1 : game().match().roundIndex() % game().seats().size() + 1;
+        return text("round", lobbyText(WINDS[rules().roundWind() - 27]), hand, rules().honba());
+    }
+
+    public int displayedPoints(int seat) {
+        if (game().match() != null && game().match().result() != null)
+            for (var standing : game().match().result().standings()) if (standing.seat() == seat) return standing.points();
+        return rules().seats().get(seat).points();
+    }
+
+    public int displayedDeposits() {
+        return game().match() != null && game().match().result() != null ? 0 : rules().deposits();
+    }
+
+    private void drawSituation(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int panelWidth = game() == null ? Math.max(90, width - 131) : Math.min(108, (width - 74) / 2 - 11);
+        TableButton.panel(graphics, 6, 6, panelWidth, finished() ? 14 : 27, false);
+        Component first = roundSummary();
+        Component second = rules() == null ? text("lobby_hint") : text("pool_live", displayedDeposits(), game().remainingTiles());
+        graphics.text(font, font.plainSubstrByWidth(first.getString(), panelWidth - 8), 10, 9, 0xFFF1E7CD);
+        if (!finished()) graphics.text(font, font.plainSubstrByWidth(second.getString(), panelWidth - 8), 10, 21, 0xFFBBD3C4);
+        if (mouseX >= 6 && mouseX < 6 + panelWidth && mouseY >= 6 && mouseY < 33)
+            graphics.setComponentTooltipForNextFrame(font, List.of(first, second), mouseX, mouseY);
+        if (!menuOpen && snapshot.feedbackKey().isEmpty() && game() != null && (game().paused() || finished())) {
+            Component state = finished() ? gameText("end." + ENDS[rules().result().kind()]) : gameText("paused");
+            graphics.centeredText(font, font.plainSubstrByWidth(state.getString(), width - 16), width / 2, 36, 0xFFE9D29A);
+            if (mouseY >= 35 && mouseY < 46) graphics.setTooltipForNextFrame(state, mouseX, mouseY);
+        }
+    }
+
+    private void drawScores(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        scoreBadges.clear();
+        if (rules() == null) return;
+        var scene = TableInteractionClient.scene();
+        List<Integer> sides = scene != null && scene.viewId().equals(viewId()) ? scene.sides()
+                : java.util.stream.IntStream.range(0, snapshot.seats().size()).boxed().toList();
+        int home = sides.get(snapshot.ownSeat() < 0 ? 0 : snapshot.ownSeat());
+        var hand = TableCamera.handBounds();
+        for (int seat = 0; seat < snapshot.seats().size(); seat++) {
+            int side = Math.floorMod(sides.get(seat) - home, 4);
+            int cardWidth = side % 2 == 0 ? 74 : 62;
+            int x = switch (side) { case 0 -> width - cardWidth - 6; case 1 -> width - cardWidth - 6;
+                case 2 -> (width - cardWidth) / 2; default -> 6; };
+            int y = switch (side) { case 0 -> height - 33; case 2 -> 6; default -> height / 2 - 13; };
+            if (hand != null && x < hand.right() + 3 && x + cardWidth > hand.left() - 3
+                    && y < hand.bottom() + 3 && y + 27 > hand.top() - 3) {
+                int below = (int) Math.ceil(hand.bottom()) + 6;
+                y = below + 27 < height - 6 ? below : Math.max(39, (int) hand.top() - 33);
+            }
+            if (menuOpen && x < resultLeft + resultWidth && x + cardWidth > resultLeft
+                    && y < resultTop + resultHeight && y + 27 > resultTop) continue;
+            var badge = new ScoreBadge(seat, x, y, cardWidth, 27);
+            scoreBadges.add(badge);
+            boolean actor = !finished() && !game().paused() && game().turnSeat() == seat;
+            TableButton.panel(graphics, x, y, cardWidth, 27, actor);
+            int dealer = rules().dealerSeat();
+            Component value = Component.empty().append(text("wind." + WINDS[Math.floorMod(seat - dealer, snapshot.seats().size())]))
+                    .append(" " + displayedPoints(seat));
+            drawFitted(graphics, value, x + 4, y + 4, cardWidth - 8, seat == snapshot.ownSeat() ? 0xFFB6F1C6 : 0xFFF1E7CD);
+            int riichi = rules().seats().get(seat).riichiPhase();
+            Component marker = riichi > 0 ? gameText(riichi == 2 ? "riichi" : "declaring")
+                    : !game().seats().get(seat).present() ? text("absent") : actor ? text(rules().opportunity() != null ? "responding" : "acting") : Component.empty();
+            String name = snapshot.seats().get(seat).name();
+            String shortName = font.plainSubstrByWidth(name, Math.max(0, cardWidth - 10 - font.width(marker)));
+            graphics.text(font, shortName, x + 4, y + 16, 0xFFC0CDBE);
+            if (!marker.getString().isEmpty()) graphics.text(font, marker, x + cardWidth - 4 - font.width(marker), y + 16, 0xFFE6C67F);
+            if (badge.contains(mouseX, mouseY)) graphics.setComponentTooltipForNextFrame(font,
+                    List.of(Component.literal(name), value, marker), mouseX, mouseY);
+        }
+    }
+
+    private void drawMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (detail != 0) { drawResult(graphics, mouseX, mouseY, detailPage); return; }
+        TableButton.panel(graphics, resultLeft, resultTop, resultWidth, resultHeight, false);
+    }
+
+    private void drawFitted(GuiGraphicsExtractor graphics, Component label, int x, int y, int maxWidth, int color) {
+        float scale = Math.min(1F, (float) maxWidth / Math.max(1, font.width(label)));
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y).scale(scale, scale);
+        graphics.text(font, label, 0, 0, color);
+        graphics.pose().popMatrix();
     }
 
     private void drawLobby(GuiGraphicsExtractor graphics) {
@@ -251,26 +416,37 @@ public final class TableScreen extends Screen {
         }
     }
 
-    private void drawResult(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        graphics.fill(resultLeft, resultTop, resultLeft + resultWidth, resultTop + resultHeight, 0xDB142A23);
-        int perPage = resultLinesPerPage(), begin = resultPage * perPage;
+    private void drawResult(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int page) {
+        TableButton.panel(graphics, resultLeft, resultTop, resultWidth, resultHeight, false);
+        Component title = menuOpen ? text(detail == 1 ? "help" : "history") : gameText("result");
+        graphics.text(font, title, resultLeft + 6, resultTop + 5, 0xFFE6C67F);
+        String pageLabel = (page + 1) + "/" + resultPageCount();
+        graphics.text(font, pageLabel, resultLeft + resultWidth - 6 - font.width(pageLabel), resultTop + 5, 0xFFE6C67F);
+        int perPage = resultLinesPerPage(), begin = page * perPage;
         for (int index = begin; index < Math.min(resultLines.size(), begin + perPage); index++) {
-            int y = resultTop + 7 + (index - begin) * 12;
+            int y = resultTop + 20 + (index - begin) * 12;
             Component line = resultLines.get(index);
             graphics.text(font, font.plainSubstrByWidth(line.getString(), resultWidth - 12), resultLeft + 6, y, 0xFFF1E7CD);
             if (mouseX >= resultLeft && mouseX < resultLeft + resultWidth && mouseY >= y && mouseY < y + 12)
                 graphics.setTooltipForNextFrame(line, mouseX, mouseY);
         }
-        graphics.text(font, (resultPage + 1) + "/" + resultPageCount(), resultLeft + 5, resultTop - 11, 0xFFE3D7BB);
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (super.mouseClicked(event, doubleClick)) { discardGate.reset(); return true; }
+        if (menuOpen) {
+            discardGate.reset();
+            if (event.button() == 0 && (event.x() < resultLeft || event.x() >= resultLeft + resultWidth
+                    || event.y() < resultTop || event.y() >= resultTop + resultHeight)) {
+                menuOpen = false; abortArmed = false; rebuildWidgets();
+            }
+            return true;
+        }
+        if (uiContains(event.x(), event.y())) { discardGate.reset(); return true; }
         if (event.button() != 0 || game() == null || finished()) { discardGate.reset(); return false; }
         int tile = TableCamera.pickTile(event.x(), event.y());
-        boolean legal = !awaitingReply && snapshot.ownSeat() >= 0 && !game().paused() && rules() != null
-                && game().ownHand().contains(tile) && (riichiArmed ? rules().riichiDiscards() : rules().legalDiscards()).contains(tile);
+        boolean legal = canDiscard(tile);
         selectedTile = legal ? tile : -1;
         boolean confirm = discardGate.click(game().gameId(), game().revision(), tile, riichiArmed, System.nanoTime(), legal);
         if (confirm) send(riichiArmed ? RIICHI : DISCARD, tile, -1, -1, List.of());
@@ -279,6 +455,9 @@ public final class TableScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (menuOpen && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+            menuOpen = false; abortArmed = false; discardGate.reset(); rebuildWidgets(); return true;
+        }
         if (minecraft.options.keyChat.matches(event) || minecraft.options.keyCommand.matches(event)) {
             discardGate.reset();
             boolean command=minecraft.options.keyCommand.matches(event);
@@ -298,6 +477,20 @@ public final class TableScreen extends Screen {
             return true;
         }
         return super.keyPressed(event);
+    }
+
+    private boolean canDiscard(int tile) {
+        return !menuOpen && !awaitingReply && snapshot.ownSeat() >= 0 && game() != null && !game().paused() && rules() != null
+                && game().ownHand().contains(tile) && (riichiArmed ? rules().riichiDiscards() : rules().legalDiscards()).contains(tile);
+    }
+
+    private boolean uiContains(double mouseX, double mouseY) {
+        if (menuOpen || mouseY < 34) return true;
+        if (scoreBadges.stream().anyMatch(badge -> badge.contains(mouseX, mouseY))) return true;
+        for (var child : children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                && widget.visible && mouseX >= widget.getX() && mouseX < widget.getX() + widget.getWidth()
+                && mouseY >= widget.getY() && mouseY < widget.getY() + widget.getHeight()) return true;
+        return false;
     }
 
     @Override
@@ -321,6 +514,7 @@ public final class TableScreen extends Screen {
     private void requestLobby(int action, boolean ready, int mode) {
         if (available() && LobbyClient.request(snapshot, action, ready, mode)) {
             awaitingReply = true;
+            menuOpen = false;
             rebuildWidgets();
         }
     }
@@ -329,6 +523,8 @@ public final class TableScreen extends Screen {
         discardGate.reset();
         if (!awaitingReply && snapshot.ownSeat() >= 0 && LobbyClient.requestGame(snapshot, action, tile, window, meld, hand)) {
             awaitingReply = true;
+            menuOpen = false;
+            abortArmed = false;
             riichiArmed = false;
             expandedAction = -1;
             rebuildWidgets();
@@ -407,7 +603,7 @@ public final class TableScreen extends Screen {
         return List.copyOf(lines);
     }
 
-    private int resultLinesPerPage() { return Math.max(1, (resultHeight - 32) / 12); }
+    private int resultLinesPerPage() { return Math.max(1, (resultHeight - 44) / 12); }
     private int resultPageCount() { return Math.max(1, (resultLines.size() + resultLinesPerPage() - 1) / resultLinesPerPage()); }
     private boolean available() { return !awaitingReply && (game() == null ? LobbyClient.canSend() : LobbyClient.canSendGame()); }
     private boolean structureValid() { return snapshot.structurePlayers() < 0 || snapshot.structurePlayers() == snapshot.seats().size(); }

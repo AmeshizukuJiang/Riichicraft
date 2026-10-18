@@ -97,6 +97,18 @@ final class ImmersiveClientScenario {
                 require(TableCamera.active() && TableCamera.overhead(), "New round switches the real render camera to overhead");
             });
             verifySettlementDeltas(opening);
+            verifyFinalPool(context, snapshot(context));
+            verifySelectableHand(context, connection, opening);
+            context.getInput().pressKey(GLFW.GLFW_KEY_V); context.waitTicks(2);
+            verifySelectableHand(context, connection, opening);
+            context.getInput().pressKey(GLFW.GLFW_KEY_V); context.waitTicks(2);
+            verifyRiichiFeedback(context, connection, snapshot(context));
+            context.runOnClient(client -> {
+                TableScreen screen = (TableScreen) client.gui.screen();
+                require(!screen.roundSummary().getString().contains("screen."), "Live round and honba use resolved translations");
+                for (int seat = 0; seat < 4; seat++) require(screen.displayedPoints(seat) == opening.rules().seats().get(seat).points(),
+                        "Live score badges use current server points");
+            });
             context.getInput().pressKey(GLFW.GLFW_KEY_T);
             context.waitForScreen(net.minecraft.client.gui.screens.ChatScreen.class);
             context.getInput().typeChars("r v");context.waitTick();
@@ -111,12 +123,37 @@ final class ImmersiveClientScenario {
             context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
             require(snapshot(context).game().revision() == opening.revision(), "First real world-tile click selects without sending a discard");
             require(context.computeOnClient(client -> ((TableScreen) client.gui.screen()).selectedTileId()) == tile, "World projection selects the exact physical copy");
+            // Real menu input cannot complete a pending pair or act through transparent panel gaps.
+            context.clickScreenButton("screen.riichicraft.table.menu");
+            context.clickScreenButton("screen.riichicraft.table.help");
+            verifyWidgetBounds(context);
+            shot(context, "riichicraft-table-ui-help");
+            context.clickScreenButton("screen.riichicraft.table.back_menu");
+            context.clickScreenButton("screen.riichicraft.game.abort_match");
+            context.clickScreenButton("screen.riichicraft.game.cancel_abort");
+            sync(connection);
+            require(snapshot(context).game().revision() == opening.revision(), "Opening and cancelling two-step abort sends no game action");
+            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.waitForScreen(TableScreen.class);
+            context.getInput().setCursorPos(cursor[0], cursor[1]);
+            context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+            require(snapshot(context).game().revision() == opening.revision(), "Menu interruption invalidates the earlier physical-tile click pair");
             context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); sync(connection);
             context.waitFor(client -> TableInteractionClient.snapshot().game().revision() > opening.revision(), 200);
             GameSnapshot afterDiscard = snapshot(context).game();
             require(afterDiscard.seats().get(0).discards().equals(List.of(tile)), "The second real click appends exactly one authoritative discard");
             context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); sync(connection);
             require(snapshot(context).game().seats().get(0).discards().equals(List.of(tile)), "A third click cannot replay the accepted discard");
+            context.clickScreenButton("screen.riichicraft.table.menu");
+            context.clickScreenButton("screen.riichicraft.table.history");
+            verifyWidgetBounds(context);
+            shot(context,"riichicraft-table-ui-history");
+            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            for (int[] size : List.of(new int[]{640,480},new int[]{1280,720},new int[]{960,1280})) {
+                context.getInput().resizeWindow(size[0],size[1]); context.waitTicks(2);
+                verifyWidgetBounds(context);
+            }
+            context.getInput().resizeWindow(1280,960); context.waitTicks(2);
             context.getInput().pressKey(GLFW.GLFW_KEY_V); context.waitTick();
             require(!context.computeOnClient(client -> TableCamera.overhead()), "V returns to the normal seated view");
             context.waitTicks(2);
@@ -232,6 +269,75 @@ final class ImmersiveClientScenario {
             var window = client.getWindow();
             return new double[]{x * window.getScreenWidth() / window.getGuiScaledWidth(), y * window.getScreenHeight() / window.getGuiScaledHeight()};
         });
+    }
+
+    private static void verifyWidgetBounds(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            var screen = (TableScreen) client.gui.screen();
+            int width = client.getWindow().getGuiScaledWidth(), height = client.getWindow().getGuiScaledHeight();
+            for (var child : screen.children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget && widget.visible)
+                require(widget.getX() >= 0 && widget.getY() >= 0 && widget.getX() + widget.getWidth() <= width
+                        && widget.getY() + widget.getHeight() <= height, "Actual table controls remain in the scaled viewport");
+        });
+    }
+
+    private static void verifySelectableHand(ClientGameTestContext context, TestServerConnection connection, GameSnapshot opening) {
+        for (int tile : opening.rules().legalDiscards()) {
+            double[] cursor = tileCursor(context, tile);
+            context.getInput().setCursorPos(cursor[0], cursor[1]);
+            context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+            require(context.computeOnClient(client -> ((TableScreen) client.gui.screen()).selectedTileId()) == tile,
+                    "Every legal physical hand tile remains directly selectable beside score badges");
+        }
+        sync(connection);
+        require(snapshot(context).game().revision() == opening.revision(), "Single clicks across distinct physical tiles do not discard");
+    }
+
+    private static void verifyFinalPool(ClientGameTestContext context, LobbySnapshotPayload original) {
+        // Deterministic display fixture: the ended round still records three sticks, already awarded by the match.
+        var game = original.game(); var r = game.rules();
+        var result = new GameSnapshot.Result(2, List.of(), List.of(), List.of(), List.of(), false);
+        var rules = new GameSnapshot.RuleState(GameSnapshot.FINISHED, r.dealerSeat(), r.roundWind(), r.honba(), 3,
+                r.doraIndicators(), r.seats(), List.of(), List.of(), List.of(), false, false, null, List.of(), result);
+        var standings = List.of(new GameSnapshot.Standing(0, 2, 25000, 0, 0, 0), new GameSnapshot.Standing(1, 1, 28000, 0, 0, 0),
+                new GameSnapshot.Standing(2, 3, 25000, 0, 0, 0), new GameSnapshot.Standing(3, 4, 25000, 0, 0, 0));
+        var match = new GameSnapshot.MatchInfo(UUID.randomUUID(), GameSnapshot.FORMAT_EAST, GameSnapshot.MATCH_RESULT,
+                0, 3, 1, List.of(false, false, false, false), new GameSnapshot.MatchResult("UI_FIXTURE", standings, 1, 3000));
+        var finalGame = new GameSnapshot(game.gameId(), game.revision(), game.turnSeat(), game.remainingTiles(), game.seats(),
+                game.ownHand(), game.drawnTile(), false, "", rules, match);
+        context.runOnClient(client -> {
+            var screen = new TableScreen(new LobbySnapshotPayload(original.viewId(), original.tableId(), original.pos(), original.revision(),
+                    original.seats(), original.ownSeat(), false, "", finalGame, original.mode(), original.structurePlayers()));
+            require(screen.displayedPoints(1) == 28000 && screen.displayedDeposits() == 0,
+                    "Final standings include the awarded sticks and the live pool no longer displays those sticks");
+        });
+    }
+
+    private static void verifyRiichiFeedback(ClientGameTestContext context, TestServerConnection connection, LobbySnapshotPayload original) {
+        // UI-only mask fixture over the live board; it does not claim that this random deal is riichi-ready.
+        var game = original.game(); var r = game.rules(); int legal = r.legalDiscards().getFirst();
+        int excluded = game.ownHand().stream().filter(tile -> tile != legal).findFirst().orElseThrow();
+        var mask = new GameSnapshot.RuleState(r.phase(), r.dealerSeat(), r.roundWind(), r.honba(), r.deposits(), r.doraIndicators(),
+                r.seats(), r.legalDiscards(), List.of(legal), r.kans(), r.canTsumo(), r.canNineTerminals(), r.opportunity(), r.responses(), r.result(), r.kitas());
+        var fixture = new GameSnapshot(game.gameId(), game.revision(), game.turnSeat(), game.remainingTiles(), game.seats(),
+                game.ownHand(), game.drawnTile(), game.paused(), game.statusKey(), mask, game.match());
+        context.runOnClient(client -> client.gui.setScreen(new TableScreen(new LobbySnapshotPayload(original.viewId(), original.tableId(), original.pos(),
+                original.revision(), original.seats(), original.ownSeat(), original.allReady(), original.feedbackKey(), fixture, original.mode(), original.structurePlayers()))));
+        context.clickScreenButton("screen.riichicraft.game.riichi");
+        context.runOnClient(client -> {
+            var screen = (TableScreen) client.gui.screen();
+            require(screen.riichiArmed() && screen.tileOutlineColor(legal) == 0xFF7FE5B0, "Riichi outlines only the received legal declaration mask");
+            for (int tile : game.ownHand()) if (tile != legal) require(screen.tileOutlineColor(tile) == 0, "Ineligible private tiles do not gain riichi outlines");
+            require(screen.tileOutlineColor(135) == 0 || game.ownHand().contains(135), "An unowned physical copy never receives a hand outline");
+        });
+        shot(context, "riichicraft-table-ui-riichi-mask-fixture");
+        double[] cursor = tileCursor(context, excluded);
+        context.getInput().setCursorPos(cursor[0], cursor[1]);
+        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); sync(connection);
+        require(snapshot(context).game().revision() == game.revision(), "Double-clicking an excluded declaration tile submits no game action");
+        context.runOnClient(client -> client.gui.setScreen(new TableScreen(original)));
+        context.waitTick();
     }
 
     static void verifyDoubleClickGate() {

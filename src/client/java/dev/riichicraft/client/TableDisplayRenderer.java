@@ -28,7 +28,7 @@ import net.minecraft.world.level.LightLayer;
 
 /** Extract world/model data first, then submit immutable frame data without reading the live level. */
 final class TableDisplayRenderer {
-    private record Draw(TableTileLayout.Tile tile, dev.riichicraft.table.TileMotion.Pose pose, double x, double y, double z, int light, ItemStackRenderState model) { }
+    private record Draw(TableTileLayout.Tile tile, dev.riichicraft.table.TileMotion.Pose pose, double x, double y, double z, int light, int outline, ItemStackRenderState model) { }
     private static final RenderStateDataKey<List<Draw>> DRAWS = RenderStateDataKey.create(() -> "riichicraft tabletop");
     private TableDisplayRenderer() { }
     static void initialize() {
@@ -40,7 +40,7 @@ final class TableDisplayRenderer {
                 var motion=draw.pose();pose.mulPose(Axis.YP.rotationDegrees(motion.yaw()));
                 pose.mulPose(Axis.XP.rotationDegrees(motion.pitch()));
                 pose.scale(motion.scale(),motion.scale(),motion.scale());
-                draw.model().submit(pose, context.submitNodeCollector(), draw.light(), OverlayTexture.NO_OVERLAY, 0);
+                draw.model().submit(pose, context.submitNodeCollector(), draw.light(), OverlayTexture.NO_OVERLAY, draw.outline());
                 pose.popPose();
             }
         });
@@ -77,8 +77,11 @@ final class TableDisplayRenderer {
                         client.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.NONE, level, null, 0);
                         return state;
                     });
+                    int outline = matches(table, scene) && tile.group() == TableTileLayout.Group.HAND
+                            && tile.seat() == scene.ownSeat() && client.gui.screen() instanceof TableScreen screen
+                            ? screen.tileOutlineColor(tile.face()) : 0;
                     draws.add(new Draw(tile,motion, pos.getX() + 0.5 + motion.x() / 16 - camera.x,
-                            pos.getY() + 1 + motion.y() / 16 - camera.y, pos.getZ() + 0.5 + motion.z() / 16 - camera.z, light, model));
+                            pos.getY() + 1 + motion.y() / 16 - camera.y, pos.getZ() + 0.5 + motion.z() / 16 - camera.z, light, outline, model));
                 }
             }
             context.levelState().setData(DRAWS, List.copyOf(draws));
