@@ -1,5 +1,9 @@
 # 资源来源与重建
 
+## 2026-10-18 沉浸式操作设计图
+
+`docs/images/immersive-table-concept.png`由`tools/Generate-Immersive-Design.ps1`在仓库内生成，是坐姿／俯瞰与按钮位置的设计图，**不是游戏截图或已实现UI**。布局、图形为项目原创，牌图复用本页下文列明的既有mahjong_graphic许可资源，没有新导入外部素材。图片不进入模组运行资源；重建命令为`./tools/Generate-Immersive-Design.ps1`，具体方案见[坐席与桌面操作](IMMERSIVE_TABLE.md)。
+
 ## v0.0.10 桌面无牌面模型
 
 继续复用首套37种许可牌面及原创立体牌体。新增`hidden`模型和物品模型定义，仅将宽面替换为已有深绿背材质，表示未知暗手／盖牌；不注册新玩法牌、不打包测试总览夹具，也不生成牌实体。两份JSON由`tools/Generate-Tile-Models.py`生成，PNG与外部源图未变；含首套在内共117份牌资源重建哈希一致。实际桌面布局、公开信息边界和截图见[桌面展示](TABLETOP_DISPLAY.md)。
