@@ -12,6 +12,7 @@
 - JAR`build/libs/riichicraft-0.0.15-dev.jar`，884,350字节／523条目／199规则class／零测试条目；316个生产class与0.0.14逐项字节相同，37牌和原许可保留。SHA-256`2c74c9fb15a95b28623915db67e116df7a57fa5d8a9219c36828226e8765fea7`。`build/dist/riichicraft-0.0.15-dev-playtest.zip`内含相同JAR、中文说明及校验值，不捆绑Minecraft／Fabric API／测试夹具。四张`survival-*.png`原生图已保存查看，旧图保留。
 - 操作与配方见[生存获取](SURVIVAL_RECIPES.md)。用户计划晚上与朋友实机测试，交付后等其反馈再修改，不自动推进其他内容；自动回归不代表真人多人长期手感验收。静态／文档／产物检查和Git节点以[验证记录](VALIDATION.md)及当前refs为准。
 - 个性化仍整体留到道场，已确认共享牌背／桌布和个人牌面的归属保留；装饰牌制作、旧单方块桌的配方、机器／矿物／结构／维度都未实施。只读核对及资料允许范围见AGENTS。
+- 完整实现／验证／四张实机图提交`2cb10e16230ac13a6a2f4a43006787ed924c4c01`，本地开发tag`v0.0.15-dev`固定指向它，旧tag保持原位。普通原子推送当前及前两分支／三tag退出128，原因为GitHub低速超时（`.tmp/survival-github-push.err.log`）；**远程同步未确认**，未强推或创建正式Release。本地静态最终32 Markdown／357本地链接通过，资源与Git空白检查通过，Gradle已停止。此后仅提交接续记录，不改JAR或移动tag。
 
 ## 先前暂停位置：2026-10-18（已恢复为生存合成）
 
