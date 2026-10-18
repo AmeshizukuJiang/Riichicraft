@@ -31,6 +31,7 @@ sourceSets {
             include 'dev/riichicraft/persistence/**'
             include 'dev/riichicraft/game/TileCatalog.java'
             include 'dev/riichicraft/table/TableWallLayout.java'
+            include 'dev/riichicraft/table/TileMotion.java'
         }
         compileClasspath = files()
         runtimeClasspath = output

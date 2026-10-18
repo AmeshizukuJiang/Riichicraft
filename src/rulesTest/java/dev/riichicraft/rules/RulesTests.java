@@ -30,5 +30,6 @@ public final class RulesTests {
         ThreePlayerScoringTests.main(args);
         ThreePlayerEngineTests.main(args);
         TableWallLayoutTests.main(args);
+        TileMotionTests.main(args);
     }
 }
