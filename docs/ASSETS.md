@@ -1,5 +1,9 @@
 # 资源来源与重建
 
+## v0.0.13 坐席与轻量声音
+
+继续使用既有原创桌椅、牌体与许可牌图，没有新增外部材质、模型、音乐或字体。坐席是不可见的临时乘坐点；开局／结算提示、坐席与轻牌声复用原版`note_block.pling`、`wood.step`和`stone_button.click_on`声音事件，通过原版方块声音类别控制音量。声音跟随已接受的实际状态变化播放，重连／恢复不补播。未加入立直音乐资源或解锁收藏；本批不将原版声音冒称项目原创录音。
+
 ## 2026-10-18 沉浸式操作设计图
 
 `docs/images/immersive-table-concept.png`由`tools/Generate-Immersive-Design.ps1`在仓库内生成，是坐姿／俯瞰与按钮位置的设计图，**不是游戏截图或已实现UI**。布局、图形为项目原创，牌图复用本页下文列明的既有mahjong_graphic许可资源，没有新导入外部素材。图片不进入模组运行资源；重建命令为`./tools/Generate-Immersive-Design.ps1`，具体方案见[坐席与桌面操作](IMMERSIVE_TABLE.md)。
