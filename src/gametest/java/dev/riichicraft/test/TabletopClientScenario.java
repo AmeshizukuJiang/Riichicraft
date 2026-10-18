@@ -53,6 +53,11 @@ final class TabletopClientScenario {
                 context.getInput().lookAt(session.center().above());
                 await(context,session.tableId(),true);
                 context.runOnClient(c -> require(c.gui.screen()==null,"Public table reception never opens a lobby screen"));
+                var opening=current(context,session.tableId()); assertWall(opening);
+                require(opening.liveTiles()==69 && opening.replacementDraws()==0,"Actual opening has 83 wall tiles, rather than drawing a second complete 136-tile wall");
+                context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
+                shot(context,"riichicraft-wall-opening-four");
+                context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
                 server.runOnServer(s -> {
                     var service=LobbyService.get(s); boolean reached=false;
                     for(int deal=0;deal<8 && !reached;deal++) {
@@ -70,6 +75,7 @@ final class TabletopClientScenario {
                 saved=server.computeOnServer(s->LobbyService.get(s).tableDisplay(active.tableId()));
                 awaitSnapshot(context,active.tableId(),saved);
                 var received=current(context,active.tableId());
+                assertWall(received);
                 server.runOnServer(s -> {
                     var service=LobbyService.get(s); var hidden=new HashSet<Integer>();
                     for(var fixture:active.fixtures()) hidden.addAll(service.gameView(active.tableId(),fixture.player().getUUID()).ownHand());
@@ -97,7 +103,8 @@ final class TabletopClientScenario {
                 server.runOnServer(s->{s.overworld().destroyBlock(active.center().south(2),false);LobbyService.get(s).tick();});
                 context.waitFor(c->find(active.tableId())!=null && find(active.tableId()).paused(),200);
                 var paused=current(context,active.tableId());
-                require(paused.seats().equals(saved.seats()) && paused.indicators().equals(saved.indicators()),"Broken chair pauses without losing any public tile");
+                require(paused.seats().equals(saved.seats()) && paused.indicators().equals(saved.indicators())
+                        && paused.liveTiles()==saved.liveTiles() && paused.replacementDraws()==saved.replacementDraws(),"Broken chair pauses without losing any public tile or wall position");
                 server.runOnServer(s->{FurnitureTestLayout.chairs(s.overworld(),active.center(),4);LobbyService.get(s).tick();
                     for(int i=0;i<4;i++)act(LobbyService.get(s),active,i,GameActionPayload.RESUME,-1,null);});
                 awaitSnapshot(context,active.tableId(),saved);
@@ -105,6 +112,7 @@ final class TabletopClientScenario {
                     require(service.gameView(active.tableId(),null).rules().phase()==GameSnapshot.FINISHED,"Legal all-pass suffix finishes the live public round");});
                 saved=server.computeOnServer(s->LobbyService.get(s).tableDisplay(active.tableId()));
                 awaitSnapshot(context,active.tableId(),saved); require(saved.finished(),"Finished public tiles remain visible");
+                assertWall(saved);
                 shot(context,"riichicraft-tabletop-live-result");
             }
             var active=session;
@@ -171,5 +179,11 @@ final class TabletopClientScenario {
         catch (AssertionError failure) { throw new AssertionError("Public snapshot mismatch: expected="+expected+", actual="+current(context,id),failure); }
     }
     private static void shot(ClientGameTestContext context,String name) {context.runOnClient(c->{c.gui.toastManager().clear();c.gui.hud.getChat().clearMessages(true);});context.getInput().setCursorPos(0,0);context.waitTicks(3);context.takeScreenshot(name);}
+    static void assertWall(TableDisplaySnapshot snapshot) {
+        var wall=dev.riichicraft.table.TableTileLayout.tiles(snapshot).stream().filter(t->t.seat()==-1).toList();
+        require(wall.size()==snapshot.liveTiles()+14,"Actual client projects precisely live plus fourteen reserve tiles");
+        require(wall.stream().filter(t->t.face()>=0).map(dev.riichicraft.table.TableTileLayout.Tile::face).collect(java.util.stream.Collectors.toSet())
+                .equals(new java.util.HashSet<>(snapshot.indicators())),"World wall faces contain exactly the already public indicators");
+    }
     private static void require(boolean condition,String message) {if(!condition)throw new AssertionError(message);}
 }

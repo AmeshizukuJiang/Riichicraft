@@ -9,22 +9,26 @@ import java.util.List;
 
 /** Deterministic geometry in model units around the table center, with Y=0 at its top. */
 public final class TableTileLayout {
-    public enum Group { HAND, RIVER, MELD, INDICATOR, NORTH }
+    public enum Group { HAND, RIVER, MELD, INDICATOR, NORTH, WALL, RESERVE }
     public record Tile(int face, float x, float y, float z, float yaw, boolean flat, boolean down, float scale, Group group, int seat) { }
     private TableTileLayout() { }
 
     public static List<Tile> tiles(TableDisplaySnapshot snapshot) {
         List<Tile> result = new ArrayList<>();
-        for (int i = 0; i < snapshot.indicators().size(); i++) {
-            add(result, snapshot.indicators().get(i), (i - (snapshot.indicators().size() - 1) / 2F) * 1.65F,
-                    0, 0, snapshot.frontSide(), 0, true, false, 0.75F, Group.INDICATOR, -1);
+        int players = snapshot.seats().size(), perWall = players == 4 ? 17 : 18;
+        for (var slot : TableWallLayout.slots(players, snapshot.liveTiles(), snapshot.replacementDraws(),
+                snapshot.indicators().size(), snapshot.frontSide(), snapshot.seats().stream().map(TableDisplaySnapshot.Seat::side).toList())) {
+            int face = slot.indicator() < 0 ? -1 : snapshot.indicators().get(slot.indicator());
+            add(result, face, (slot.stack() - (perWall - 1) / 2F) * 1.5F,
+                    slot.layer() * (1.25F * 0.7F + 0.025F), 16, slot.side(), 0, true, face < 0, 0.7F,
+                    face >= 0 ? Group.INDICATOR : slot.reserve() ? Group.RESERVE : Group.WALL, -1);
         }
         for (int owner = 0; owner < snapshot.seats().size(); owner++) {
             var seat = snapshot.seats().get(owner); int side = seat.side();
             for (int i = 0; i < seat.concealedCount(); i++)
                 add(result, -1, -17.65F + i * 1.82F, 0, 20.5F, side, 0, false, false, 0.85F, Group.HAND, owner);
             int rows = (seat.river().size() + 5) / 6;
-            float scale = Math.min(0.75F, 12F / Math.max(1, rows) / 2.95F);
+            float scale = Math.min(0.75F, 8.9F / (Math.max(0, rows - 1) * 2.95F + 1.375F));
             for (int row = 0; row < rows; row++) {
                 float left = -10.5F;
                 for (int column = 0; column < 6 && row * 6 + column < seat.river().size(); column++) {
@@ -68,7 +72,7 @@ public final class TableTileLayout {
                 right -= total + 0.55F;
             }
             for (int i = 0; i < seat.norths().size(); i++) add(result, seat.norths().get(i), -17.4F + i * 1.8F,
-                    0, 16.5F, side, 0, true, false, 0.75F, Group.NORTH, owner);
+                    0, 18.25F, side, 0, true, false, 0.75F, Group.NORTH, owner);
         }
         return List.copyOf(result);
     }

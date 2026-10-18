@@ -36,12 +36,15 @@ public final class TableDisplayServiceGameTests {
             var before=service.tableDisplay(id);
             helper.assertTrue(before!=null && before.seats().stream().map(TableDisplaySnapshot.Seat::side).toList().equals(List.of(0,1,3)),
                     "Three-player public sides skip the physical north empty chair");
+            helper.assertTrue(before.liveTiles()==54 && before.replacementDraws()==0,
+                    "A genuine sanma opening projects 54 live plus fourteen reserve tiles after dealing");
             level.setBlockAndUpdate(center.south(2),Blocks.AIR.defaultBlockState());service.tick();
             helper.assertTrue(service.tableDisplay(id).paused(),"No open GUI is needed to preserve and pause the public table");
             service.stop(); service=new LobbyService(server,archive);
             var restored=service.tableDisplay(id);
             helper.assertTrue(restored!=null && restored.paused() && restored.gameId().equals(before.gameId())
-                    && restored.seats().equals(before.seats()) && restored.indicators().equals(before.indicators()),
+                    && restored.seats().equals(before.seats()) && restored.indicators().equals(before.indicators())
+                    && restored.liveTiles()==before.liveTiles() && restored.replacementDraws()==before.replacementDraws(),
                     "A fresh service reconstructs counts, positions and public faces from the actual saved core even with an ordinary chair missing");
             FurnitureTestLayout.chairs(level,center,3);service.tick();
             helper.assertTrue(service.tableDisplay(id).paused(),"Repair does not bypass the existing unanimous recovery requirement");

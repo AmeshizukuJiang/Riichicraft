@@ -25,7 +25,7 @@ final class ThreePlayerPersistenceClientScenario {
         static Core of(GameSnapshot v){return new Core(v.gameId(),v.turnSeat(),v.remainingTiles(),v.ownHand(),v.drawnTile(),v.rules());}
     }
     private static final class Session {
-        DrawDiscardClientScenario.TableFixtures table;BlockPos target;UUID player,obsoleteView;List<Identity> identities;List<Core> saved;
+        DrawDiscardClientScenario.TableFixtures table;BlockPos target;UUID player,obsoleteView;List<Identity> identities;List<Core> saved;TableDisplaySnapshot publicState;
     }
     static void run(ClientGameTestContext context,Properties properties) {
         run(context,properties,false);
@@ -74,7 +74,7 @@ final class ThreePlayerPersistenceClientScenario {
                     require(extracted,"One of eight normal sanma deals establishes kita");
                     if(furniture) awaitPublic(context,session.table.tableId(),false);
                     first.runOnServer(s->{var service=LobbyService.get(s);session.saved=cores(service,session);session.identities=session.table.fixtures().stream().map(f->new Identity(f.player().getUUID(),f.player().getGameProfile().name())).toList();
-                        if(furniture) {s.overworld().setBlockAndUpdate(session.target.south(2),Blocks.AIR.defaultBlockState());service.tick();require(service.gameView(session.table.tableId(),session.player).paused(),"Missing chair pauses before the durable save");}
+                        if(furniture) {session.publicState=service.tableDisplay(session.table.tableId());s.overworld().setBlockAndUpdate(session.target.south(2),Blocks.AIR.defaultBlockState());service.tick();require(service.gameView(session.table.tableId(),session.player).paused(),"Missing chair pauses before the durable save");}
                         require(service.save(),"Real sanma checkpoint written");});sync(connection);
                     shot(context,furniture?"riichicraft-furniture-paused":"riichicraft-three-before-stop");
                 }
@@ -97,7 +97,13 @@ final class ThreePlayerPersistenceClientScenario {
                     sync(connection);
                     second.runOnServer(s->require(cores(LobbyService.get(s),session).equals(session.saved),"Actual new server restores all three private hands, live wall, kita and pending draw source without redealing"));
                     require(snapshot(context).game().paused()&&snapshot(context).seats().size()==3,"Restored sanma waits for three confirmations");
-                    if(furniture) awaitPublic(context,tableId,true);
+                    if(furniture) {
+                        awaitPublic(context,tableId,true);
+                        var actual=context.computeOnClient(c->dev.riichicraft.client.TableDisplayClient.snapshots().stream().filter(p->p.tableId().equals(tableId)).findFirst().orElseThrow().snapshot());
+                        require(actual.liveTiles()==session.publicState.liveTiles() && actual.replacementDraws()==session.publicState.replacementDraws()
+                                && dev.riichicraft.table.TableTileLayout.tiles(actual).equals(dev.riichicraft.table.TableTileLayout.tiles(session.publicState)),
+                                "A genuine world reload reconstructs every public wall/indicator/kita model at exactly the same coordinates");
+                    }
                     shot(context,furniture?"riichicraft-furniture-restored":"riichicraft-three-restored");
                     var current=snapshot(context).game();
                     context.runOnClient(c->ClientPlayNetworking.send(new GameActionPayload(session.obsoleteView,current.gameId(),current.revision(),GameActionPayload.RESUME,-1)));sync(connection);
@@ -138,6 +144,10 @@ final class ThreePlayerPersistenceClientScenario {
         sync(connection);connection.waitForChunksRender();context.getInput().lookAt(center);context.waitTicks(3);
         shot(context,"riichicraft-furniture-world");
         context.getInput().resizeWindow(1280,960);
+        context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,TableDisplayGameTests.opening(true)));
+        context.getInput().pressKey(GLFW.GLFW_KEY_F1);context.waitTicks(3);
+        context.takeScreenshot("riichicraft-wall-opening-three-layout");
+        context.getInput().pressKey(GLFW.GLFW_KEY_F1);
         context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,TableDisplayGameTests.showcase(true)));
         context.getInput().pressKey(GLFW.GLFW_KEY_F1);context.waitTicks(3);
         context.takeScreenshot("riichicraft-tabletop-layout-three");
@@ -165,6 +175,10 @@ final class ThreePlayerPersistenceClientScenario {
         context.waitFor(c->dev.riichicraft.client.TableDisplayClient.snapshots().stream().anyMatch(p->p.tableId().equals(id)
                 && p.snapshot().seats().size()==3 && p.snapshot().paused()==paused
                 && p.snapshot().seats().stream().mapToInt(s->s.norths().size()).sum()==1),200);
+        var actual=context.computeOnClient(c->dev.riichicraft.client.TableDisplayClient.snapshots().stream().filter(p->p.tableId().equals(id)).findFirst().orElseThrow().snapshot());
+        TabletopClientScenario.assertWall(actual);
+        require(actual.replacementDraws()==1 && actual.liveTiles()==snapshot(context).game().remainingTiles(),
+                "Established kita consumes one shared replacement, with public wall counts matching the private view before and after restart");
     }
     private static List<Core> cores(LobbyService service,Session session){var result=new ArrayList<Core>();result.add(Core.of(service.gameView(session.table.tableId(),session.player)));for(var fixture:session.table.fixtures())result.add(Core.of(service.gameView(session.table.tableId(),fixture.player().getUUID())));return List.copyOf(result);}
 }

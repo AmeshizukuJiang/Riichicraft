@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /** Public tabletop data only: concealed tiles are represented exclusively by counts. */
 public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished,
-        int frontSide, List<Integer> indicators, List<Seat> seats) {
+        int frontSide, int liveTiles, List<Integer> indicators, List<Seat> seats) {
     public static final int MAX_RIVER = 136;
 
     public record Discard(int tileId, boolean sideways) {
@@ -34,6 +34,13 @@ public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished
         indicators = checkedTiles(indicators, 5); seats = List.copyOf(seats);
         if (seats.size() != 3 && seats.size() != 4
                 || new HashSet<>(seats.stream().map(Seat::side).toList()).size() != seats.size()) fail("public seats");
+        int replacements = replacements(seats);
+        if (replacements > (seats.size() == 4 ? 4 : 8) || liveTiles < 0
+                || liveTiles > (seats.size() == 4 ? 69 : 54) - replacements) fail("public wall counts");
+        int kans = (int) seats.stream().flatMap(s -> s.melds().stream()).filter(m -> m.tiles().size() == 4).count();
+        if (indicators.size() > kans + 1) fail("public indicator count");
+        dev.riichicraft.table.TableWallLayout.slots(seats.size(), liveTiles, replacements, indicators.size(),
+                frontSide, seats.stream().map(Seat::side).toList());
         for (int owner = 0; owner < seats.size(); owner++) for (Meld meld : seats.get(owner).melds()) {
             if (meld.kind() != GameSnapshot.MELD_CLOSED_KAN
                     && (meld.providerSeat() >= seats.size() || meld.providerSeat() == owner)) fail("meld provider");
@@ -78,7 +85,13 @@ public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished
             seats.add(new Seat(sides.get(index), seat.handCount(), river, melds, rules.norths()));
         }
         return new TableDisplaySnapshot(view.gameId(), view.paused(), view.rules().phase() == GameSnapshot.FINISHED,
-                front, view.rules().doraIndicators(), seats);
+                front, view.remainingTiles(), view.rules().doraIndicators(), seats);
+    }
+
+    public int replacementDraws() { return replacements(seats); }
+    private static int replacements(List<Seat> seats) {
+        return seats.stream().mapToInt(s -> s.norths().size()
+                + (int) s.melds().stream().filter(m -> m.tiles().size() == 4).count()).sum();
     }
 
     private static List<Integer> checkedTiles(List<Integer> tiles, int max) {
