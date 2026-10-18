@@ -15,6 +15,13 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import dev.riichicraft.server.LobbyService;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
 
 /** Ordinary and intentionally empty chairs share geometry, but are separate blocks and items. */
 public final class MahjongChairBlock extends HorizontalDirectionalBlock {
@@ -31,6 +38,12 @@ public final class MahjongChairBlock extends HorizontalDirectionalBlock {
         registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
     }
     @Override protected MapCodec<? extends HorizontalDirectionalBlock> codec() { return CODEC; }
+    @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+            Player player, BlockHitResult hit) {
+        if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer)
+            LobbyService.get(serverLevel.getServer()).sit(serverPlayer, pos);
+        return InteractionResult.SUCCESS;
+    }
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState().setValue(FACING,context.getHorizontalDirection());
     }

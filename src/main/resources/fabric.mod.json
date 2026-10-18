@@ -3,8 +3,9 @@
   "id": "riichicraft",
   "version": "${version}",
   "name": "Riichicraft",
-  "description": "Japanese mahjong in Minecraft. A four-player draw/discard prototype with private hands.",
+  "description": "Three- and four-player riichi mahjong with interactive table seating and private hands.",
   "environment": "*",
+  "mixins": [{"config": "riichicraft.client.mixins.json", "environment": "client"}],
   "entrypoints": {
     "main": ["dev.riichicraft.Riichicraft"],
     "client": ["dev.riichicraft.client.RiichicraftClient"]

@@ -77,7 +77,7 @@ public final class LargeMahjongTableBlock extends HorizontalDirectionalBlock {
     }
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING,PART); }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,Player player,BlockHitResult hit) {
-        if(player instanceof ServerPlayer serverPlayer) LobbyService.get(serverPlayer.level().getServer()).open(serverPlayer,pos);
+        if(player instanceof ServerPlayer serverPlayer) LobbyService.get(serverPlayer.level().getServer()).openImmersive(serverPlayer,pos);
         return InteractionResult.SUCCESS;
     }
     @Override public BlockState playerWillDestroy(Level level,BlockPos pos,BlockState state,Player player) {

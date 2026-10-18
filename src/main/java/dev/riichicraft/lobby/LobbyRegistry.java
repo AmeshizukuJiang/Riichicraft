@@ -65,6 +65,11 @@ public final class LobbyRegistry {
     }
 
     public Result join(UUID tableId, UUID playerId, String name, long expectedRevision) {
+        return joinAt(tableId, playerId, name, expectedRevision, -1);
+    }
+
+    /** A physical chair specifies its slot; -1 retains the legacy first-available entry. */
+    public Result joinAt(UUID tableId, UUID playerId, String name, long expectedRevision, int requestedSeat) {
         Objects.requireNonNull(tableId, "tableId");
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(name, "name");
@@ -78,13 +83,17 @@ public final class LobbyRegistry {
         if (lobby.revision != expectedRevision) {
             return result(Status.STALE_REVISION, lobby);
         }
+        if (requestedSeat < -1 || requestedSeat >= seatCount(lobby.mode)) return result(Status.INVALID_MODE, lobby);
 
         SeatReference existingSeat = playerSeats.get(playerId);
         if (existingSeat != null) {
+            if (existingSeat.tableId().equals(tableId) && requestedSeat >= 0 && existingSeat.index() != requestedSeat)
+                return result(Status.NOT_SEATED, lobby);
             return result(existingSeat.tableId().equals(tableId)
                     ? Status.UNCHANGED : Status.ALREADY_SEATED_ELSEWHERE, lobby);
         }
         for (int index = 0; index < seatCount(lobby.mode); index++) {
+            if (requestedSeat >= 0 && index != requestedSeat) continue;
             if (lobby.seats[index] == null) {
                 lobby.seats[index] = new Occupant(playerId, name);
                 playerSeats.put(playerId, new SeatReference(tableId, index));
@@ -93,6 +102,31 @@ public final class LobbyRegistry {
             }
         }
         return result(Status.TABLE_FULL, lobby);
+    }
+
+    /** Reindex an unstarted physical layout atomically without changing who is seated. */
+    public Snapshot arrange(UUID tableId, Map<UUID,Integer> indices) {
+        Lobby lobby = tables.get(Objects.requireNonNull(tableId));
+        if (lobby == null) throw new IllegalArgumentException("Unknown table");
+        Occupant[] ordered = new Occupant[SEAT_COUNT];
+        boolean changed = false;
+        for (int old = 0; old < SEAT_COUNT; old++) if (lobby.seats[old] != null) {
+            Occupant occupant = lobby.seats[old];
+            Integer target = indices.get(occupant.playerId);
+            if (target == null || target < 0 || target >= seatCount(lobby.mode) || ordered[target] != null)
+                throw new IllegalArgumentException("Invalid physical occupant mapping");
+            ordered[target] = occupant;
+            changed |= target != old;
+        }
+        if (changed) {
+            System.arraycopy(ordered, 0, lobby.seats, 0, SEAT_COUNT);
+            for (int index = 0; index < SEAT_COUNT; index++) if (ordered[index] != null) {
+                ordered[index].ready = false;
+                playerSeats.put(ordered[index].playerId, new SeatReference(tableId, index));
+            }
+            lobby.revision++;
+        }
+        return snapshotOf(lobby);
     }
 
     public Result setReady(UUID tableId, UUID playerId, boolean ready, long expectedRevision) {

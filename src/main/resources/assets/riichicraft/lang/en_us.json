@@ -221,5 +221,21 @@
   "screen.riichicraft.lobby.chairs.4": "Chairs: 4P",
   "screen.riichicraft.lobby.chairs.0": "Invalid layout",
   "screen.riichicraft.lobby.layout_invalid": "Repair the chairs and match the lobby player count.",
-  "item.riichicraft.mahjong_tile": "Mahjong Tile (1 Man)"
+  "item.riichicraft.mahjong_tile": "Mahjong Tile (1 Man)",
+  "key.category.riichicraft.table": "Riichicraft Table",
+  "key.riichicraft.table_controls": "Toggle Table Controls / Free Look",
+  "key.riichicraft.table_perspective": "Switch Seated / Overhead View",
+  "screen.riichicraft.table.title": "Mahjong Table",
+  "screen.riichicraft.table.perspective": "View [V]",
+  "screen.riichicraft.table.hide": "Hide",
+  "screen.riichicraft.table.controls_hint": "Esc / R: look freely · R: controls · V: view · hide, then Shift: stand",
+  "screen.riichicraft.table.leave_lobby": "Leave Seat",
+  "screen.riichicraft.table.double_click_hint": "Double-click the same tile to discard · R controls · V view",
+  "screen.riichicraft.table.riichi_hint": "Riichi: double-click a legal declaration tile",
+  "screen.riichicraft.table.selected": "%s selected · click again promptly to discard",
+  "screen.riichicraft.table.award": "%s  %s han",
+  "screen.riichicraft.table.award_yakuman": "%s  %sx yakuman",
+  "screen.riichicraft.table.delta_heading": "Hand changes (including established riichi debit)",
+  "screen.riichicraft.table.points": "%1$s: %3$s (%4$s) %2$s",
+  "screen.riichicraft.game.cancel_riichi": "Cancel Riichi Selection"
 }

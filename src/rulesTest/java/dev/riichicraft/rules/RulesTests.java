@@ -25,11 +25,13 @@ public final class RulesTests {
         MatchRulesTests.main(args);
         FourPlayerMatchTests.main(args);
         TableArchiveStoreTests.main(args);
+        dev.riichicraft.persistence.ArchiveMoveTests.main(args);
         ArchiveTests.main(args);
         ThreePlayerBasicsTests.main(args);
         ThreePlayerScoringTests.main(args);
         ThreePlayerEngineTests.main(args);
         TableWallLayoutTests.main(args);
         TileMotionTests.main(args);
+        TableHandVisibilityTests.main(args);
     }
 }

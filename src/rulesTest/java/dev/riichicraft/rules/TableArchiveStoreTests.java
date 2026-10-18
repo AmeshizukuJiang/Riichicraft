@@ -4,7 +4,10 @@ import dev.riichicraft.persistence.TableArchiveStore;
 import dev.riichicraft.persistence.TableArchiveStore.Seat;
 import dev.riichicraft.persistence.TableArchiveStore.Table;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -20,7 +23,7 @@ public final class TableArchiveStoreTests {
     private TableArchiveStoreTests() { }
     public static void main(String[] args) {
         long start=System.nanoTime();
-        try { roundTrips(); metadata(); malformedFrames(); realFiles(); }
+        try { roundTrips(); legacyAndFixedChairSides(); metadata(); malformedFrames(); realFiles(); }
         catch(Exception failure) { throw new AssertionError("Table archive verification failed",failure); }
         System.out.printf("PASS table archive store: %d assertions; %.3f s%n",assertions,(System.nanoTime()-start)/1_000_000_000.0);
     }
@@ -49,7 +52,7 @@ public final class TableArchiveStoreTests {
         expect(IllegalArgumentException.class,()->new Seat(UUID.randomUUID(),"x".repeat(65)),"oversized names refused");
         expect(IllegalArgumentException.class,()->new Seat(UUID.randomUUID(),"\uD800"),"malformed UTF-16 is not silently replaced");
         expect(IllegalArgumentException.class,()->copy(first,first.tableId(),"Bad Namespace:x",1,2,3,0,0,0,first.seats(),new byte[]{1}),"invalid dimension refused");
-        for(int mode:new int[]{-1,3,Integer.MAX_VALUE}) expect(IllegalArgumentException.class,()->copy(first,first.tableId(),first.dimension(),1,2,3,mode,0,0,first.seats(),new byte[]{1}),"unsupported modes refused");
+        for(int mode:new int[]{-1,6,Integer.MAX_VALUE}) expect(IllegalArgumentException.class,()->copy(first,first.tableId(),first.dimension(),1,2,3,mode,0,0,first.seats(),new byte[]{1}),"unsupported modes refused");
         expect(IllegalArgumentException.class,()->copy(first,first.tableId(),first.dimension(),1,2,3,0,-1,0,first.seats(),new byte[]{1}),"negative lobby revision refused");
         expect(IllegalArgumentException.class,()->copy(first,first.tableId(),first.dimension(),1,2,3,0,0,-1,first.seats(),new byte[]{1}),"negative game revision refused");
         expect(IllegalArgumentException.class,()->copy(first,first.tableId(),first.dimension(),1,2,3,0,0,0,first.seats().subList(0,3),new byte[]{1}),"four fixed seats required");
@@ -61,6 +64,44 @@ public final class TableArchiveStoreTests {
         expect(IOException.class,()->TableArchiveStore.encode(List.of(first,copy(second,second.tableId(),first.dimension(),1,2,3,0,0,0,second.seats(),second.gameData()))),"global duplicate table position refused");
         expect(IOException.class,()->TableArchiveStore.encode(List.of(first,copy(second,second.tableId(),second.dimension(),4,5,6,0,0,0,first.seats(),second.gameData()))),"players cannot be reserved by two saved tables");
         expect(IOException.class,()->TableArchiveStore.encode(java.util.Collections.nCopies(TableArchiveStore.MAX_TABLES+1,first)),"table count bounded before writing");
+    }
+
+    private static void legacyAndFixedChairSides() throws Exception {
+        var four=table(3,"minecraft:overworld",-16,63,31);
+        var three=new Table(new UUID(10,4),"minecraft:the_nether",4,60,9,3,19,41,
+                table(4,"minecraft:the_nether",4,60,9).seats().subList(0,3),new byte[]{7,0,9});
+        var oldTables=List.of(four,three);
+        // Independent old-format writer: no VERSION2 encoder or byte-offset stripping participates.
+        byte[] historical=legacyVersionOne(oldTables);
+        check(ByteBuffer.wrap(historical).getInt(4)==1,"fixture is an actual checksum-valid version-one frame");
+        var loaded=TableArchiveStore.decode(historical);
+        check(loaded.equals(oldTables) && loaded.stream().allMatch(table->table.chairSides().isEmpty()),
+                "historical three/four-player games retain legacy entry and exact participant order");
+        check(TableArchiveStore.decode(TableArchiveStore.encode(loaded)).equals(oldTables),
+                "saving a legacy game as version two does not invent a physical chair mapping");
+        for(var entry:List.of(four,three)) {
+            var sides=new ArrayList<>(entry.seats().size()==4?List.of(2,3,0,1):List.of(3,0,2));
+            var fixed=withSides(entry,sides);
+            sides.clear();
+            check(fixed.chairSides().equals(entry.seats().size()==4?List.of(2,3,0,1):List.of(3,0,2)),
+                    "physical chair mapping is frozen independently of caller lists");
+            expect(UnsupportedOperationException.class,()->fixed.chairSides().clear(),"exposed chair mapping is immutable");
+            byte[] encoded=TableArchiveStore.encode(List.of(fixed));
+            check(ByteBuffer.wrap(encoded).getInt(4)==2 && TableArchiveStore.decode(encoded).equals(List.of(fixed)),
+                    "version-two games retain rotated physical sides including a skipped sanma side");
+            check(!fixed.equals(entry),"physical seat mapping participates in archive equality");
+            for(var bad:List.of(List.of(0,0,1),List.of(-1,1,2),List.of(0,1,4),List.of(0,1)))
+                expect(IllegalArgumentException.class,()->withSides(entry,bad),"invalid side set refused before writing");
+            int sideOffset=chairOffset(encoded);
+            byte[] duplicate=encoded.clone();duplicate[sideOffset+2]=duplicate[sideOffset+1];sign(duplicate);
+            expect(IOException.class,()->TableArchiveStore.decode(duplicate),"checksum-valid duplicate chair mapping refused");
+            byte[] outside=encoded.clone();outside[sideOffset+1]=4;sign(outside);
+            expect(IOException.class,()->TableArchiveStore.decode(outside),"checksum-valid out-of-range physical side refused");
+            for(int count:new int[]{5,255}) {
+                byte[] excessive=encoded.clone();excessive[sideOffset]=(byte)count;sign(excessive);
+                expect(IOException.class,()->TableArchiveStore.decode(excessive),"side allocation count bounded before decoding roster");
+            }
+        }
     }
 
     private static void malformedFrames() throws Exception {
@@ -148,8 +189,35 @@ public final class TableArchiveStoreTests {
         return new Table(id,dimension,x,y,z,mode,lobby,game,seats,bytes);
     }
     private static int findCoreLength(byte[] bytes) {
-        var cursor=ByteBuffer.wrap(bytes);cursor.position(16+16);skipString(cursor);cursor.position(cursor.position()+12+1+8+8);
-        for(int seat=0;seat<4;seat++){cursor.position(cursor.position()+16);skipString(cursor);}return cursor.position();
+        var cursor=ByteBuffer.wrap(bytes);cursor.position(16+16);skipString(cursor);cursor.position(cursor.position()+12);
+        int mode=Byte.toUnsignedInt(cursor.get());cursor.position(cursor.position()+8+8);
+        if(ByteBuffer.wrap(bytes).getInt(4)>=2){int count=Byte.toUnsignedInt(cursor.get());cursor.position(cursor.position()+count);}
+        for(int seat=0;seat<(mode>=3?3:4);seat++){cursor.position(cursor.position()+16);skipString(cursor);}return cursor.position();
+    }
+    private static int chairOffset(byte[] bytes) {
+        var cursor=ByteBuffer.wrap(bytes);cursor.position(16+16);skipString(cursor);
+        return cursor.position()+12+1+8+8;
+    }
+    private static Table withSides(Table source,List<Integer> sides) {
+        return new Table(source.tableId(),source.dimension(),source.x(),source.y(),source.z(),source.mode(),
+                source.lobbyRevision(),source.gameRevision(),source.seats(),source.gameData(),sides);
+    }
+    private static byte[] legacyVersionOne(List<Table> tables) throws Exception {
+        var rawBody=new ByteArrayOutputStream();var body=new DataOutputStream(rawBody);body.writeInt(tables.size());
+        for(var table:tables) {
+            writeId(body,table.tableId());writeOldString(body,table.dimension());
+            body.writeInt(table.x());body.writeInt(table.y());body.writeInt(table.z());body.writeByte(table.mode());
+            body.writeLong(table.lobbyRevision());body.writeLong(table.gameRevision());
+            for(var seat:table.seats()){writeId(body,seat.playerId());writeOldString(body,seat.name());}
+            byte[] core=table.gameData();body.writeInt(core.length);body.write(core);
+        }
+        var rawFrame=new ByteArrayOutputStream();var frame=new DataOutputStream(rawFrame);
+        frame.writeInt(0x52435442);frame.writeInt(1);frame.writeInt(rawBody.size());frame.write(rawBody.toByteArray());
+        frame.write(new byte[32]);byte[] result=rawFrame.toByteArray();sign(result);return result;
+    }
+    private static void writeId(DataOutputStream out,UUID value) throws IOException {out.writeLong(value.getMostSignificantBits());out.writeLong(value.getLeastSignificantBits());}
+    private static void writeOldString(DataOutputStream out,String value) throws IOException {
+        byte[] bytes=value.getBytes(StandardCharsets.UTF_8);out.writeInt(bytes.length);out.write(bytes);
     }
     private static void skipString(ByteBuffer cursor) {int size=cursor.getInt();cursor.position(cursor.position()+size);}
     private static void sign(byte[] bytes) throws Exception {

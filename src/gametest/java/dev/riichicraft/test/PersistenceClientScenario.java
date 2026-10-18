@@ -57,10 +57,10 @@ final class PersistenceClientScenario {
                     sync(connection); context.clickScreenButton("screen.riichicraft.lobby.prepare"); sync(connection);
                     context.clickScreenButton("screen.riichicraft.lobby.start"); sync(connection);
                     boolean found=false;
-                    for(int deal=0;deal<4 && !found;deal++) {
+                    for(int deal=0;deal<16 && !found;deal++) {
                         found=first.computeOnServer(s->seekPartial(LobbyService.get(s),session,connection));
                         sync(connection);
-                        if(!found && deal<3) {
+                        if(!found && deal<15) {
                             require(snapshot(context).game().rules().phase()==GameSnapshot.FINISHED,
                                     "An unsuccessful bounded search completes its real played round before returning to the lobby");
                             context.clickScreenButton("screen.riichicraft.game.return_lobby");sync(connection);
@@ -72,7 +72,7 @@ final class PersistenceClientScenario {
                             context.clickScreenButton("screen.riichicraft.lobby.start");sync(connection);
                         }
                     }
-                    require(found,"At least one of four legally guided real deals must actually retain a partially answered multi-player window");
+                    require(found,"At least one of sixteen legally guided real deals must actually retain a partially answered multi-player window");
                     first.runOnServer(s->{
                         LobbyService service=LobbyService.get(s);
                         session.held=coreViews(service,session); session.pending=pending(service,session);

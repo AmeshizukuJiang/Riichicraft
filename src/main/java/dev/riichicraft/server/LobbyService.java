@@ -22,6 +22,10 @@ import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.network.LobbyClosedPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
 import dev.riichicraft.network.TableDisplaySnapshot;
+import dev.riichicraft.network.TableScenePayload;
+import dev.riichicraft.table.TableHandVisibility;
+import dev.riichicraft.entity.MahjongSeatEntity;
+import dev.riichicraft.entity.ModEntities;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.minecraft.core.Direction;
 import java.util.HashMap;
@@ -52,6 +56,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 /** Server-thread table ownership, authenticated intentions and durable world lifecycle. */
 public final class LobbyService {
@@ -61,6 +68,8 @@ public final class LobbyService {
     private final Map<TableKey, UUID> tables = new HashMap<>();
     private final Map<UUID, TableKey> locations = new HashMap<>();
     private final Map<UUID, View> views = new HashMap<>();
+    private final Map<UUID, MahjongSeatEntity> mountedSeats = new HashMap<>();
+    private final Set<UUID> seatedTables = new HashSet<>();
     private final Map<UUID, Prototype> games = new HashMap<>();
     private final Set<UUID> disconnected = new HashSet<>();
     private final Map<UUID, String> pendingNotices = new HashMap<>();
@@ -219,7 +228,7 @@ public final class LobbyService {
     }
 
     private record TableKey(ResourceKey<Level> dimension, BlockPos pos) { }
-    private record View(UUID id, UUID tableId) { }
+    private record View(UUID id, UUID tableId, boolean immersive) { }
     @FunctionalInterface interface ArchiveWriter {
         void write(Path path,List<TableArchiveStore.Table> tables) throws IOException;
     }
@@ -272,6 +281,10 @@ public final class LobbyService {
             TableKey key=new TableKey(ResourceKey.create(Registries.DIMENSION,Identifier.parse(table.dimension())),
                     new BlockPos(table.x(),table.y(),table.z()));
             tables.put(key,table.tableId()); locations.put(table.tableId(),key);
+            if(!table.chairSides().isEmpty()) {
+                seatedTables.add(table.tableId());
+                displaySides.put(table.tableId(),table.chairSides());
+            }
             registry.restoreTable(table.tableId(),table.lobbyRevision(),table.mode(),restoredSeats(table));
             try {
                 games.put(table.tableId(),new Prototype(table));
@@ -304,7 +317,8 @@ public final class LobbyService {
                 byte[] core=prototype.archive();
                 archived.add(new TableArchiveStore.Table(tableId,key.dimension().identifier().toString(),key.pos().getX(),key.pos().getY(),
                         key.pos().getZ(),lobby.mode(),lobby.revision(),prototype.revision,lobby.seats().stream()
-                        .map(seat->new TableArchiveStore.Seat(seat.playerId(),seat.name())).toList(),core));
+                        .map(seat->new TableArchiveStore.Seat(seat.playerId(),seat.name())).toList(),core,
+                        seatedTables.contains(tableId)?chairSides(tableId):List.of()));
             }
             archived.sort(Comparator.comparing(table->table.tableId().toString()));
             archiveWriter.write(archivePath,archived);
@@ -363,6 +377,14 @@ public final class LobbyService {
     }
 
     public UUID open(ServerPlayer player, BlockPos pos) {
+        return open(player,pos,false);
+    }
+
+    public UUID openImmersive(ServerPlayer player, BlockPos pos) {
+        return open(player,pos,true);
+    }
+
+    private UUID open(ServerPlayer player, BlockPos pos, boolean immersive) {
         if(blocked(player,null)) return null;
         pos=TableStructure.resolve(player.level(),pos);
         if(pos==null) return null;
@@ -380,12 +402,100 @@ public final class LobbyService {
         if(!games.containsKey(tableId)) refreshStructure(tableId);
         View old = views.remove(player.getUUID());
         if (old != null) sendClosed(player, old, "");
-        View view = new View(UUID.randomUUID(), tableId);
+        View view = new View(UUID.randomUUID(), tableId, immersive);
         views.put(player.getUUID(), view);
         Prototype prototype = games.get(tableId);
         if (prototype != null) refreshPresence(tableId, prototype);
         sendSnapshot(player, view, registry.snapshot(tableId).orElseThrow(), "");
         return view.id();
+    }
+
+    /** A chair click is a server-owned seat claim and mount, never a client-provided slot. */
+    public boolean sit(ServerPlayer player, BlockPos chair) {
+        if(blocked(player,null) || !player.isAlive() || player.isSpectator()
+                || !player.isWithinBlockInteractionRange(chair,0)) return false;
+        var level=player.level(); var state=TableStructure.loadedState(level,chair);
+        if(state==null || !state.is(ModBlocks.MAHJONG_CHAIR)) return false;
+        Direction facing=state.getValue(dev.riichicraft.block.MahjongChairBlock.FACING);
+        BlockPos center=chair.relative(facing,2);
+        var physical=TableStructure.inspect(level,center);
+        if(!physical.large() || !physical.loaded() || !physical.bodyComplete() || physical.players()==0) return false;
+        UUID existing=registry.tableForPlayer(player.getUUID()).orElse(null);
+        UUID id=tables.get(new TableKey(level.dimension(),center));
+        if(existing!=null && !existing.equals(id)) return false;
+        if(player.getVehicle() instanceof MahjongSeatEntity current) {
+            if(!chair.equals(current.chair()) || !java.util.Objects.equals(id,current.tableId())) return false;
+            openImmersive(player,center); return true;
+        }
+        if(player.isPassenger()) return false;
+        UUID viewId=openImmersive(player,center);
+        if(viewId==null) return false;
+        id=views.get(player.getUUID()).tableId();
+        List<Integer> sides=chairSides(id);
+        int slot=sides.indexOf(displaySide(facing.getOpposite()));
+        if(slot<0) return false;
+        var lobby=registry.snapshot(id).orElseThrow();
+        boolean already=lobby.seats().get(slot).playerId()!=null
+                && lobby.seats().get(slot).playerId().equals(player.getUUID());
+        if(games.containsKey(id) && !already) return false;
+        var result=registry.joinAt(id,player.getUUID(),player.getGameProfile().name(),lobby.revision(),slot);
+        if(!result.successful()) {
+            sendSnapshot(player,views.get(player.getUUID()),result.snapshot(),feedback(result.status())); return false;
+        }
+        var seat=new MahjongSeatEntity(ModEntities.MAHJONG_SEAT,level);
+        seat.bind(id,chair,facing);
+        if(!level.addFreshEntity(seat) || !player.startRiding(seat,true,false)) {
+            seat.discard();
+            if(!already) registry.leave(id,player.getUUID(),result.snapshot().revision());
+            broadcast(registry.snapshot(id).orElseThrow(),null,"message.riichicraft.lobby.unavailable");
+            return false;
+        }
+        mountedSeats.put(player.getUUID(),seat);
+        seatedTables.add(id); displaySides.put(id,sides);
+        player.setYRot(facing.toYRot()); player.setXRot(35);
+        var prototype=games.get(id);
+        if(prototype!=null) refreshPresence(id,prototype);
+        broadcast(registry.snapshot(id).orElseThrow(),null,"");
+        playTableSound(id,SoundEvents.WOOD_STEP,0.18F,1.2F);
+        return true;
+    }
+
+    private boolean mounted(UUID playerId, UUID tableId) {
+        var seat=mountedSeats.get(playerId); var player=server.getPlayerList().getPlayer(playerId);
+        var state=seat==null || player==null?null:TableStructure.loadedState(player.level(),seat.chair());
+        return seat!=null && !seat.isRemoved() && player!=null && player.isAlive()
+                && tableId.equals(seat.tableId()) && player.getVehicle()==seat
+                && state!=null && state.is(ModBlocks.MAHJONG_CHAIR)
+                && state.getValue(dev.riichicraft.block.MahjongChairBlock.FACING)==seat.facing();
+    }
+
+    private List<Integer> chairSides(UUID tableId) {
+        if(games.containsKey(tableId) && displaySides.containsKey(tableId)) return displaySides.get(tableId);
+        var key=locations.get(tableId); var level=key==null?null:server.getLevel(key.dimension());
+        var root=level==null?null:TableStructure.loadedState(level,key.pos());
+        if(root==null || !root.is(ModBlocks.LARGE_MAHJONG_TABLE)) return List.of();
+        var sides=new ArrayList<Integer>();
+        Direction side=root.getValue(dev.riichicraft.block.LargeMahjongTableBlock.FACING).getOpposite();
+        int count=registry.snapshot(tableId).orElseThrow().seats().size();
+        for(int i=0;i<4;i++,side=side.getCounterClockWise()) {
+            var state=TableStructure.loadedState(level,key.pos().relative(side,2));
+            if(count==4 || state!=null && !state.is(ModBlocks.EMPTY_CHAIR)) sides.add(displaySide(side));
+        }
+        return sides.size()==count?List.copyOf(sides):displaySides.getOrDefault(tableId,List.of());
+    }
+
+    private void refreshMounts() {
+        for(var entry:List.copyOf(mountedSeats.entrySet())) {
+            var seat=entry.getValue(); UUID id=seat.tableId();
+            if(mounted(entry.getKey(),id)) continue;
+            mountedSeats.remove(entry.getKey()); seat.discard();
+            if(!games.containsKey(id)) registry.disconnect(entry.getKey()).ifPresent(snapshot->broadcast(snapshot,null,""));
+            else {
+                refreshPresence(id,games.get(id));
+                var player=server.getPlayerList().getPlayer(entry.getKey()); var view=views.get(entry.getKey());
+                if(player!=null && view!=null) sendSnapshot(player,view,registry.snapshot(id).orElseThrow(),"");
+            }
+        }
     }
 
     public void handleAction(ServerPlayer player, LobbyActionPayload payload) {
@@ -405,6 +515,10 @@ public final class LobbyService {
         if (games.containsKey(view.tableId())) {
             sendSnapshot(player, view, registry.snapshot(view.tableId()).orElseThrow(),
                     "message.riichicraft.game.in_progress");
+            return;
+        }
+        if(view.immersive() && payload.action()==LobbyActionPayload.JOIN) {
+            sendSnapshot(player,view,registry.snapshot(view.tableId()).orElseThrow(),"message.riichicraft.lobby.not_seated");
             return;
         }
         refreshStructure(view.tableId());
@@ -437,6 +551,9 @@ public final class LobbyService {
             sendSnapshot(player, view, registry.snapshot(view.tableId()).orElseThrow(),
                     "message.riichicraft.lobby.invalid_action");
         } else if (result.snapshot() != null) {
+            if(payload.action()==LobbyActionPayload.LEAVE && result.successful()) {
+                var seat=mountedSeats.remove(player.getUUID()); if(seat!=null) seat.discard();
+            }
             String feedback = feedback(result.status());
             if (result.changed()) broadcast(result.snapshot(), player.getUUID(), feedback);
             else sendSnapshot(player, view, result.snapshot(), feedback);
@@ -460,6 +577,7 @@ public final class LobbyService {
         List<UUID> players = lobby.seats().stream().map(LobbyRegistry.Seat::playerId).toList();
         games.put(view.tableId(), new Prototype(UUID.randomUUID(), players, SEEDS.nextLong(),lobby.mode()));
         broadcast(lobby, null, "");
+        playTableSound(view.tableId(),SoundEvents.NOTE_BLOCK_PLING.value(),0.25F,1.1F);
     }
 
     public void handleGameAction(ServerPlayer player, GameActionPayload payload) {
@@ -542,7 +660,13 @@ public final class LobbyService {
                 if (result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;
                     prototype.syncStatus();
-                    tableDisplaySync.record(view.tableId(),animationBefore,tableDisplay(view.tableId()));
+                    var animationAfter=tableDisplay(view.tableId());
+                    tableDisplaySync.record(view.tableId(),animationBefore,animationAfter);
+                    if(animationAfter!=null && !animationAfter.equals(animationBefore)) {
+                        boolean ended=animationAfter.finished() && (animationBefore==null || !animationBefore.finished());
+                        playTableSound(view.tableId(),ended?SoundEvents.NOTE_BLOCK_PLING.value():SoundEvents.STONE_BUTTON_CLICK_ON,
+                                ended?0.3F:0.14F,ended?1.45F:1.6F);
+                    }
                     broadcast(lobby, null, "");
                     return;
                 }
@@ -569,11 +693,18 @@ public final class LobbyService {
         };
     }
 
+    /** Sounds follow accepted state changes, never replayed from scene/snapshot recovery. */
+    private void playTableSound(UUID tableId,SoundEvent event,float volume,float pitch) {
+        var key=locations.get(tableId); var level=key==null?null:server.getLevel(key.dimension());
+        if(level!=null) level.playSound(null,key.pos(),event,SoundSource.BLOCKS,volume,pitch);
+    }
+
     private boolean present(UUID playerId, UUID tableId) {
         ServerPlayer player = server.getPlayerList().getPlayer(playerId);
         TableKey location = locations.get(tableId);
         return !stopping && !unloadedTables.contains(tableId) && !disconnected.contains(playerId)
-                && player != null && location != null && accessible(player, location);
+                && player != null && location != null && accessible(player, location)
+                && (!seatedTables.contains(tableId) || mounted(playerId,tableId));
     }
 
     private TableStructure.Layout layout(UUID tableId) {
@@ -591,6 +722,21 @@ public final class LobbyService {
         var before=registry.snapshot(tableId).orElseThrow();
         if(count==3 || count==4) registry.setPlayerCount(tableId,count);
         var after=registry.snapshot(tableId).orElseThrow();
+        if(seatedTables.contains(tableId) && layout.matches(after.seats().size())) {
+            List<Integer> sides=chairSides(tableId);
+            var indices=new HashMap<UUID,Integer>();
+            boolean complete=true;
+            for(var occupant:after.seats()) if(occupant.occupied()) {
+                var mount=mountedSeats.get(occupant.playerId());
+                int target=-1;
+                if(mount!=null) for(Direction side:Direction.Plane.HORIZONTAL)
+                    if(mount.chair().equals(locations.get(tableId).pos().relative(side,2))) target=sides.indexOf(displaySide(side));
+                if(target<0) { complete=false;break; }
+                indices.put(occupant.playerId(),target);
+            }
+            if(complete) after=registry.arrange(tableId,indices);
+            displaySides.put(tableId,sides);
+        }
         boolean changed=previous==null || previous!=count;
         if(changed && after.revision()==before.revision()) after=registry.invalidatePreparation(tableId);
         if(changed || after.revision()!=before.revision()) broadcast(after,null,
@@ -763,6 +909,7 @@ public final class LobbyService {
 
     public void disconnect(ServerPlayer player) {
         views.remove(player.getUUID());
+        var mount=mountedSeats.remove(player.getUUID()); if(mount!=null) mount.discard();
         if(stopping || archiveBlocked) return;
         UUID tableId = registry.tableForPlayer(player.getUUID()).orElse(null);
         if(blockedTables.containsKey(tableId)) return;
@@ -785,6 +932,10 @@ public final class LobbyService {
         structureCounts.remove(id);
         unloadedTables.remove(id);
         locations.remove(id);
+        seatedTables.remove(id); displaySides.remove(id);
+        for(var entry:List.copyOf(mountedSeats.entrySet())) if(id.equals(entry.getValue().tableId())) {
+            mountedSeats.remove(entry.getKey());entry.getValue().discard();
+        }
         Prototype prototype = games.remove(id);
         String reason = prototype == null ? "message.riichicraft.lobby.unavailable"
                 : "message.riichicraft.game.terminated";
@@ -850,6 +1001,7 @@ public final class LobbyService {
 
     public void tick() {
         if(stopping || archiveBlocked) return;
+        refreshMounts();
         for (TableKey key : List.copyOf(tables.keySet())) {
             ServerLevel level = server.getLevel(key.dimension());
             UUID tableId=tables.get(key);
@@ -884,7 +1036,7 @@ public final class LobbyService {
     }
     private List<TableDisplaySync.Table> publicTableDisplays(java.util.Collection<Map.Entry<UUID,Prototype>> candidates) {
         List<TableDisplaySync.Table> result = new ArrayList<>();
-        displaySides.keySet().retainAll(games.keySet());
+        displaySides.keySet().retainAll(tables.values());
         for (var entry : candidates) {
             UUID id = entry.getKey(); var prototype = entry.getValue(); var key = locations.get(id);
             if (key == null || blockedTables.containsKey(id)) continue;
@@ -895,7 +1047,7 @@ public final class LobbyService {
             if (!layout.loaded() || !layout.bodyComplete()) continue;
             var facing = root.getValue(dev.riichicraft.block.LargeMahjongTableBlock.FACING);
             var front = facing.getOpposite();
-            if (layout.matches(prototype.players.size()) || !displaySides.containsKey(id)) {
+            if (!seatedTables.contains(id) && layout.matches(prototype.players.size()) || !displaySides.containsKey(id)) {
                 int empties = 0;
                 for (var side : Direction.Plane.HORIZONTAL)
                     if (TableStructure.loadedState(level, key.pos().relative(side, 2)).is(ModBlocks.EMPTY_CHAIR)) empties++;
@@ -934,6 +1086,8 @@ public final class LobbyService {
         save();
         // stopServer subsequently invokes native saves. Cleared runtime maps are never a new empty checkpoint.
         detached=true;
+        for(var mount:mountedSeats.values()) mount.discard();
+        mountedSeats.clear(); seatedTables.clear();
         games.clear();
         views.clear();
         tables.clear();
@@ -973,10 +1127,43 @@ public final class LobbyService {
         var seats = snapshot.seats().stream().map(seat ->
                 new LobbySnapshotPayload.Seat(seat.playerId(), seat.name(), seat.ready())).toList();
         var layout=layout(view.tableId());
+        if(view.immersive() && ServerPlayNetworking.canSend(player,TableScenePayload.TYPE))
+            ServerPlayNetworking.send(player,sceneView(view.id(),view.tableId(),player.getUUID()));
         ServerPlayNetworking.send(player, new LobbySnapshotPayload(view.id(), view.tableId(),
                 locations.get(view.tableId()).pos(), snapshot.revision(), seats, ownSeat, snapshot.allReady(), feedback,
                 gameView(view.tableId(), player.getUUID()),snapshot.mode(),
                 layout.large()?layout.players():-1));
+    }
+
+    /** Recipient identity comes from the stored roster, independently of whether it is mounted. */
+    public TableScenePayload sceneView(UUID viewId, UUID tableId, UUID recipient) {
+        var lobby=registry.snapshot(tableId).orElseThrow(); var prototype=games.get(tableId);
+        var key=locations.get(tableId); List<Integer> sides=chairSides(tableId);
+        if(sides.size()!=lobby.seats().size()) {
+            // Invalid furniture may retain an active scene; its frozen sides come from the archive.
+            sides=displaySides.getOrDefault(tableId,lobby.seats().size()==4?List.of(0,1,2,3):List.of(0,1,3));
+        }
+        var players=lobby.seats().stream().filter(LobbyRegistry.Seat::occupied).map(LobbyRegistry.Seat::playerId).toList();
+        int own=-1;for(var seat:lobby.seats()) if(recipient.equals(seat.playerId())) own=seat.index();
+        List<List<Integer>> hands=new ArrayList<>(); List<Integer> drawn=new ArrayList<>();
+        boolean finished=false; UUID gameId=null;long revision=lobby.revision();
+        if(prototype==null) {
+            for(int i=0;i<lobby.seats().size();i++) {hands.add(List.of());drawn.add(-1);}
+        } else {
+            gameId=prototype.gameId;revision=prototype.revision;
+            finished=prototype.three()?prototype.threeView(null).phase()==ThreePlayerRound.Phase.FINISHED
+                    :prototype.roundView(null).phase()==FourPlayerRound.Phase.FINISHED;
+            for(UUID participant:prototype.players) {
+                if(prototype.three()) {var view=prototype.threeView(participant);
+                    hands.add(view.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()));drawn.add(view.ownDraw().orElse(-1));
+                } else {var view=prototype.roundView(participant);
+                    hands.add(view.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()));drawn.add(view.ownDraw().orElse(-1));}
+            }
+            var selected=TableHandVisibility.project(recipient,prototype.players,hands,drawn,finished);
+            hands=selected.hands();drawn=selected.drawnTiles();own=selected.ownSeat();
+        }
+        return new TableScenePayload(viewId,tableId,key.dimension(),key.pos(),gameId,revision,own,sides,
+                mounted(recipient,tableId),hands,drawn,finished);
     }
 
     private void sendClosed(ServerPlayer player, View view, String reason) {

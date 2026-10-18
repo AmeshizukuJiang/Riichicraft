@@ -12,6 +12,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -27,7 +28,7 @@ import java.util.UUID;
 
 /** Server-only, versioned world container. Core game bytes never belong in a client payload. */
 public final class TableArchiveStore {
-    public static final int VERSION=1;
+    public static final int VERSION=2;
     public static final int MAX_TABLES=4_096, MAX_GAME_BYTES=2*1_024*1_024, MAX_FILE_BYTES=64*1_024*1_024;
     private static final int MAGIC=0x52435442, HEADER_BYTES=12, HASH_BYTES=32;
 
@@ -39,7 +40,12 @@ public final class TableArchiveStore {
         }
     }
     public record Table(UUID tableId,String dimension,int x,int y,int z,int mode,long lobbyRevision,
-                        long gameRevision,List<Seat> seats,byte[] gameData) {
+                        long gameRevision,List<Seat> seats,byte[] gameData,List<Integer> chairSides) {
+        /** Version-one records retain their legacy entry until explicitly seated at a chair. */
+        public Table(UUID tableId,String dimension,int x,int y,int z,int mode,long lobbyRevision,
+                     long gameRevision,List<Seat> seats,byte[] gameData) {
+            this(tableId,dimension,x,y,z,mode,lobbyRevision,gameRevision,seats,gameData,List.of());
+        }
         public Table {
             Objects.requireNonNull(tableId,"tableId"); Objects.requireNonNull(dimension,"dimension");
             if(dimension.length()>256 || !dimension.matches("[a-z0-9_.-]+:[a-z0-9/._-]+")) {
@@ -49,16 +55,21 @@ public final class TableArchiveStore {
             if(mode<0 || mode>5 || lobbyRevision<0 || gameRevision<0 || seats.size()!=(mode>=3?3:4)
                     || new HashSet<>(seats.stream().map(Seat::playerId).toList()).size()!=(mode>=3?3:4)
                     || gameData.length<1 || gameData.length>MAX_GAME_BYTES) throw new IllegalArgumentException("Invalid saved table");
-            seats=List.copyOf(seats); gameData=gameData.clone();
+            seats=List.copyOf(seats); gameData=gameData.clone(); chairSides=List.copyOf(chairSides);
+            if(!chairSides.isEmpty() && (chairSides.size()!=seats.size()
+                    || new HashSet<>(chairSides).size()!=chairSides.size()
+                    || chairSides.stream().anyMatch(side->side<0 || side>3)))
+                throw new IllegalArgumentException("Invalid saved chair sides");
         }
         @Override public byte[] gameData() { return gameData.clone(); }
         @Override public boolean equals(Object other) {
             return other instanceof Table table && tableId.equals(table.tableId) && dimension.equals(table.dimension)
                     && x==table.x && y==table.y && z==table.z && mode==table.mode && lobbyRevision==table.lobbyRevision
-                    && gameRevision==table.gameRevision && seats.equals(table.seats) && Arrays.equals(gameData,table.gameData);
+                    && gameRevision==table.gameRevision && seats.equals(table.seats) && chairSides.equals(table.chairSides)
+                    && Arrays.equals(gameData,table.gameData);
         }
         @Override public int hashCode() {
-            return 31*Objects.hash(tableId,dimension,x,y,z,mode,lobbyRevision,gameRevision,seats)+Arrays.hashCode(gameData);
+            return 31*Objects.hash(tableId,dimension,x,y,z,mode,lobbyRevision,gameRevision,seats,chairSides)+Arrays.hashCode(gameData);
         }
     }
     private record Location(String dimension,int x,int y,int z) { }
@@ -68,7 +79,7 @@ public final class TableArchiveStore {
         tables=List.copyOf(tables); validateTables(tables);
         long bodySize=4;
         for(Table table:tables) {
-            bodySize+=16+4+utf8(table.dimension,256).length+12+1+8+8+4+table.gameData.length;
+            bodySize+=16+4+utf8(table.dimension,256).length+12+1+8+8+1+table.chairSides.size()+4+table.gameData.length;
             for(Seat seat:table.seats) bodySize+=16+4+utf8(seat.name,256).length;
             if(bodySize>MAX_FILE_BYTES-HEADER_BYTES-HASH_BYTES) throw new IOException("World archive exceeds size limit");
         }
@@ -79,6 +90,8 @@ public final class TableArchiveStore {
             writeId(output,table.tableId); writeString(output,table.dimension);
             output.writeInt(table.x); output.writeInt(table.y); output.writeInt(table.z); output.writeByte(table.mode);
             output.writeLong(table.lobbyRevision); output.writeLong(table.gameRevision);
+            output.writeByte(table.chairSides.size());
+            for(int side:table.chairSides) output.writeByte(side);
             for(Seat seat:table.seats) { writeId(output,seat.playerId); writeString(output,seat.name); }
             output.writeInt(table.gameData.length); output.write(table.gameData);
         }
@@ -90,7 +103,9 @@ public final class TableArchiveStore {
         Objects.requireNonNull(bytes,"bytes");
         if(bytes.length<HEADER_BYTES+4+HASH_BYTES || bytes.length>MAX_FILE_BYTES) throw new IOException("Invalid world archive size");
         var header=new DataInputStream(new ByteArrayInputStream(bytes));
-        if(header.readInt()!=MAGIC || header.readInt()!=VERSION) throw new IOException("Unsupported world archive format");
+        if(header.readInt()!=MAGIC) throw new IOException("Unsupported world archive format");
+        int version=header.readInt();
+        if(version!=1 && version!=VERSION) throw new IOException("Unsupported world archive format");
         int bodySize=header.readInt();
         if(bodySize<4 || (long)bodySize+HEADER_BYTES+HASH_BYTES!=bytes.length) throw new IOException("Invalid world archive frame");
         int signedSize=bytes.length-HASH_BYTES;
@@ -105,11 +120,16 @@ public final class TableArchiveStore {
                 int x=input.readInt(),y=input.readInt(),z=input.readInt(),mode=input.readUnsignedByte();
                 long lobby=input.readLong(),game=input.readLong(); var seats=new ArrayList<Seat>(4);
                 if(mode>5) throw new IOException("Invalid table mode");
+                var sides=new ArrayList<Integer>(4);
+                if(version>=2) {
+                    int sideCount=bounded(input.readUnsignedByte(),0,4,"chair count");
+                    for(int side=0;side<sideCount;side++) sides.add(input.readUnsignedByte());
+                }
                 for(int seat=0;seat<(mode>=3?3:4);seat++) seats.add(new Seat(readId(input),readString(input)));
                 int length=bounded(input.readInt(),1,MAX_GAME_BYTES,"game byte count");
                 if(length>input.available()) throw new IOException("Truncated game bytes");
                 byte[] core=new byte[length]; input.readFully(core);
-                tables.add(new Table(id,dimension,x,y,z,mode,lobby,game,seats,core));
+                tables.add(new Table(id,dimension,x,y,z,mode,lobby,game,seats,core,sides));
             }
             if(input.available()!=0) throw new IOException("Unexpected world archive tail");
             validateTables(tables); return List.copyOf(tables);
@@ -141,9 +161,28 @@ public final class TableArchiveStore {
                 ByteBuffer buffer=ByteBuffer.wrap(bytes); while(buffer.hasRemaining()) channel.write(buffer); channel.force(true);
             }
             if(!decode(Files.readAllBytes(temporary)).equals(tables)) throw new IOException("Archive write verification failed");
-            try { Files.move(temporary,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING); }
-            catch(AtomicMoveNotSupportedException unsupported) { throw new IOException("Atomic archive replacement unavailable; original retained",unsupported); }
+            replaceAtomically(temporary,target,(source,destination)->Files.move(source,destination,
+                    StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING),Thread::sleep);
         } finally { Files.deleteIfExists(temporary); }
+    }
+
+    @FunctionalInterface interface AtomicReplacer { void move(Path source,Path target) throws IOException; }
+    @FunctionalInterface interface RetryPause { void pause(long millis) throws InterruptedException; }
+    /** Windows can briefly deny rename while a scanner releases its handle. Never downgrade atomicity. */
+    static void replaceAtomically(Path temporary,Path target,AtomicReplacer replacer,RetryPause pause) throws IOException {
+        for(int attempt=0;;attempt++) {
+            if(attempt>0 && !Files.notExists(target)) read(target);
+            try { replacer.move(temporary,target);return; }
+            catch(AtomicMoveNotSupportedException unsupported) {
+                throw new IOException("Atomic archive replacement unavailable; original retained",unsupported);
+            } catch(AccessDeniedException busy) {
+                if(attempt==4) throw busy;
+                try { pause.pause(25); }
+                catch(InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();throw new IOException("Archive replacement interrupted; original retained",interrupted);
+                }
+            }
+        }
     }
 
     private static void validateTables(List<Table> tables) throws IOException {

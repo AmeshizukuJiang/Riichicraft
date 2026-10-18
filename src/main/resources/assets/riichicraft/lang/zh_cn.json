@@ -221,5 +221,21 @@
   "screen.riichicraft.lobby.chairs.4": "椅位：四麻",
   "screen.riichicraft.lobby.chairs.0": "布局无效",
   "screen.riichicraft.lobby.layout_invalid": "请修复椅位布局，并使人数与大厅一致。",
-  "item.riichicraft.mahjong_tile": "麻将牌（一万）"
+  "item.riichicraft.mahjong_tile": "麻将牌（一万）",
+  "key.category.riichicraft.table": "Riichicraft 麻将桌",
+  "key.riichicraft.table_controls": "切换牌桌操作／自由环顾",
+  "key.riichicraft.table_perspective": "切换坐姿／俯瞰",
+  "screen.riichicraft.table.title": "麻将桌",
+  "screen.riichicraft.table.perspective": "视角 [V]",
+  "screen.riichicraft.table.hide": "收起",
+  "screen.riichicraft.table.controls_hint": "Esc／R 收起环顾 · R 恢复操作 · V 视角 · 收起后 Shift 起身",
+  "screen.riichicraft.table.leave_lobby": "退出参与",
+  "screen.riichicraft.table.double_click_hint": "双击同一张牌打出 · R 重开操作 · V 切换视角",
+  "screen.riichicraft.table.riichi_hint": "立直：双击一张可立直舍牌宣言",
+  "screen.riichicraft.table.selected": "已选 %s · 再次快速点击打出",
+  "screen.riichicraft.table.award": "%s　%s番",
+  "screen.riichicraft.table.award_yakuman": "%s　%s倍役满",
+  "screen.riichicraft.table.delta_heading": "本局点数变化（含已成立立直扣棒）",
+  "screen.riichicraft.table.points": "%1$s位：%3$s（%4$s） %2$s",
+  "screen.riichicraft.game.cancel_riichi": "取消立直选择"
 }

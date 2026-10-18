@@ -103,6 +103,25 @@ final class TabletopClientScenario {
                     for(var seat:received.seats()) { seat.river().forEach(d->exposed.add(d.tileId())); seat.melds().forEach(m->exposed.addAll(m.tiles())); exposed.addAll(seat.norths()); }
                     require(exposed.stream().noneMatch(hidden::contains),"Actual observer packet contains none of the four private hands");
                 });
+                // The anonymous nearby stream stays public; explicit watching gets a separate full-hand view.
+                server.runOnServer(s->{
+                    var actual=connection.getServerPlayer();actual.setGameMode(GameType.CREATIVE);
+                    actual.teleportTo(active.center().getX()+.5,active.center().getY(),active.center().getZ()+3.2);
+                    require(LobbyService.get(s).openImmersive(actual,active.center())!=null,"Explicit observer opens the table without occupying any chair");
+                });
+                connection.waitForClientboundPackets();context.waitForScreen(dev.riichicraft.client.TableScreen.class);
+                context.runOnClient(c->{var scene=dev.riichicraft.client.TableInteractionClient.scene();
+                    require(scene.ownSeat()==-1 && !scene.mounted() && scene.hands().stream().allMatch(hand->!hand.isEmpty()),
+                            "A real TCP nonparticipant's explicit view includes every current concealed hand");});
+                context.runOnClient(c->require(dev.riichicraft.client.TableCamera.overhead(),"An explicit live observer opens directly in the full-hand overhead camera"));
+                context.waitTicks(3);
+                shot(context,"riichicraft-immersive-spectator");
+                server.runOnServer(s->{connection.getServerPlayer().setGameMode(GameType.SPECTATOR);
+                    connection.getServerPlayer().teleportTo(active.center().getX()+.5,active.center().getY()+3,active.center().getZ()+1);
+                    LobbyService.get(s).tick();});
+                connection.waitForClientboundPackets();context.waitForScreen(null);
+                context.runOnClient(c->require(!dev.riichicraft.client.TableCamera.active(),"Revoked explicit spectator view restores the original camera"));
+                context.getInput().lookAt(active.center().above());
                 context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
                 shot(context,"riichicraft-tabletop-live-four");
                 context.runOnClient(c->TabletopRenderFixture.show(active.center(),TableDisplayGameTests.showcase(false)));

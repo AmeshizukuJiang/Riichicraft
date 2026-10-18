@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3;
 import dev.riichicraft.block.ModBlocks;
 import dev.riichicraft.block.TableStructure;
 import dev.riichicraft.client.LobbyScreen;
+import dev.riichicraft.client.TableScreen;
 import net.minecraft.client.gui.components.Button;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,7 +43,7 @@ final class ThreePlayerPersistenceClientScenario {
                     first.runCommand("gamemode creative @a");
                     if(furniture) prepareFurniture(context,first,connection,session.target);
                     else first.runCommand("execute as @a at @s run setblock ~ ~ ~-2 riichicraft:mahjong_table[facing=south]");
-                    if(furniture) openFurniture(context,connection,session.target);
+                    if(furniture) openFurniture(context,first,connection,session.target);
                     else MahjongTableClientGameTest.openTable(context,connection,session.target);
                     context.clickScreenButton("screen.riichicraft.lobby.join");sync(connection);
                     if(furniture) {
@@ -86,7 +87,7 @@ final class ThreePlayerPersistenceClientScenario {
                 second.runOnServer(s->require(LobbyService.get(s).registry().tableForPlayer(session.player).orElseThrow().equals(tableId),"Three-player UUID ownership restored before TCP connect"));
                 try(var connection=second.connect()) {
                     connection.waitForChunksRender();
-                    if(furniture) openFurniture(context,connection,session.target);
+                    if(furniture) openFurniture(context,second,connection,session.target);
                     else MahjongTableClientGameTest.openTable(context,connection,session.target);
                     UUID currentView=snapshot(context).viewId();
                     session.table=second.computeOnServer(s->{var service=LobbyService.get(s);
@@ -162,7 +163,7 @@ final class ThreePlayerPersistenceClientScenario {
         server.runOnServer(s->connection.getServerPlayer().teleportTo(center.getX()+0.5,center.getY(),center.getZ()+3.5));
         sync(connection);context.waitTicks(2);
     }
-    private static void openFurniture(ClientGameTestContext context,TestServerConnection connection,BlockPos center) {
+    private static void openFurniture(ClientGameTestContext context,TestServerContext server,TestServerConnection connection,BlockPos center) {
         // Aim at the actual tabletop height; BlockPos.lookAt aims below the slab and may hit a chair.
         float[] angles=context.computeOnClient(c->{
             Vec3 delta=Vec3.atCenterOf(center.south()).add(0,0.49,0).subtract(c.player.getEyePosition());
@@ -172,7 +173,14 @@ final class ThreePlayerPersistenceClientScenario {
         context.getInput().lookAt(angles[0],angles[1]);context.waitTick();
         context.runOnClient(c->require(c.hitResult instanceof BlockHitResult hit && c.level.getBlockState(hit.getBlockPos()).is(ModBlocks.LARGE_MAHJONG_TABLE),
                 "Actual furniture crosshair must hit a table part: player="+c.player.position()+", hit="+c.hitResult+", center="+center));
-        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);sync(connection);context.waitForScreen(LobbyScreen.class);
+        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);sync(connection);context.waitForScreen(TableScreen.class);
+        require(context.computeOnClient(c->((TableScreen)c.gui.screen()).snapshot().pos().equals(center)),
+                "Default large-table mouse interaction opens the new transparent canonical-center controls");
+        // This historical fixture deliberately continues through the retained legacy view API.
+        // The immersive scenario separately exercises actual chair mounts and controls.
+        server.runOnServer(s->require(LobbyService.get(s).open(connection.getServerPlayer(),center)!=null,
+                "Explicit legacy API remains available for a pre-existing table workflow"));
+        sync(connection);context.waitForScreen(LobbyScreen.class);
         require(snapshot(context).pos().equals(center),"A real mouse click on the rim opens the canonical table center");
     }
     private static ServerPlayer player(Session session,TestDedicatedServerConnection connection,int seat){return seat==0?connection.getServerPlayer():session.table.fixtures().get(seat-1).player();}

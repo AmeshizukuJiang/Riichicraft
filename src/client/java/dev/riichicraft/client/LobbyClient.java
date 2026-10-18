@@ -35,6 +35,7 @@ final class LobbyClient {
         connected = isConnected;
         activeViewId = null;
         DISMISSED_VIEWS.clear();
+        TableInteractionClient.reset();
     }
 
     private static void acceptSnapshot(LobbySnapshotPayload payload, Minecraft client) {
@@ -42,6 +43,14 @@ final class LobbyClient {
                 || DISMISSED_VIEWS.contains(payload.viewId())) {
             return;
         }
+        if (TableInteractionClient.acceptSnapshot(payload, client)) {
+            if (activeViewId != null && !activeViewId.equals(payload.viewId())) {
+                DISMISSED_VIEWS.add(activeViewId);
+            }
+            activeViewId = payload.viewId();
+            return;
+        }
+        if (TableInteractionClient.active()) TableInteractionClient.reset();
         if (client.gui.screen() instanceof LobbyScreen screen
                 && screen.snapshot().viewId().equals(payload.viewId())) {
             screen.acceptSnapshot(payload);
@@ -60,6 +69,7 @@ final class LobbyClient {
     }
 
     private static void acceptClosed(LobbyClosedPayload payload, Minecraft client) {
+        boolean tableVisible = TableInteractionClient.acceptClosed(payload.viewId(), client);
         boolean active = payload.viewId().equals(activeViewId);
         boolean visible = client.gui.screen() instanceof LobbyScreen screen
                 && screen.snapshot().viewId().equals(payload.viewId());
@@ -70,7 +80,7 @@ final class LobbyClient {
         if (visible) {
             client.gui.setScreen(null);
         }
-        if ((active || visible) && client.player != null && !payload.reasonKey().isEmpty()) {
+        if ((active || visible || tableVisible) && client.player != null && !payload.reasonKey().isEmpty()) {
             client.player.sendOverlayMessage(Component.translatable(payload.reasonKey()));
         }
     }
@@ -104,6 +114,7 @@ final class LobbyClient {
     }
 
     static void closeView(UUID viewId, long revision) {
+        TableInteractionClient.forget(viewId);
         boolean firstClose = DISMISSED_VIEWS.add(viewId);
         if (viewId.equals(activeViewId)) {
             activeViewId = null;
