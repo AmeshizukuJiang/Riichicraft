@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "PPP",
+    "PWP",
+    "S S"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "W": "minecraft:green_wool",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "id": "riichicraft:mahjong_chair",
+    "count": 1
+  }
+}

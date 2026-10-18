@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "riichicraft:empty_chair",
+    "minecraft:green_dye"
+  ],
+  "result": {
+    "id": "riichicraft:mahjong_chair",
+    "count": 1
+  }
+}

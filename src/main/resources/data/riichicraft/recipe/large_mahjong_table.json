@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "PIP",
+    "PWP",
+    "PIP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:iron_ingot",
+    "W": "minecraft:green_wool"
+  },
+  "result": {
+    "id": "riichicraft:large_mahjong_table",
+    "count": 1
+  }
+}
