@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+import dev.riichicraft.table.TableAnimationJournal;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -16,19 +17,35 @@ import net.minecraft.world.level.Level;
 
 /** A single bounded update or removal. Sequence increases across all sends on one server. */
 public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, BlockPos pos,
-        long sequence, TableDisplaySnapshot snapshot) implements CustomPacketPayload {
-    public static final Type<TableDisplayPayload> TYPE = new Type<>(Riichicraft.id("table_display_v2"));
+        long sequence, TableDisplaySnapshot snapshot, UUID epoch, long actionSerial, List<TableAnimationStep> steps) implements CustomPacketPayload {
+    public static final Type<TableDisplayPayload> TYPE = new Type<>(Riichicraft.id("table_display_v3"));
+    private static final UUID NO_ANIMATION=new UUID(0,0);
     public static final StreamCodec<RegistryFriendlyByteBuf, TableDisplayPayload> CODEC = StreamCodec.of(TableDisplayPayload::encode, TableDisplayPayload::decode);
     public TableDisplayPayload {
         if (dimension == null || tableId == null || pos == null || sequence < 0) throw new IllegalArgumentException("table display metadata");
+        steps=List.copyOf(steps);
+        if(epoch==null || actionSerial<0 || steps.size()>TableAnimationJournal.LIMIT
+                || snapshot==null && (!steps.isEmpty() || actionSerial!=0 || !epoch.equals(NO_ANIMATION)))throw new IllegalArgumentException("animation metadata");
+        for(int i=0;i<steps.size();i++) {
+            var step=steps.get(i);
+            if(step.serial()!=actionSerial-steps.size()+i+1 || i>0 && !steps.get(i-1).after().equals(step.before()))throw new IllegalArgumentException("animation continuity");
+        }
+        if(!steps.isEmpty() && !steps.getLast().after().equals(snapshot))throw new IllegalArgumentException("animation endpoint");
         pos = pos.immutable();
+    }
+    public TableDisplayPayload(ResourceKey<Level> dimension,UUID tableId,BlockPos pos,long sequence,TableDisplaySnapshot snapshot){
+        this(dimension,tableId,pos,sequence,snapshot,NO_ANIMATION,0,List.of());
     }
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
     private static void encode(RegistryFriendlyByteBuf b, TableDisplayPayload p) {
         b.writeResourceKey(p.dimension()); b.writeUUID(p.tableId()); b.writeBlockPos(p.pos()); b.writeVarLong(p.sequence());
         b.writeBoolean(p.snapshot() != null); if (p.snapshot() == null) return;
-        var s = p.snapshot(); b.writeUUID(s.gameId()); b.writeBoolean(s.paused()); b.writeBoolean(s.finished()); b.writeVarInt(s.frontSide()); b.writeVarInt(s.liveTiles());
+        writeSnapshot(b,p.snapshot()); b.writeUUID(p.epoch());b.writeVarLong(p.actionSerial());b.writeVarInt(p.steps().size());
+        for(var step:p.steps()){b.writeVarLong(step.serial());writeSnapshot(b,step.before());writeSnapshot(b,step.after());}
+    }
+    private static void writeSnapshot(RegistryFriendlyByteBuf b,TableDisplaySnapshot s) {
+        b.writeUUID(s.gameId()); b.writeBoolean(s.paused()); b.writeBoolean(s.finished()); b.writeVarInt(s.frontSide()); b.writeVarInt(s.liveTiles());
         writeTiles(b, s.indicators()); b.writeVarInt(s.seats().size());
         for (var seat : s.seats()) {
             b.writeVarInt(seat.side()); b.writeVarInt(seat.concealedCount()); b.writeVarInt(seat.river().size());
@@ -44,6 +61,12 @@ public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, Bl
         try {
             var dim = b.readResourceKey(Registries.DIMENSION); var id = b.readUUID(); var pos = b.readBlockPos(); long serial = b.readVarLong();
             if (!b.readBoolean()) return new TableDisplayPayload(dim, id, pos, serial, null);
+            var state=readSnapshot(b);UUID epoch=b.readUUID();long action=b.readVarLong();
+            var steps=readList(b,TableAnimationJournal.LIMIT,in->new TableAnimationStep(in.readVarLong(),readSnapshot(in),readSnapshot(in)));
+            return new TableDisplayPayload(dim,id,pos,serial,state,epoch,action,steps);
+        } catch (IllegalArgumentException e) { throw new DecoderException("Invalid public tabletop", e); }
+    }
+    private static TableDisplaySnapshot readSnapshot(RegistryFriendlyByteBuf b) {
             UUID game = b.readUUID(); boolean paused = b.readBoolean(), finished = b.readBoolean(); int front = range(b, 0, 3), live = range(b, 0, 69);
             var indicators = readTiles(b, 5); int count = range(b, 3, 4); List<TableDisplaySnapshot.Seat> seats = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
@@ -52,8 +75,7 @@ public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, Bl
                 var melds = readList(b, 4, in -> new TableDisplaySnapshot.Meld(range(in, 0, 3), readTiles(in, 4), range(in, -1, count - 1), range(in, -1, 135), range(in, -1, 135)));
                 seats.add(new TableDisplaySnapshot.Seat(side, concealed, river, melds, readTiles(b, 4)));
             }
-            return new TableDisplayPayload(dim, id, pos, serial, new TableDisplaySnapshot(game, paused, finished, front, live, indicators, seats));
-        } catch (IllegalArgumentException e) { throw new DecoderException("Invalid public tabletop", e); }
+            return new TableDisplaySnapshot(game, paused, finished, front, live, indicators, seats);
     }
     private static int range(RegistryFriendlyByteBuf b, int lo, int hi) {
         int n = b.readVarInt(); if (n < lo || n > hi) throw new DecoderException("Public tabletop bound"); return n;

@@ -147,6 +147,11 @@ final class ThreePlayerPersistenceClientScenario {
         context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,TableDisplayGameTests.opening(true)));
         context.getInput().pressKey(GLFW.GLFW_KEY_F1);context.waitTicks(3);
         context.takeScreenshot("riichicraft-wall-opening-three-layout");
+        var kitaScene=TableAnimationGameTests.scenes().stream().filter(s->s.name().equals("kita")).findFirst().orElseThrow();
+        context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.showFrame(center,kitaScene.after(),TableAnimationGameTests.sample(kitaScene,360_000_000L)));
+        context.waitTicks(3);context.takeScreenshot("riichicraft-animation-kita-mid-layout");
+        context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,kitaScene.after()));
+        context.waitTicks(3);context.takeScreenshot("riichicraft-animation-kita-end-layout");
         context.getInput().pressKey(GLFW.GLFW_KEY_F1);
         context.runOnClient(c->dev.riichicraft.client.TabletopRenderFixture.show(center,TableDisplayGameTests.showcase(true)));
         context.getInput().pressKey(GLFW.GLFW_KEY_F1);context.waitTicks(3);

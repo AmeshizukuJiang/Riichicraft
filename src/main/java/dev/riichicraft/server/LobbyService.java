@@ -537,10 +537,12 @@ public final class LobbyService {
                         return;
                     }
                 }
+                TableDisplaySnapshot animationBefore=tableDisplay(view.tableId());
                 FourPlayerRound.Status result=prototype.act(player.getUUID(),payload,kanChoice);
                 if (result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;
                     prototype.syncStatus();
+                    tableDisplaySync.record(view.tableId(),animationBefore,tableDisplay(view.tableId()));
                     broadcast(lobby, null, "");
                     return;
                 }
@@ -878,9 +880,12 @@ public final class LobbyService {
 
     /** No private hand/action data leaves this spectator-only adapter. Does not load chunks. */
     List<TableDisplaySync.Table> publicTableDisplays() {
+        return publicTableDisplays(games.entrySet());
+    }
+    private List<TableDisplaySync.Table> publicTableDisplays(java.util.Collection<Map.Entry<UUID,Prototype>> candidates) {
         List<TableDisplaySync.Table> result = new ArrayList<>();
         displaySides.keySet().retainAll(games.keySet());
-        for (var entry : games.entrySet()) {
+        for (var entry : candidates) {
             UUID id = entry.getKey(); var prototype = entry.getValue(); var key = locations.get(id);
             if (key == null || blockedTables.containsKey(id)) continue;
             var level = server.getLevel(key.dimension());
@@ -917,7 +922,8 @@ public final class LobbyService {
 
     /** Read-only public integration view, including when no participant has a GUI open. */
     public TableDisplaySnapshot tableDisplay(UUID tableId) {
-        return publicTableDisplays().stream().filter(t -> t.id().equals(tableId)).map(TableDisplaySync.Table::snapshot).findFirst().orElse(null);
+        var game=games.get(tableId);if(game==null)return null;
+        return publicTableDisplays(List.of(Map.entry(tableId,game))).stream().map(TableDisplaySync.Table::snapshot).findFirst().orElse(null);
     }
 
     /** Save before detaching runtime ownership; native shutdown callbacks must never delete the archive. */

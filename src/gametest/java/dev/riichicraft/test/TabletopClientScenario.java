@@ -58,6 +58,25 @@ final class TabletopClientScenario {
                 context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
                 shot(context,"riichicraft-wall-opening-four");
                 context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
+                server.runOnServer(s->{var service=LobbyService.get(s);var own=service.gameView(active.tableId(),active.fixtures().getFirst().player().getUUID());
+                    int absent=java.util.stream.IntStream.range(0,136).filter(t->t!=own.drawnTile() && !own.ownHand().contains(t)).findFirst().orElseThrow();
+                    act(service,active,0,GameActionPayload.DISCARD,absent,null);
+                    require(service.tableDisplay(active.tableId()).equals(opening),"Rejected discard cannot change any public state");});
+                context.waitTicks(6);
+                context.runOnClient(c->{var packet=TableDisplayClient.snapshots().stream().filter(p->p.tableId().equals(active.tableId())).findFirst().orElseThrow();
+                    require(packet.actionSerial()==0 && packet.steps().isEmpty() && !TableDisplayClient.animating(active.tableId()),"Rejected action produces no event or playback on the real observer");});
+                // Two accepted public mutations occur before the next 5-tick observer scan.
+                server.runOnServer(s->{var service=LobbyService.get(s);advance(service,active,false);advance(service,active,false);});
+                var animated=server.computeOnServer(s->LobbyService.get(s).tableDisplay(active.tableId()));
+                awaitSnapshot(context,active.tableId(),animated);
+                context.runOnClient(c->{
+                    var packet=TableDisplayClient.snapshots().stream().filter(p->p.tableId().equals(active.tableId())).findFirst().orElseThrow();
+                    require(packet.steps().size()==2 && packet.steps().getFirst().serial()+1==packet.steps().getLast().serial(),"Actual TCP preserves both mutations from one observer interval");
+                    require(TableDisplayClient.animating(active.tableId()) && !TableDisplayClient.frames(packet,System.nanoTime()).equals(dev.riichicraft.table.TableAnimationPlayer.still(packet.snapshot())),
+                            "Authoritative snapshot has arrived while actual world poses are still moving");
+                });
+                context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);shot(context,"riichicraft-animation-live-four");
+                context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
                 server.runOnServer(s -> {
                     var service=LobbyService.get(s); boolean reached=false;
                     for(int deal=0;deal<8 && !reached;deal++) {
@@ -74,6 +93,7 @@ final class TabletopClientScenario {
                 });
                 saved=server.computeOnServer(s->LobbyService.get(s).tableDisplay(active.tableId()));
                 awaitSnapshot(context,active.tableId(),saved);
+                context.runOnClient(c->require(!TableDisplayClient.animating(active.tableId()),"A long legal burst converges without replaying seconds of old turns"));
                 var received=current(context,active.tableId());
                 assertWall(received);
                 server.runOnServer(s -> {
@@ -88,9 +108,16 @@ final class TabletopClientScenario {
                 context.runOnClient(c->TabletopRenderFixture.show(active.center(),TableDisplayGameTests.showcase(false)));
                 shot(context,"riichicraft-tabletop-layout-four");
                 context.runOnClient(c->TabletopRenderFixture.hide());
+                var kanScene=TableAnimationGameTests.scenes().stream().filter(s->s.name().equals("closed-kan-and-flip")).findFirst().orElseThrow();
+                context.runOnClient(c->TabletopRenderFixture.showFrame(active.center(),kanScene.after(),TableAnimationGameTests.sample(kanScene,340_000_000L)));
+                shot(context,"riichicraft-animation-kan-mid-layout");
+                context.runOnClient(c->TabletopRenderFixture.show(active.center(),kanScene.after()));
+                shot(context,"riichicraft-animation-kan-end-layout");
+                context.runOnClient(c->TabletopRenderFixture.hide());
                 context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F1);
                 server.runOnServer(s->connection.getServerPlayer().teleportTo(active.center().getX()+45.5,active.center().getY()+4,active.center().getZ()+0.5));
                 await(context,active.tableId(),false);
+                context.runOnClient(c->require(!TableDisplayClient.animating(active.tableId()),"Range removal clears transient playback"));
                 server.runOnServer(s->connection.getServerPlayer().teleportTo(active.center().getX()+0.5,active.center().getY()+4,active.center().getZ()+1.0));
                 awaitSnapshot(context,active.tableId(),saved);
                 server.runOnServer(s->connection.getServerPlayer().teleportTo(s.getLevel(Level.NETHER),8.5,80,8.5,java.util.Set.of(),0,0,true));
@@ -103,6 +130,7 @@ final class TabletopClientScenario {
                 server.runOnServer(s->{s.overworld().destroyBlock(active.center().south(2),false);LobbyService.get(s).tick();});
                 context.waitFor(c->find(active.tableId())!=null && find(active.tableId()).paused(),200);
                 var paused=current(context,active.tableId());
+                context.runOnClient(c->require(!TableDisplayClient.animating(active.tableId()),"Pause settles immediately to the accepted static state"));
                 require(paused.seats().equals(saved.seats()) && paused.indicators().equals(saved.indicators())
                         && paused.liveTiles()==saved.liveTiles() && paused.replacementDraws()==saved.replacementDraws(),"Broken chair pauses without losing any public tile or wall position");
                 server.runOnServer(s->{FurnitureTestLayout.chairs(s.overworld(),active.center(),4);LobbyService.get(s).tick();
@@ -112,6 +140,7 @@ final class TabletopClientScenario {
                     require(service.gameView(active.tableId(),null).rules().phase()==GameSnapshot.FINISHED,"Legal all-pass suffix finishes the live public round");});
                 saved=server.computeOnServer(s->LobbyService.get(s).tableDisplay(active.tableId()));
                 awaitSnapshot(context,active.tableId(),saved); require(saved.finished(),"Finished public tiles remain visible");
+                context.runOnClient(c->require(!TableDisplayClient.animating(active.tableId()),"Settlement does not retain a stale animation"));
                 assertWall(saved);
                 shot(context,"riichicraft-tabletop-live-result");
             }
