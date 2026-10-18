@@ -30,6 +30,7 @@ try {
     }
 
     $sources = @((Join-Path $projectRoot 'src/main/java/dev/riichicraft/game/TileCatalog.java'))
+    $sources += Join-Path $projectRoot 'src/main/java/dev/riichicraft/table/TableWallLayout.java'
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/main/java/dev/riichicraft/rules') -Filter '*.java' -File -Recurse | ForEach-Object FullName)
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/main/java/dev/riichicraft/persistence') -Filter '*.java' -File -Recurse | ForEach-Object FullName)
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/rulesTest/java') -Filter '*.java' -File -Recurse | ForEach-Object FullName)

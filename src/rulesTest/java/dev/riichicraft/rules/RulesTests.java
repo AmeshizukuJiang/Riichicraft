@@ -29,5 +29,6 @@ public final class RulesTests {
         ThreePlayerBasicsTests.main(args);
         ThreePlayerScoringTests.main(args);
         ThreePlayerEngineTests.main(args);
+        TableWallLayoutTests.main(args);
     }
 }
