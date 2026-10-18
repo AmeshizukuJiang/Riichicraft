@@ -11,6 +11,7 @@
 - 收尾收紧删除消息的标准空演出元数据约束后，统一最终`build sourcesJar runClientGameTest`2分59秒成功，74项原生服务端／19.81秒全过且完整TCP通过。该最后检查实际执行，并未用先前运行替代，见[验证记录](VALIDATION.md)。
 - 已保存并查看五张`docs/images/animation-*.png`，`live-four`为真实TCP现场；杠／北的mid／end为假时钟确定时点的原生渲染测试输入，不冒称同一实际牌局发生全部动作。演出不持久化，正常世界重开直接静态恢复；重开仍为同JVM内不同原生专用服务器实例，不称硬崩溃或整机重启。人工长期观感未验收。
 - 最终JAR809,482字节、486条目、199规则class、零测试条目，SHA-256 `7ac10ed652f96c85a19e8c00120ee7648b3ead289364c3e88d3cd6ec7da1b72b`，原许可字节一致。构建缓存、测试世界、日志不提交；完整提交／开发标签与远程状态以本页后续记录及Git实时refs为准。
+- 完整实现／验证／截图提交`5fe7b11`，开发tag`v0.0.12-dev`固定指向它。分支`codex/table-animations-design`和标签已原子推送至用户指定GitHub；再次查询两项远程ref均精确匹配本地对象，成功日志`.tmp/github-push-animations.out.log`／`.err.log`与`github-animations-confirmed-refs.out.log`。无强推、未移动旧标签、未上传正式Release；后续纯记录提交不改JAR。最终资源与30份Markdown／309本地链接检查通过，Gradle已停止。
 
 ## 上一节点：静态牌墙
 

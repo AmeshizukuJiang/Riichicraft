@@ -22,6 +22,8 @@
 
 分支`codex/table-animations-design`，完整提交／标签和GitHub同步见[接续记录](SESSION_STATUS.md)，不移动已发布标签。所有主动文件读写在工作区，未读外部记忆、全局配置、启动器或玩家存档。
 
+完整实现与截图提交`5fe7b11`，开发tag`v0.0.12-dev`固定指向该提交；分支与标签已原子推送成功，再次查询远程ref与本地对象完全一致。成功日志`.tmp/github-push-animations.out.log`、`github-push-animations.err.log`、`github-animations-confirmed-refs.out.log`；30份Markdown／309本地链接检查通过，旧标签保持原位，后续纯记录提交不改产物。
+
 ## v0.0.11-dev 静态牌墙与指示归位：2026-10-18
 
 用户已确认：准确变化的静态墙、宝牌指示归位王牌且桌心不重复摆、开口相对桌向固定；三麻采用三边各18墩、空椅侧无墙。四麻四边各17墩，先不做摸打／搬牌／掷骰动画。实现见[牌墙说明](TABLE_WALL.md)，比较图保留为设计记录，用户明确选择B。
