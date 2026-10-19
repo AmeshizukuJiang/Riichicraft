@@ -14,15 +14,24 @@ import static dev.riichicraft.table.TableTileLayout.Group.*;
 
 /** Cosmetic, caller-clock driven player. The authoritative snapshot is never delayed or edited. */
 public final class TableAnimationPlayer {
-    public record Frame(TableTileLayout.Tile tile,TileMotion.Pose pose,int stateHash) {
+    /** Local interpolation metadata, never serialized or used by the authoritative game. */
+    public record Transition(int beforeStateHash, TileMotion.Pose source, float progress, float handProgress) { }
+    public record Frame(TableTileLayout.Tile tile,TileMotion.Pose pose,int stateHash,Transition transition) {
+        public Frame(TableTileLayout.Tile tile,TileMotion.Pose pose,int stateHash) { this(tile,pose,stateHash,null); }
         public Frame(TableTileLayout.Tile tile,TileMotion.Pose pose) { this(tile,pose,0); }
     }
     private record Tween(TableTileLayout.Tile target,TileMotion.Pose from,long delay,long duration,float arc) {
-        Frame frame(long elapsed){return new Frame(target,TileMotion.sample(from,pose(target),
-                duration==0?1:TileMotion.progress(elapsed,delay,duration),arc));}
+        Frame frame(long elapsed, int beforeHash, int afterHash, float handProgress) {
+            float progress = duration == 0 ? 1 : TileMotion.progress(elapsed, delay, duration);
+            return new Frame(target, TileMotion.sample(from, pose(target), progress, arc), afterHash,
+                    new Transition(beforeHash, from, progress, handProgress));
+        }
     }
-    private record Plan(List<Tween> tweens,long duration,int stateHash) {
-        List<Frame> frames(long elapsed){return tweens.stream().map(t->t.frame(elapsed)).map(f->new Frame(f.tile(),f.pose(),stateHash)).toList();}
+    private record Plan(List<Tween> tweens,long duration,int beforeStateHash,int stateHash,long handDelay) {
+        List<Frame> frames(long elapsed) {
+            float handProgress = TileMotion.progress(elapsed, handDelay, MOVE);
+            return tweens.stream().map(t -> t.frame(elapsed, beforeStateHash, stateHash, handProgress)).toList();
+        }
     }
     private static final long MOVE=240_000_000L,DRAW=260_000_000L,FLIP=220_000_000L,LIMIT=1_200_000_000L;
     private static final class Track {
@@ -61,7 +70,8 @@ public final class TableAnimationPlayer {
     private static Plan plan(TableAnimationStep step){
         var before=TableTileLayout.tiles(step.before());var after=TableTileLayout.tiles(step.after());
         try {return plan(step,before,after,index(before),index(after));}
-        catch(IllegalArgumentException invalid){return new Plan(after.stream().map(t->new Tween(t,pose(t),0,0,0)).toList(),0,step.after().hashCode());}
+        catch(IllegalArgumentException invalid){return new Plan(after.stream().map(t->new Tween(t,pose(t),0,0,0)).toList(),0,
+                step.before().hashCode(),step.after().hashCode(),0);}
     }
     private static Plan plan(TableAnimationStep step,List<TableTileLayout.Tile> before,List<TableTileLayout.Tile> after,
                              Map<String,TableTileLayout.Tile> from,Map<String,TableTileLayout.Tile> to){
@@ -98,6 +108,6 @@ public final class TableAnimationPlayer {
             else if(!pose(source).equals(pose(target))) {delay=lead;duration=MOVE;arc=target.group()==MELD?3.5F:0;}
             tweens.add(new Tween(target,pose(source),delay,duration,arc));length=Math.max(length,delay+duration);
         }
-        return new Plan(List.copyOf(tweens),length,step.after().hashCode());
+        return new Plan(List.copyOf(tweens),length,step.before().hashCode(),step.after().hashCode(),lead);
     }
 }

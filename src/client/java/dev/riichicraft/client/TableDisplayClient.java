@@ -12,6 +12,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 public final class TableDisplayClient {
     private static final TableDisplayCache CACHE = new TableDisplayCache();
     private static final TableAnimationPlayer ANIMATIONS=new TableAnimationPlayer();
+    private static final TableHandAnimation HANDS = new TableHandAnimation();
     private static ClientLevel level;
     private TableDisplayClient() { }
     static void initialize() {
@@ -22,13 +23,19 @@ public final class TableDisplayClient {
                 ANIMATIONS.retain(CACHE.snapshots().stream().map(TableDisplayPayload::tableId).collect(java.util.stream.Collectors.toSet()));
             }
         });
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> { CACHE.reset(); ANIMATIONS.clear();level = client.level; });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { CACHE.reset(); ANIMATIONS.clear();level = null; });
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> { CACHE.reset(); ANIMATIONS.clear(); HANDS.clear(); level = client.level; });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { CACHE.reset(); ANIMATIONS.clear(); HANDS.clear(); level = null; });
         ClientTickEvents.END_CLIENT_TICK.register(client -> synchronizeLevel(client.level));
         TableDisplayRenderer.initialize();
     }
     private static void synchronizeLevel(ClientLevel current) {
-        if (current != level) { CACHE.clearTables(); ANIMATIONS.clear();level = current; }
+        if (current != level) { CACHE.clearTables(); ANIMATIONS.clear(); HANDS.clear(); level = current; }
+    }
+    static void acceptScene(dev.riichicraft.network.TableScenePayload scene) { HANDS.accept(scene); }
+    static void clearScene() { HANDS.clear(); }
+    static List<TableAnimationPlayer.Frame> visibleFrames(TableDisplayPayload table, List<TableAnimationPlayer.Frame> frames,
+            dev.riichicraft.network.TableScenePayload scene, boolean overhead) {
+        return HANDS.frames(table, frames, scene, overhead);
     }
     /** Immutable public state for rendering and actual client integration checks. */
     public static List<TableDisplayPayload> snapshots() { return CACHE.snapshots(); }

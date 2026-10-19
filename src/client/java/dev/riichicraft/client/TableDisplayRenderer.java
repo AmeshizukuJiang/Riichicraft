@@ -64,7 +64,7 @@ final class TableDisplayRenderer {
                 int light = (level.getBrightness(LightLayer.SKY, pos.above()) << 20)
                         | (level.getBrightness(LightLayer.BLOCK, pos.above()) << 4);
                 var scene = TableInteractionClient.scene();
-                var visible = visibleFrames(table, frames.apply(table, System.nanoTime()), scene, TableCamera.overhead());
+                var visible = TableDisplayClient.visibleFrames(table, frames.apply(table, System.nanoTime()), scene, TableCamera.overhead());
                 if (matches(table, scene) && client.gui.screen() instanceof TableScreen screen)
                     visible = selectedFrame(visible, scene.ownSeat(), screen.selectedTileId());
                 if (matches(table, scene)) TableCamera.recordHandFrame(scene, visible);
@@ -104,7 +104,6 @@ final class TableDisplayRenderer {
             hand.sort(java.util.Comparator.naturalOrder());
             int drawn = scene.drawnTiles().get(seat);
             if (drawn >= 0 && hand.remove(Integer.valueOf(drawn))) hand.add(drawn);
-            int side = scene.sides().get(seat);
             boolean flat = scene.finished() || overhead && (scene.ownSeat() < 0 || seat == scene.ownSeat());
             for (int index = 0; index < hand.size(); index++) {
                 String key = "h:" + seat + ":" + index;
@@ -113,31 +112,38 @@ final class TableDisplayRenderer {
                 // the new draw at its destination while that anonymous slot is still absent.
                 if (!scene.finished() && hand.get(index) == drawn && (source == null
                         || scene.publicStateHash()!=null && source.stateHash()!=scene.publicStateHash())) continue;
-                float x = -17.65F + index * 1.82F + (drawn >= 0 && index == hand.size() - 1 ? .75F : 0);
-                float z = 20.5F;
-                float rx = switch (side) { case 1 -> z; case 2 -> -x; case 3 -> -z; default -> x; };
-                float rz = switch (side) { case 1 -> -x; case 2 -> -z; case 3 -> x; default -> z; };
-                float scale = .85F, y = .02F + (flat ? 1.25F : 2.75F) * scale / 2;
-                var tile = new TableTileLayout.Tile(hand.get(index), rx, y, rz, side * 90, flat, false,
-                        scale, TableTileLayout.Group.HAND, seat, key);
-                var pose = new TileMotion.Pose(rx, y, rz, side * 90, flat ? -90 : 0, scale);
+                var tile = handTile(scene, seat, index, hand.get(index), overhead);
+                var pose = new TileMotion.Pose(tile.x(), tile.y(), tile.z(), tile.yaw(), flat ? -90 : 0, tile.scale());
                 if (source != null) {
                     var old = source.tile(); var motion = source.pose();
                     // A flying draw grows from wall scale .7 to hand scale .85. Apply local endpoint
                     // spacing/posture by that same eased fraction, keeping its exact wall origin.
                     float alignment = Math.clamp((motion.scale() - .7F) / (old.scale() - .7F), 0, 1);
-                    pose = new TileMotion.Pose(motion.x() + (rx - old.x()) * alignment,
-                            motion.y() + (y - old.y()) * alignment,
-                            motion.z() + (rz - old.z()) * alignment,
+                    pose = new TileMotion.Pose(motion.x() + (tile.x() - old.x()) * alignment,
+                            motion.y() + (tile.y() - old.y()) * alignment,
+                            motion.z() + (tile.z() - old.z()) * alignment,
                             motion.yaw(), flat ? -90 : motion.pitch(), motion.scale());
                 }
-                result.add(new TableAnimationPlayer.Frame(tile, pose,source==null?0:source.stateHash()));
+                result.add(new TableAnimationPlayer.Frame(tile, pose,source==null?0:source.stateHash(),
+                        source==null?null:source.transition()));
             }
         }
         return List.copyOf(result);
     }
 
-    private static boolean matches(TableDisplayPayload table, TableScenePayload scene) {
+    static TableTileLayout.Tile handTile(TableScenePayload scene, int seat, int index, int physicalTile, boolean overhead) {
+        int side = scene.sides().get(seat);
+        boolean flat = scene.finished() || overhead && (scene.ownSeat() < 0 || seat == scene.ownSeat());
+        float x = -17.65F + index * 1.82F + (physicalTile == scene.drawnTiles().get(seat) ? .75F : 0);
+        float z = 20.5F;
+        float rx = switch (side) { case 1 -> z; case 2 -> -x; case 3 -> -z; default -> x; };
+        float rz = switch (side) { case 1 -> -x; case 2 -> -z; case 3 -> x; default -> z; };
+        float scale = .85F, y = .02F + (flat ? 1.25F : 2.75F) * scale / 2;
+        return new TableTileLayout.Tile(physicalTile, rx, y, rz, side * 90, flat, false,
+                scale, TableTileLayout.Group.HAND, seat, "h:" + seat + ":" + index);
+    }
+
+    static boolean matches(TableDisplayPayload table, TableScenePayload scene) {
         return scene != null && scene.gameId() != null && table.tableId().equals(scene.tableId())
                 && table.dimension().equals(scene.dimension()) && table.pos().equals(scene.pos())
                 && table.snapshot().gameId().equals(scene.gameId())
@@ -151,7 +157,7 @@ final class TableDisplayRenderer {
             if (tile.group() != TableTileLayout.Group.HAND || tile.seat() != own || tile.face() != selected) return frame;
             var pose = frame.pose();
             return new TableAnimationPlayer.Frame(tile, new TileMotion.Pose(pose.x(), pose.y() + .35F, pose.z(),
-                    pose.yaw(), pose.pitch(), pose.scale() * 1.05F),frame.stateHash());
+                    pose.yaw(), pose.pitch(), pose.scale() * 1.05F),frame.stateHash(),frame.transition());
         }).toList();
     }
 }

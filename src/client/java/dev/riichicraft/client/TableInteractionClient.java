@@ -65,6 +65,7 @@ public final class TableInteractionClient {
         scene = candidate;
         pending = null;
         snapshot = updated;
+        TableDisplayClient.acceptScene(scene);
         if (!scene.mounted() && scene.ownSeat() >= 0) TableCamera.release();
         else TableCamera.activate(scene, newRound || newlyFinished || TableCamera.overhead());
         if (client.gui.screen() instanceof TableScreen screen && screen.viewId().equals(updated.viewId())) screen.acceptSnapshot(updated);
@@ -93,11 +94,20 @@ public final class TableInteractionClient {
         scene = null;
         pending = null;
         snapshot = null;
+        TableDisplayClient.clearScene();
         TableCamera.release();
     }
 
     static boolean perspectiveKey(net.minecraft.client.input.KeyEvent event) {
         return perspectiveKey != null && perspectiveKey.matches(event);
+    }
+
+    /** Esc first leaves a hidden board camera; existing screens keep their own key handling. */
+    public static boolean exitHiddenOverhead(Minecraft client, net.minecraft.client.input.KeyEvent event) {
+        if (!event.isEscape() || !active() || !TableCamera.overhead()
+                || client.gui.screen() != null || client.gui.overlay() != null) return false;
+        TableCamera.setOverhead(false);
+        return true;
     }
 
     static void hideWithControlsKey() {

@@ -31,6 +31,7 @@ final class ImmersiveClientScenario {
     static void run(ClientGameTestContext context, TestDedicatedServerContext server) {
         verifyDoubleClickGate();
         dev.riichicraft.client.TableCameraChecks.verifyVisibleHands();
+        dev.riichicraft.client.TableHandAnimationChecks.verify();
         Session session = null;
         CameraType originalPerspective = context.computeOnClient(client -> client.options.getCameraType());
         context.getInput().resizeWindow(1280, 960);
@@ -123,6 +124,7 @@ final class ImmersiveClientScenario {
                     "Esc hides controls and leaves overhead immediately without dismounting");
             context.getInput().pressKey(GLFW.GLFW_KEY_R);context.waitForScreen(TableScreen.class);
             require(context.computeOnClient(c->!TableCamera.overhead()),"Reopening controls preserves the normal chair view");
+            verifyHiddenOverheadEscape(context);
             context.getInput().pressKey(GLFW.GLFW_KEY_V);context.waitTicks(2);
             int tile = opening.rules().legalDiscards().getFirst();
             double[] cursor = tileCursor(context, tile);
@@ -314,6 +316,27 @@ final class ImmersiveClientScenario {
             var window = client.getWindow();
             return new double[]{x * window.getScreenWidth() / window.getGuiScaledWidth(), y * window.getScreenHeight() / window.getGuiScaledHeight()};
         });
+    }
+
+    private static void verifyHiddenOverheadEscape(ClientGameTestContext context) {
+        context.getInput().pressKey(GLFW.GLFW_KEY_R);
+        context.waitForScreen(null);
+        context.getInput().pressKey(GLFW.GLFW_KEY_V);
+        context.waitTicks(2);
+        require(context.computeOnClient(c -> TableCamera.overhead() && c.gui.screen() == null),
+                "Hidden controls still permit V to enter overhead");
+        context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+        context.waitTicks(2);
+        require(context.computeOnClient(c -> !TableCamera.overhead() && c.gui.screen() == null
+                        && c.player.getVehicle() != null && TableInteractionClient.active()),
+                "Esc consumes only the hidden overhead view, preserving the seat and table session");
+        shot(context, "riichicraft-audit-hidden-escape");
+        context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+        context.waitForScreen(net.minecraft.client.gui.screens.PauseScreen.class);
+        context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+        context.waitForScreen(null);
+        context.getInput().pressKey(GLFW.GLFW_KEY_R);
+        context.waitForScreen(TableScreen.class);
     }
 
     private static void verifyWidgetBounds(ClientGameTestContext context) {
