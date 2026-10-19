@@ -56,6 +56,7 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
             if(rules!=null) {
                 if(rules.dealerSeat()>2 || rules.roundWind()>29) fail("sanma wind");
                 rules.doraIndicators().forEach(GameSnapshot::sanmaTile);
+                if(rules.result()!=null) rules.result().uraIndicators().forEach(GameSnapshot::sanmaTile);
                 if(rules.opportunity()!=null && rules.opportunity().actorSeat()>2) fail("sanma opportunity actor");
                 if(rules.result()!=null && (rules.result().winners().stream().anyMatch(seat->seat>2)
                         || rules.result().tenpai().stream().anyMatch(seat->seat>2)
@@ -150,8 +151,13 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
     }
     /** Kind follows FourPlayerRound.EndKind. Winner values reveal no non-winner private tiles. */
     public record Result(int kind,List<Integer> winners,List<Integer> tenpai,List<WinValue> values,
-                         List<Payment> transfers,boolean dealerContinues) {
+                         List<Payment> transfers,boolean dealerContinues,List<Integer> uraIndicators) {
+        public Result(int kind,List<Integer> winners,List<Integer> tenpai,List<WinValue> values,List<Payment> transfers,boolean dealerContinues) {
+            this(kind,winners,tenpai,values,transfers,dealerContinues,List.of());
+        }
         public Result {
+            uraIndicators=tiles(uraIndicators,5,"revealed ura indicators");
+            if(!uraIndicators.isEmpty() && kind!=0 && kind!=1) fail("ura without win");
             winners=seatIndices(winners); tenpai=seatIndices(tenpai); values=bounded(values,4,"winner values");
             transfers=bounded(transfers,128,"payments");
             if(!range(kind,0,7) || new HashSet<>(values.stream().map(WinValue::seat).toList()).size()!=values.size()) fail("round result");
@@ -166,6 +172,10 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
         public RuleState {
             kitas=tiles(kitas,4,"kita mask"); if(kitas.stream().anyMatch(t->t/4!=30) || !kitas.isEmpty() && phase!=DRAWN_TURN) fail("kita action phase");
             doraIndicators=tiles(doraIndicators,5,"dora indicators"); seats=bounded(seats,4,"rule seats");
+            boolean riichiWinner=false;
+            if(result!=null) for(int winner:result.winners()) if(winner<seats.size() && seats.get(winner).riichiPhase()==2) riichiWinner=true;
+            if(result!=null && !result.uraIndicators().isEmpty()
+                    && (result.uraIndicators().size()!=doraIndicators.size() || !riichiWinner)) fail("ura without riichi winner");
             legalDiscards=tiles(legalDiscards,14,"discard mask"); riichiDiscards=tiles(riichiDiscards,14,"riichi mask");
             kans=bounded(kans,16,"kan options"); responses=bounded(responses,64,"responses");
             if(!range(phase,DRAWN_TURN,NORTH_RESPONSES) || !range(dealerSeat,0,3) || !range(roundWind,27,30)
@@ -276,6 +286,7 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
         });
         writeList(b,r.transfers(),(buf,p)->{buf.writeVarInt(p.fromSeat());buf.writeVarInt(p.toSeat());buf.writeVarInt(p.points());buf.writeVarInt(p.kind());});
         b.writeBoolean(r.dealerContinues());
+        writeTiles(b,r.uraIndicators());
     }
     private static Result readResult(RegistryFriendlyByteBuf b) {
         int kind=readRange(b,0,7,"end kind"); List<Integer> winners=readTiles(b,4,"winners"), tenpai=readTiles(b,4,"tenpai");
@@ -286,7 +297,7 @@ public record GameSnapshot(UUID gameId, long revision, int turnSeat, int remaini
                     positive(buf,"aka"),positive(buf,"ura"),positive(buf,"total points"),readRange(buf,0,4,"kita"));
         });
         List<Payment> payments=readList(b,128,"payments",buf->new Payment(readRange(buf,-1,3,"payer"),readRange(buf,0,3,"payee"),positive(buf,"payment"),readRange(buf,0,4,"payment kind")));
-        return new Result(kind,winners,tenpai,values,payments,b.readBoolean());
+        return new Result(kind,winners,tenpai,values,payments,b.readBoolean(),readTiles(b,5,"revealed ura indicators"));
     }
     private static int positive(RegistryFriendlyByteBuf b,String field) { return readRange(b,0,Integer.MAX_VALUE,field); }
     private static List<Integer> tiles(List<Integer> values,int max,String field) {

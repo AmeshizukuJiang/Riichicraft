@@ -109,6 +109,10 @@ final class TableDisplayRenderer {
             for (int index = 0; index < hand.size(); index++) {
                 String key = "h:" + seat + ":" + index;
                 var source = anonymous.get(key);
+                // Private hand packets can arrive before the public draw animation. Never flash
+                // the new draw at its destination while that anonymous slot is still absent.
+                if (!scene.finished() && hand.get(index) == drawn && (source == null
+                        || scene.publicStateHash()!=null && source.stateHash()!=scene.publicStateHash())) continue;
                 float x = -17.65F + index * 1.82F + (drawn >= 0 && index == hand.size() - 1 ? .75F : 0);
                 float z = 20.5F;
                 float rx = switch (side) { case 1 -> z; case 2 -> -x; case 3 -> -z; default -> x; };
@@ -127,7 +131,7 @@ final class TableDisplayRenderer {
                             motion.z() + (rz - old.z()) * alignment,
                             motion.yaw(), flat ? -90 : motion.pitch(), motion.scale());
                 }
-                result.add(new TableAnimationPlayer.Frame(tile, pose));
+                result.add(new TableAnimationPlayer.Frame(tile, pose,source==null?0:source.stateHash()));
             }
         }
         return List.copyOf(result);
@@ -147,7 +151,7 @@ final class TableDisplayRenderer {
             if (tile.group() != TableTileLayout.Group.HAND || tile.seat() != own || tile.face() != selected) return frame;
             var pose = frame.pose();
             return new TableAnimationPlayer.Frame(tile, new TileMotion.Pose(pose.x(), pose.y() + .35F, pose.z(),
-                    pose.yaw(), pose.pitch(), pose.scale() * 1.05F));
+                    pose.yaw(), pose.pitch(), pose.scale() * 1.05F),frame.stateHash());
         }).toList();
     }
 }

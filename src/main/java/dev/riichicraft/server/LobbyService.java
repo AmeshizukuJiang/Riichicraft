@@ -88,6 +88,9 @@ public final class LobbyService {
     private boolean stopping;
     private boolean detached;
     private static final SecureRandom SEEDS = new SecureRandom();
+    // Injection stays package scoped; the separate GameTest mod supplies deterministic timing.
+    static java.util.function.IntSupplier responseDelayDefaults = ()->ResponseDelay.sample(SEEDS.nextDouble(),SEEDS.nextDouble());
+    java.util.function.IntSupplier responseDelaySource = responseDelayDefaults;
 
     private static final class Prototype {
         final FourPlayerRound game;
@@ -102,6 +105,11 @@ public final class LobbyService {
         String statusKey = "";
         final Set<UUID> confirmations = new HashSet<>();
         Set<UUID> unavailable = Set.of();
+        int responseDelayTicks;
+        List<GameSnapshot> waitingHands;
+        GameSnapshot waitingPublic;
+
+        void clearResponseDelay() { responseDelayTicks=0;waitingHands=null;waitingPublic=null; }
 
         Prototype(UUID id,List<UUID> players,long seed,int mode) {
             this.players=List.copyOf(players);
@@ -644,6 +652,7 @@ public final class LobbyService {
             }
         } else {
             if (prototype.paused) feedback = "message.riichicraft.game.paused";
+            else if(prototype.waitingPublic!=null) feedback = "message.riichicraft.lobby.invalid_action";
             else {
                 KanActions.Choice kanChoice=null;
                 if (payload.action()==GameActionPayload.CLOSED_KAN || payload.action()==GameActionPayload.ADDED_KAN) {
@@ -660,6 +669,7 @@ public final class LobbyService {
                 if (result==FourPlayerRound.Status.ACCEPTED) {
                     prototype.revision++;
                     prototype.syncStatus();
+                    beginResponseDelay(view.tableId(),prototype,payload,prototype.players.indexOf(player.getUUID()));
                     var animationAfter=tableDisplay(view.tableId());
                     tableDisplaySync.record(view.tableId(),animationBefore,animationAfter);
                     if(animationAfter!=null && !animationAfter.equals(animationBefore)) {
@@ -775,6 +785,7 @@ public final class LobbyService {
         }
         if (!missing.isEmpty() && (!prototype.paused || newlyMissing)) {
             prototype.paused = true;
+            prototype.clearResponseDelay();
             prototype.confirmations.clear();
             changed = true;
         }
@@ -797,6 +808,20 @@ public final class LobbyService {
     public GameSnapshot gameView(UUID tableId, UUID recipient) {
         Prototype prototype = games.get(tableId);
         if (prototype == null) return null;
+        if(prototype.waitingPublic!=null && !prototype.paused) {
+            int seat=recipient==null?-1:prototype.players.indexOf(recipient);
+            var held=seat<0?prototype.waitingPublic:prototype.waitingHands.get(seat);
+            var seats=new ArrayList<GameSnapshot.Seat>();
+            for(int index=0;index<held.seats().size();index++) {
+                var old=held.seats().get(index);
+                seats.add(new GameSnapshot.Seat(old.handCount(),old.discards(),present(prototype.players.get(index),tableId),false));
+            }
+            return new GameSnapshot(held.gameId(),prototype.revision,held.turnSeat(),held.remainingTiles(),seats,held.ownHand(),-1,false,"",held.rules(),held.match());
+        }
+        return liveGameView(tableId,recipient,prototype);
+    }
+
+    private GameSnapshot liveGameView(UUID tableId,UUID recipient,Prototype prototype) {
         if(prototype.three()) return threeGameView(tableId,recipient,prototype);
         FourPlayerRound.View gameView = prototype.roundView(recipient);
         List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
@@ -820,10 +845,41 @@ public final class LobbyService {
         var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
         var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
                 gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
-                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(LobbyService::resultView).orElse(null));
+                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(end->resultView(end,revealedUra(prototype))).orElse(null));
         return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
                 gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
                 prototype.match==null?null:matchInfo(prototype.match.view(recipient)));
+    }
+
+    private void beginResponseDelay(UUID tableId,Prototype prototype,GameActionPayload action,int actor) {
+        if(action.action()!=GameActionPayload.DISCARD && action.action()!=GameActionPayload.RIICHI) return;
+        var live=liveGameView(tableId,null,prototype);
+        // A genuine response is already exposed by the engine. Terminal hands reveal the result directly.
+        if(live.rules().phase()!=GameSnapshot.DRAWN_TURN) return;
+        int ticks=Math.clamp(responseDelaySource.getAsInt(),0,40);
+        if(ticks==0) return;
+        if(actor<0) return;
+        prototype.responseDelayTicks=ticks+1;
+        var held=new ArrayList<GameSnapshot>();
+        for(UUID player:prototype.players) held.add(waitingView(liveGameView(tableId,player,prototype),actor,action,prototype.revision));
+        prototype.waitingHands=List.copyOf(held);
+        prototype.waitingPublic=waitingView(live,actor,action,prototype.revision);
+    }
+
+    private static GameSnapshot waitingView(GameSnapshot live,int discarder,GameActionPayload action,long serial) {
+        int next=live.turnSeat();
+        var seats=new ArrayList<>(live.seats());var drawnSeat=seats.get(next);
+        seats.set(next,new GameSnapshot.Seat(drawnSeat.handCount()-1,drawnSeat.discards(),drawnSeat.present(),false));
+        var hand=new ArrayList<>(live.ownHand());if(live.drawnTile()>=0) hand.remove(Integer.valueOf(live.drawnTile()));
+        var rule=live.rules();var ruleSeats=new ArrayList<>(rule.seats());int deposits=rule.deposits();
+        if(action.action()==GameActionPayload.RIICHI) {
+            var declared=ruleSeats.get(discarder);deposits--;
+            ruleSeats.set(discarder,new GameSnapshot.SeatRules(declared.melds(),declared.river(),declared.points()+1000,1,declared.norths()));
+        }
+        var waiting=new GameSnapshot.RuleState(GameSnapshot.DISCARD_RESPONSES,rule.dealerSeat(),rule.roundWind(),rule.honba(),deposits,
+                rule.doraIndicators(),ruleSeats,List.of(),List.of(),List.of(),false,false,
+                new GameSnapshot.Opportunity(serial,discarder,action.tileId(),false),List.of(),null);
+        return new GameSnapshot(live.gameId(),live.revision(),discarder,live.remainingTiles()+1,seats,hand,-1,false,"",waiting,live.match());
     }
 
     private static GameSnapshot.MatchInfo matchInfo(FourPlayerMatch.View view) {
@@ -857,7 +913,7 @@ public final class LobbyService {
         var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
         var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
                 gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
-                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(LobbyService::resultView).orElse(null),options.kitas().stream().sorted().toList());
+                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(end->resultView(end,revealedUra(prototype))).orElse(null),options.kitas().stream().sorted().toList());
         return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
                 gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
                 prototype.threeMatch==null?null:matchInfo(prototype.threeMatch.view(recipient)));
@@ -885,7 +941,20 @@ public final class LobbyService {
         return new GameSnapshot.ActionOption(action,-1,call.handTiles());
     }
 
-    private static GameSnapshot.Result resultView(FourPlayerRound.End end) {
+    private static List<Integer> revealedUra(Prototype prototype) {
+        if(prototype.three()) {
+            var view=prototype.threeView(null);
+            if(view.end().isEmpty() || view.end().get().kind().ordinal()>1 || view.end().get().winners().stream().noneMatch(seat->view.seats().get(seat).riichi().ordinal()==2)) return List.of();
+            var state=prototype.threeMatch==null?prototype.threeGame.serverState():prototype.threeMatch.serverState();
+            return state.wall().uraIndicators(view.doraIndicators().size());
+        }
+        var view=prototype.roundView(null);
+        if(view.end().isEmpty() || view.end().get().kind().ordinal()>1 || view.end().get().winners().stream().noneMatch(seat->view.seats().get(seat).riichi().ordinal()==2)) return List.of();
+        var state=prototype.match==null?prototype.game.serverState():prototype.match.serverState();
+        return state.wall().uraIndicators(view.doraIndicators().size());
+    }
+
+    private static GameSnapshot.Result resultView(FourPlayerRound.End end,List<Integer> ura) {
         List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
             var v=entry.getValue();
             return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
@@ -893,10 +962,10 @@ public final class LobbyService {
                     v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints());
         }).toList();
         return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
-                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues());
+                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues(),ura);
     }
 
-    private static GameSnapshot.Result resultView(ThreePlayerRound.End end) {
+    private static GameSnapshot.Result resultView(ThreePlayerRound.End end,List<Integer> ura) {
         List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
             var v=entry.getValue();
             return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
@@ -904,7 +973,7 @@ public final class LobbyService {
                     v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints(),v.kita());
         }).toList();
         return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
-                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues());
+                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues(),ura);
     }
 
     public void disconnect(ServerPlayer player) {
@@ -1017,6 +1086,16 @@ public final class LobbyService {
         }
         for (Map.Entry<UUID, Prototype> entry : List.copyOf(games.entrySet())) {
             refreshPresence(entry.getKey(), entry.getValue());
+            var prototype=entry.getValue();
+            if(prototype.waitingPublic!=null) {
+                if(prototype.paused) prototype.clearResponseDelay();
+                else if(--prototype.responseDelayTicks<=0) {
+                    var before=tableDisplay(entry.getKey());
+                    prototype.clearResponseDelay();prototype.revision++;
+                    tableDisplaySync.record(entry.getKey(),before,tableDisplay(entry.getKey()));
+                    broadcast(registry.snapshot(entry.getKey()).orElseThrow(),null,"");
+                }
+            }
         }
         for (Map.Entry<UUID, View> entry : List.copyOf(views.entrySet())) {
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
@@ -1154,16 +1233,15 @@ public final class LobbyService {
             finished=prototype.three()?prototype.threeView(null).phase()==ThreePlayerRound.Phase.FINISHED
                     :prototype.roundView(null).phase()==FourPlayerRound.Phase.FINISHED;
             for(UUID participant:prototype.players) {
-                if(prototype.three()) {var view=prototype.threeView(participant);
-                    hands.add(view.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()));drawn.add(view.ownDraw().orElse(-1));
-                } else {var view=prototype.roundView(participant);
-                    hands.add(view.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()));drawn.add(view.ownDraw().orElse(-1));}
+                var view=gameView(tableId,participant);
+                hands.add(view.ownHand());drawn.add(view.drawnTile());
             }
             var selected=TableHandVisibility.project(recipient,prototype.players,hands,drawn,finished);
             hands=selected.hands();drawn=selected.drawnTiles();own=selected.ownSeat();
         }
+        var publicState=prototype==null?null:tableDisplay(tableId);
         return new TableScenePayload(viewId,tableId,key.dimension(),key.pos(),gameId,revision,own,sides,
-                mounted(recipient,tableId),hands,drawn,finished);
+                mounted(recipient,tableId),hands,drawn,finished,publicState==null?null:publicState.hashCode());
     }
 
     private void sendClosed(ServerPlayer player, View view, String reason) {

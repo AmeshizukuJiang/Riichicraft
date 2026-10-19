@@ -16,11 +16,17 @@ public final class TableTileLayout {
     public static List<Tile> tiles(TableDisplaySnapshot snapshot) {
         List<Tile> result = new ArrayList<>();
         int players = snapshot.seats().size(), perWall = players == 4 ? 17 : 18;
-        for (var slot : TableWallLayout.slots(players, snapshot.liveTiles(), snapshot.replacementDraws(),
-                snapshot.indicators().size(), snapshot.frontSide(), snapshot.seats().stream().map(TableDisplaySnapshot.Seat::side).toList())) {
+        var wall = TableWallLayout.slots(players, snapshot.liveTiles(), snapshot.replacementDraws(),
+                snapshot.indicators().size(), snapshot.frontSide(), snapshot.seats().stream().map(TableDisplaySnapshot.Seat::side).toList());
+        var uraSlots = new java.util.HashMap<Integer,Integer>();
+        if (!snapshot.uraIndicators().isEmpty()) for(var slot:wall) if(slot.indicator()>=0)
+            uraSlots.put(slot.index() ^ 1,slot.indicator());
+        for (var slot : wall) {
             int face = slot.indicator() < 0 ? -1 : snapshot.indicators().get(slot.indicator());
+            boolean ura = uraSlots.containsKey(slot.index());
+            if(ura) face = snapshot.uraIndicators().get(uraSlots.get(slot.index()));
             add(result, face, (slot.stack() - (perWall - 1) / 2F) * 1.5F,
-                    slot.layer() * (1.25F * 0.7F + 0.025F), 16, slot.side(), 0, true, face < 0, 0.7F,
+                    slot.layer() * (1.25F * 0.7F + 0.025F), ura ? 18.25F : 16, slot.side(), 0, true, face < 0, 0.7F,
                     face >= 0 ? Group.INDICATOR : slot.reserve() ? Group.RESERVE : Group.WALL, -1,"w:"+slot.index());
         }
         for (int owner = 0; owner < snapshot.seats().size(); owner++) {

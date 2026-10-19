@@ -25,7 +25,7 @@ public final class TableSceneGameTests {
                 for (boolean mounted : recipient < 0 ? List.of(false) : List.of(false, true)) {
                     var scene = new TableScenePayload(UUID.randomUUID(), UUID.randomUUID(), Level.NETHER,
                             new BlockPos(-17, 64, 31), UUID.randomUUID(), 97, projection.ownSeat(), sides(count),
-                            mounted, projection.hands(), projection.drawnTiles(), finished);
+                            mounted, projection.hands(), projection.drawnTiles(), finished,Integer.MIN_VALUE);
                     assertRoundTrip(helper, scene);
                 }
             }
@@ -86,7 +86,7 @@ public final class TableSceneGameTests {
         try {
             prefix(b, 1, 0); b.writeVarInt(4); for (int side = 0; side < 4; side++) b.writeVarInt(side); b.writeBoolean(false);
             b.writeVarInt(4); for (int seat = 0; seat < 4; seat++) { b.writeVarInt(1); b.writeVarInt(seat); }
-            b.writeVarInt(4); for (int seat = 0; seat < 4; seat++) b.writeVarInt(-1); b.writeBoolean(false);
+            b.writeVarInt(4); for (int seat = 0; seat < 4; seat++) b.writeVarInt(-1); b.writeBoolean(false);b.writeBoolean(false);
             rejects(helper, b, "Wire visibility cannot expand when mount flag is false");
         } finally { b.release(); }
         var mutable = new BlockPos.MutableBlockPos(1, 2, 3);

@@ -12,7 +12,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 public record LobbySnapshotPayload(UUID viewId, UUID tableId, BlockPos pos, long revision,
         List<Seat> seats, int ownSeat, boolean allReady, String feedbackKey, GameSnapshot game, int mode, int structurePlayers)
         implements CustomPacketPayload {
-    public static final Type<LobbySnapshotPayload> TYPE = new Type<>(Riichicraft.id("lobby_snapshot"));
+    public static final Type<LobbySnapshotPayload> TYPE = new Type<>(Riichicraft.id("lobby_snapshot_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, LobbySnapshotPayload> CODEC = StreamCodec.of(
             (buf, value) -> {
                 buf.writeUUID(value.viewId());

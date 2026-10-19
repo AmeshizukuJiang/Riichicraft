@@ -113,11 +113,11 @@ public final class TableScreen extends Screen {
         resultHeight = Math.min(156, height - resultTop - 9);
         if (detail != 0) {
             resultLines = detail == 1 ? helpLines() : historyLines();
-            detailPage = Math.min(detailPage, resultPageCount() - 1);
+            detailPage = Math.clamp(detailPage, 0, resultPageCount() - 1);
             button(Component.literal("‹"), resultLeft + 5, resultTop + resultHeight - 22, 20, 17,
-                    () -> { detailPage--; rebuildWidgets(); }).active = detailPage > 0;
+                    () -> { detailPage = Math.max(0, detailPage - 1); rebuildWidgets(); }).active = detailPage > 0;
             button(Component.literal("›"), resultLeft + 29, resultTop + resultHeight - 22, 20, 17,
-                    () -> { detailPage++; rebuildWidgets(); }).active = detailPage + 1 < resultPageCount();
+                    () -> { detailPage = Math.min(resultPageCount() - 1, detailPage + 1); rebuildWidgets(); }).active = detailPage + 1 < resultPageCount();
             button(text("back_menu"), resultLeft + 55, resultTop + resultHeight - 22, resultWidth - 60, 17,
                     () -> { detail = 0; rebuildWidgets(); });
             return;
@@ -260,12 +260,12 @@ public final class TableScreen extends Screen {
         resultHeight = Math.max(88, Math.min(140, height - 67));
         resultLines = resultLines(snapshot);
         int pageCount = resultPageCount();
-        resultPage = Math.min(resultPage, pageCount - 1);
+        resultPage = Math.clamp(resultPage, 0, pageCount - 1);
         Button previous = button(Component.literal("‹"), resultLeft + 5, resultTop + resultHeight - 21, 19, 17,
-                () -> { resultPage--; rebuildWidgets(); });
+                () -> { resultPage = Math.max(0, resultPage - 1); rebuildWidgets(); });
         previous.active = resultPage > 0;
         Button next = button(Component.literal("›"), resultLeft + 28, resultTop + resultHeight - 21, 19, 17,
-                () -> { resultPage++; rebuildWidgets(); });
+                () -> { resultPage = Math.min(resultPageCount() - 1, resultPage + 1); rebuildWidgets(); });
         next.active = resultPage + 1 < pageCount;
         boolean intermission = game().match() != null && game().match().phase() == GameSnapshot.MATCH_ROUND_RESULT;
         boolean confirmed = intermission && snapshot.ownSeat() >= 0 && game().match().confirmations().get(snapshot.ownSeat());
@@ -302,8 +302,7 @@ public final class TableScreen extends Screen {
                 int previewX = Math.min(width - 37, Math.max(5, mouseX + 13)), previewY = Math.max(30, mouseY - 62);
                 TileFaces.drawHand(graphics, font, hovered, previewX, previewY, 32, 47, hovered == selectedTile, true);
             }
-            Component note = awaitingReply ? gameText("processing") : riichiArmed ? text("riichi_hint")
-                    : selectedTile >= 0 ? text("selected", TileFaces.fullName(selectedTile)) : Component.empty();
+            Component note = actionHint();
             if (!note.getString().isEmpty()) {
                 int noteWidth = Math.max(1, width - 94);
                 graphics.text(font, font.plainSubstrByWidth(note.getString(), noteWidth), 7, height - 13, 0xFFE8D3A5);
@@ -321,6 +320,13 @@ public final class TableScreen extends Screen {
         if (rules() == null) return lobbyText(snapshot.allReady() ? "all_ready" : "waiting");
         int hand = game().match() == null ? 1 : game().match().roundIndex() % game().seats().size() + 1;
         return text("round", lobbyText(WINDS[rules().roundWind() - 27]), hand, rules().honba());
+    }
+
+    public Component actionHint() {
+        if(menuOpen || game()==null || finished()) return Component.empty();
+        return awaitingReply?gameText("processing"):riichiArmed?text("riichi_hint")
+                :selectedTile>=0?text("selected",TileFaces.fullName(selectedTile))
+                :rules()!=null && rules().opportunity()!=null?text("response_wait"):Component.empty();
     }
 
     public int displayedPoints(int seat) {
@@ -372,7 +378,7 @@ public final class TableScreen extends Screen {
                     && y < resultTop + resultHeight && y + 27 > resultTop) continue;
             var badge = new ScoreBadge(seat, x, y, cardWidth, 27);
             scoreBadges.add(badge);
-            boolean actor = !finished() && !game().paused() && game().turnSeat() == seat;
+            boolean actor = !finished() && !game().paused() && rules().opportunity()==null && game().turnSeat() == seat;
             TableButton.panel(graphics, x, y, cardWidth, 27, actor);
             int dealer = rules().dealerSeat();
             Component value = Component.empty().append(text("wind." + WINDS[Math.floorMod(seat - dealer, snapshot.seats().size())]))
@@ -417,6 +423,7 @@ public final class TableScreen extends Screen {
     }
 
     private void drawResult(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int page) {
+        page = Math.clamp(page, 0, resultPageCount() - 1);
         TableButton.panel(graphics, resultLeft, resultTop, resultWidth, resultHeight, false);
         Component title = menuOpen ? text(detail == 1 ? "help" : "history") : gameText("result");
         graphics.text(font, title, resultLeft + 6, resultTop + 5, 0xFFE6C67F);
@@ -496,6 +503,7 @@ public final class TableScreen extends Screen {
     @Override
     public void onClose() {
         discardGate.reset();
+        TableCamera.setOverhead(false);
         minecraft.gui.setScreen(null);
     }
 
@@ -574,6 +582,11 @@ public final class TableScreen extends Screen {
         GameSnapshot game = snapshot.game();
         GameSnapshot.Result result = game.rules().result();
         List<Component> lines = new ArrayList<>();
+        if(!result.uraIndicators().isEmpty()) {
+            MutableComponent ura=gameText("ura_indicators");
+            for(int tile:result.uraIndicators()) ura.append(" ").append(TileFaces.shortName(tile));
+            lines.add(ura);
+        }
         for (var value : result.values()) {
             lines.add(value.yakumanUnits() > 0 ? gameText("value_yakuman", wind(snapshot, value.seat()), value.yakumanUnits(), value.totalPoints())
                     : gameText("value", wind(snapshot, value.seat()), value.han(), value.fu(), value.totalPoints()));

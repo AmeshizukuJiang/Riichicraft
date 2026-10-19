@@ -7,7 +7,10 @@ import java.util.UUID;
 
 /** Public tabletop data only: concealed tiles are represented exclusively by counts. */
 public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished,
-        int frontSide, int liveTiles, List<Integer> indicators, List<Seat> seats) {
+        int frontSide, int liveTiles, List<Integer> indicators, List<Seat> seats, List<Integer> uraIndicators) {
+    public TableDisplaySnapshot(UUID gameId,boolean paused,boolean finished,int frontSide,int liveTiles,List<Integer> indicators,List<Seat> seats) {
+        this(gameId,paused,finished,frontSide,liveTiles,indicators,seats,List.of());
+    }
     public static final int MAX_RIVER = 136;
 
     public record Discard(int tileId, boolean sideways) {
@@ -32,6 +35,9 @@ public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished
     public TableDisplaySnapshot {
         if (gameId == null || frontSide < 0 || frontSide > 3) fail("table metadata");
         indicators = checkedTiles(indicators, 5); seats = List.copyOf(seats);
+        uraIndicators = checkedTiles(uraIndicators, 5);
+        if (!uraIndicators.isEmpty() && (!finished || uraIndicators.size() != indicators.size())
+                || uraIndicators.stream().anyMatch(indicators::contains)) fail("revealed ura indicators");
         if (seats.size() != 3 && seats.size() != 4
                 || new HashSet<>(seats.stream().map(Seat::side).toList()).size() != seats.size()) fail("public seats");
         int replacements = replacements(seats);
@@ -48,6 +54,7 @@ public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished
         if (seats.size() == 4 && seats.stream().anyMatch(s -> !s.norths().isEmpty())) fail("four-player kita");
         if (seats.size() == 3) {
             indicators.forEach(TableDisplaySnapshot::sanma);
+            uraIndicators.forEach(TableDisplaySnapshot::sanma);
             for (Seat seat : seats) {
                 seat.river().forEach(d -> sanma(d.tileId()));
                 for (Meld meld : seat.melds()) {
@@ -85,7 +92,8 @@ public record TableDisplaySnapshot(UUID gameId, boolean paused, boolean finished
             seats.add(new Seat(sides.get(index), seat.handCount(), river, melds, rules.norths()));
         }
         return new TableDisplaySnapshot(view.gameId(), view.paused(), view.rules().phase() == GameSnapshot.FINISHED,
-                front, view.remainingTiles(), view.rules().doraIndicators(), seats);
+                front, view.remainingTiles(), view.rules().doraIndicators(), seats,
+                view.rules().result()==null?List.of():view.rules().result().uraIndicators());
     }
 
     public int replacementDraws() { return replacements(seats); }

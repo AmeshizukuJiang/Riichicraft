@@ -14,13 +14,15 @@ import static dev.riichicraft.table.TableTileLayout.Group.*;
 
 /** Cosmetic, caller-clock driven player. The authoritative snapshot is never delayed or edited. */
 public final class TableAnimationPlayer {
-    public record Frame(TableTileLayout.Tile tile,TileMotion.Pose pose) { }
+    public record Frame(TableTileLayout.Tile tile,TileMotion.Pose pose,int stateHash) {
+        public Frame(TableTileLayout.Tile tile,TileMotion.Pose pose) { this(tile,pose,0); }
+    }
     private record Tween(TableTileLayout.Tile target,TileMotion.Pose from,long delay,long duration,float arc) {
         Frame frame(long elapsed){return new Frame(target,TileMotion.sample(from,pose(target),
                 duration==0?1:TileMotion.progress(elapsed,delay,duration),arc));}
     }
-    private record Plan(List<Tween> tweens,long duration) {
-        List<Frame> frames(long elapsed){return tweens.stream().map(t->t.frame(elapsed)).toList();}
+    private record Plan(List<Tween> tweens,long duration,int stateHash) {
+        List<Frame> frames(long elapsed){return tweens.stream().map(t->t.frame(elapsed)).map(f->new Frame(f.tile(),f.pose(),stateHash)).toList();}
     }
     private static final long MOVE=240_000_000L,DRAW=260_000_000L,FLIP=220_000_000L,LIMIT=1_200_000_000L;
     private static final class Track {
@@ -51,7 +53,7 @@ public final class TableAnimationPlayer {
         var t=tracks.get(id);if(t==null)return List.of();t.advance(now);
         return t.queue.isEmpty()?still(t.state):t.queue.getFirst().frames(Math.max(0,now-t.start));
     }
-    public static List<Frame> still(TableDisplaySnapshot s){return TableTileLayout.tiles(s).stream().map(t->new Frame(t,pose(t))).toList();}
+    public static List<Frame> still(TableDisplaySnapshot s){int hash=s.hashCode();return TableTileLayout.tiles(s).stream().map(t->new Frame(t,pose(t),hash)).toList();}
     private static TileMotion.Pose pose(TableTileLayout.Tile t){return new TileMotion.Pose(t.x(),t.y(),t.z(),t.yaw(),t.flat()?(t.down()?90:-90):0,t.scale());}
     private static Map<String,TableTileLayout.Tile> index(List<TableTileLayout.Tile> tiles){
         var map=new HashMap<String,TableTileLayout.Tile>();for(var t:tiles)if(map.put(t.key(),t)!=null)throw new IllegalArgumentException("duplicate render key");return map;
@@ -59,7 +61,7 @@ public final class TableAnimationPlayer {
     private static Plan plan(TableAnimationStep step){
         var before=TableTileLayout.tiles(step.before());var after=TableTileLayout.tiles(step.after());
         try {return plan(step,before,after,index(before),index(after));}
-        catch(IllegalArgumentException invalid){return new Plan(after.stream().map(t->new Tween(t,pose(t),0,0,0)).toList(),0);}
+        catch(IllegalArgumentException invalid){return new Plan(after.stream().map(t->new Tween(t,pose(t),0,0,0)).toList(),0,step.after().hashCode());}
     }
     private static Plan plan(TableAnimationStep step,List<TableTileLayout.Tile> before,List<TableTileLayout.Tile> after,
                              Map<String,TableTileLayout.Tile> from,Map<String,TableTileLayout.Tile> to){
@@ -96,6 +98,6 @@ public final class TableAnimationPlayer {
             else if(!pose(source).equals(pose(target))) {delay=lead;duration=MOVE;arc=target.group()==MELD?3.5F:0;}
             tweens.add(new Tween(target,pose(source),delay,duration,arc));length=Math.max(length,delay+duration);
         }
-        return new Plan(List.copyOf(tweens),length);
+        return new Plan(List.copyOf(tweens),length,step.after().hashCode());
     }
 }

@@ -18,7 +18,7 @@ import net.minecraft.world.level.Level;
 /** A single bounded update or removal. Sequence increases across all sends on one server. */
 public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, BlockPos pos,
         long sequence, TableDisplaySnapshot snapshot, UUID epoch, long actionSerial, List<TableAnimationStep> steps) implements CustomPacketPayload {
-    public static final Type<TableDisplayPayload> TYPE = new Type<>(Riichicraft.id("table_display_v3"));
+    public static final Type<TableDisplayPayload> TYPE = new Type<>(Riichicraft.id("table_display_v4"));
     private static final UUID NO_ANIMATION=new UUID(0,0);
     public static final StreamCodec<RegistryFriendlyByteBuf, TableDisplayPayload> CODEC = StreamCodec.of(TableDisplayPayload::encode, TableDisplayPayload::decode);
     public TableDisplayPayload {
@@ -46,7 +46,7 @@ public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, Bl
     }
     private static void writeSnapshot(RegistryFriendlyByteBuf b,TableDisplaySnapshot s) {
         b.writeUUID(s.gameId()); b.writeBoolean(s.paused()); b.writeBoolean(s.finished()); b.writeVarInt(s.frontSide()); b.writeVarInt(s.liveTiles());
-        writeTiles(b, s.indicators()); b.writeVarInt(s.seats().size());
+        writeTiles(b, s.indicators()); writeTiles(b,s.uraIndicators()); b.writeVarInt(s.seats().size());
         for (var seat : s.seats()) {
             b.writeVarInt(seat.side()); b.writeVarInt(seat.concealedCount()); b.writeVarInt(seat.river().size());
             for (var d : seat.river()) { b.writeVarInt(d.tileId()); b.writeBoolean(d.sideways()); }
@@ -68,14 +68,14 @@ public record TableDisplayPayload(ResourceKey<Level> dimension, UUID tableId, Bl
     }
     private static TableDisplaySnapshot readSnapshot(RegistryFriendlyByteBuf b) {
             UUID game = b.readUUID(); boolean paused = b.readBoolean(), finished = b.readBoolean(); int front = range(b, 0, 3), live = range(b, 0, 69);
-            var indicators = readTiles(b, 5); int count = range(b, 3, 4); List<TableDisplaySnapshot.Seat> seats = new ArrayList<>(count);
+            var indicators = readTiles(b, 5); var ura = readTiles(b,5); int count = range(b, 3, 4); List<TableDisplaySnapshot.Seat> seats = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 int side = range(b, 0, 3), concealed = range(b, 0, 14);
                 var river = readList(b, TableDisplaySnapshot.MAX_RIVER, in -> new TableDisplaySnapshot.Discard(range(in, 0, 135), in.readBoolean()));
                 var melds = readList(b, 4, in -> new TableDisplaySnapshot.Meld(range(in, 0, 3), readTiles(in, 4), range(in, -1, count - 1), range(in, -1, 135), range(in, -1, 135)));
                 seats.add(new TableDisplaySnapshot.Seat(side, concealed, river, melds, readTiles(b, 4)));
             }
-            return new TableDisplaySnapshot(game, paused, finished, front, live, indicators, seats);
+            return new TableDisplaySnapshot(game, paused, finished, front, live, indicators, seats,ura);
     }
     private static int range(RegistryFriendlyByteBuf b, int lo, int hi) {
         int n = b.readVarInt(); if (n < lo || n > hi) throw new DecoderException("Public tabletop bound"); return n;

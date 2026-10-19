@@ -126,6 +126,8 @@ final class TabletopClientScenario {
                 shot(context,"riichicraft-tabletop-live-four");
                 context.runOnClient(c->TabletopRenderFixture.show(active.center(),TableDisplayGameTests.showcase(false)));
                 shot(context,"riichicraft-tabletop-layout-four");
+                context.runOnClient(c->TabletopRenderFixture.show(active.center(),TableDisplayGameTests.revealedUra(false)));
+                shot(context,"riichicraft-ura-layout-four");
                 context.runOnClient(c->TabletopRenderFixture.hide());
                 var kanScene=TableAnimationGameTests.scenes().stream().filter(s->s.name().equals("closed-kan-and-flip")).findFirst().orElseThrow();
                 context.runOnClient(c->TabletopRenderFixture.showFrame(active.center(),kanScene.after(),TableAnimationGameTests.sample(kanScene,340_000_000L)));

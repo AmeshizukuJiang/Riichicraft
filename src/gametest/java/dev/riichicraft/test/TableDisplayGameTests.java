@@ -48,9 +48,15 @@ public final class TableDisplayGameTests {
                 three ? List.of(40,44) : List.of(40,44,48), seats);
     }
 
+    public static TableDisplaySnapshot revealedUra(boolean three) {
+        var s=capacity(three);
+        return new TableDisplaySnapshot(s.gameId(),false,true,s.frontSide(),s.liveTiles(),s.indicators(),s.seats(),
+                s.indicators().stream().map(tile->tile+1).toList());
+    }
+
     @GameTest
     public void publicCodecAndAllAllocationBounds(GameTestHelper helper) {
-        for (var snapshot : new TableDisplaySnapshot[] {showcase(false), showcase(true), capacity(false), capacity(true), null}) {
+        for (var snapshot : new TableDisplaySnapshot[] {showcase(false), showcase(true), capacity(false), capacity(true), revealedUra(false),revealedUra(true),null}) {
             var payload = new TableDisplayPayload(Level.OVERWORLD, UUID.randomUUID(), new BlockPos(-17,64,31), 81, snapshot);
             var buf = buffer(helper);
             try {
@@ -66,7 +72,7 @@ public final class TableDisplayGameTests {
                 b.writeResourceKey(Level.OVERWORLD); b.writeUUID(UUID.randomUUID()); b.writeBlockPos(BlockPos.ZERO); b.writeVarLong(1); b.writeBoolean(true);
                 b.writeUUID(UUID.randomUUID()); b.writeBoolean(false); b.writeBoolean(false); b.writeVarInt(0); b.writeVarInt(69);
                 b.writeVarInt(target == 0 ? length : 0);
-                if (target > 0) b.writeVarInt(target == 1 ? length : 4);
+                if (target > 0) { b.writeVarInt(0); b.writeVarInt(target == 1 ? length : 4); }
                 if (target > 1) { b.writeVarInt(0); b.writeVarInt(13); b.writeVarInt(target == 2 ? length : 0); }
                 if (target > 2) b.writeVarInt(target == 3 ? length : 0);
                 if (target > 3) b.writeVarInt(length);
@@ -110,14 +116,15 @@ public final class TableDisplayGameTests {
 
     @GameTest
     public void wallsNorthsLongRiversAndMeldsFitEveryPhysicalOrientation(GameTestHelper helper) {
-        for(boolean three:List.of(false,true)) for(int rotation=0;rotation<4;rotation++) {
+        for(boolean three:List.of(false,true)) for(int rotation=0;rotation<4;rotation++) for(boolean finished:List.of(false,true)) {
             var base=showcase(three); List<TableDisplaySnapshot.Seat> seats=new ArrayList<>();
             for(int seat=0;seat<base.seats().size();seat++) {
                 var original=base.seats().get(seat);var river=new ArrayList<TableDisplaySnapshot.Discard>();
                 for(int i=0;i<48;i++)river.add(new TableDisplaySnapshot.Discard(36+i,i==5));
                 seats.add(new TableDisplaySnapshot.Seat((original.side()+rotation)%4,original.concealedCount(),river,original.melds(),original.norths()));
             }
-            var scene=new TableDisplaySnapshot(base.gameId(),false,false,rotation,base.liveTiles(),base.indicators(),seats);
+            var scene=new TableDisplaySnapshot(base.gameId(),false,finished,rotation,base.liveTiles(),base.indicators(),seats,
+                    finished?base.indicators().stream().map(tile->tile+1).toList():List.of());
             var tiles=TableTileLayout.tiles(scene);
             for(int i=0;i<tiles.size();i++) {
                 var a=tiles.get(i);float[] ab=box(a);

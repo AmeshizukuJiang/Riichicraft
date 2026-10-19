@@ -117,6 +117,13 @@ final class ImmersiveClientScenario {
             context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);context.waitForScreen(null);
             context.getInput().pressKey(GLFW.GLFW_KEY_R);context.waitForScreen(TableScreen.class);
             shot(context,"riichicraft-immersive-overhead");
+            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);context.waitForScreen(null);
+            context.waitTicks(2);
+            require(context.computeOnClient(c->!TableCamera.overhead() && c.player.getVehicle()!=null),
+                    "Esc hides controls and leaves overhead immediately without dismounting");
+            context.getInput().pressKey(GLFW.GLFW_KEY_R);context.waitForScreen(TableScreen.class);
+            require(context.computeOnClient(c->!TableCamera.overhead()),"Reopening controls preserves the normal chair view");
+            context.getInput().pressKey(GLFW.GLFW_KEY_V);context.waitTicks(2);
             int tile = opening.rules().legalDiscards().getFirst();
             double[] cursor = tileCursor(context, tile);
             context.getInput().setCursorPos(cursor[0], cursor[1]);
@@ -207,6 +214,18 @@ final class ImmersiveClientScenario {
                 require(client.gui.screen() instanceof TableScreen, "Compact settlement stays over the actual world table");
             });
             shot(context,"riichicraft-immersive-result");
+            int oldScale=context.computeOnClient(c->c.options.guiScale().get());
+            try {
+                context.runOnClient(c->c.options.guiScale().set(4));
+                context.getInput().resizeWindow(1920,1080);context.waitTicks(2);
+                require(context.computeOnClient(c->c.getWindow().getGuiScaledWidth()==480 && c.getWindow().getGuiScaledHeight()==270),
+                        "Reproduce the exact 480x270 scaled viewport from the user's crash report");
+                context.runOnClient(dev.riichicraft.client.TablePagingChecks::exerciseBoundaries);context.waitTicks(2);
+                context.clickScreenButton("screen.riichicraft.table.menu");context.clickScreenButton("screen.riichicraft.table.help");
+                context.runOnClient(dev.riichicraft.client.TablePagingChecks::exerciseBoundaries);context.waitTicks(2);
+                context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);context.waitTicks(2);
+                shot(context,"riichicraft-playtest-result-scale-four");
+            } finally { context.runOnClient(c->c.options.guiScale().set(oldScale));context.getInput().resizeWindow(1280,960);context.waitTicks(2); }
             require(finished.match().phase() == GameSnapshot.MATCH_ROUND_RESULT, "First exhaustive East round offers continuation");
             context.clickScreenButton("screen.riichicraft.game.next_round"); sync(connection);
             require(snapshot(context).game().match().confirmations().get(0), "Compact result button records the real player's continuation vote");
@@ -218,6 +237,32 @@ final class ImmersiveClientScenario {
             sync(connection);
             context.waitFor(client -> !TableInteractionClient.snapshot().game().gameId().equals(finished.gameId()), 200);
             require(context.computeOnClient(client -> TableCamera.overhead()), "The next accepted round automatically restores overhead view");
+            try {
+                server.runOnServer(s->{
+                    dev.riichicraft.server.PlaytestFixTestMod.coverTicks(s,40);
+                    var service=LobbyService.get(s);boolean held=false;
+                    for(int step=0;step<100 && !held;step++) {
+                        advance(service,active,connection.getServerPlayer(),playerView);
+                        var state=service.gameView(active.table(),null);
+                        held=state.rules().opportunity()!=null && java.util.stream.Stream.concat(java.util.stream.Stream.of(connection.getServerPlayer()),
+                                active.fixtures().stream().map(ConnectedTestPlayer::player)).allMatch(p->service.gameView(active.table(),p.getUUID()).rules().responses().isEmpty());
+                    }
+                    require(held,"A genuine legal no-option discard creates a deterministic two-second cover for TCP verification");
+                });
+                sync(connection);
+                context.waitFor(c->TableInteractionClient.snapshot().game().rules().opportunity()!=null,200);
+                context.runOnClient(c->{var state=TableInteractionClient.snapshot().game();
+                    require(state.drawnTile()==-1 && state.rules().responses().isEmpty() && state.rules().legalDiscards().isEmpty(),
+                            "Actual TCP cover sends neither a future drawn tile nor any response/discard mask");
+                    require(((TableScreen)c.gui.screen()).actionHint().getString().equals(net.minecraft.network.chat.Component.translatable("screen.riichicraft.table.response_wait").getString()),
+                            "Fake and real response stages use a visible table-wide hint without a named responder");});
+                shot(context,"riichicraft-response-cover");
+                context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);context.waitForScreen(null);context.waitTick();
+                require(context.computeOnClient(c->!TableCamera.overhead()),"Esc remains out of overhead while cover snapshots arrive");
+                context.getInput().pressKey(GLFW.GLFW_KEY_R);context.waitForScreen(TableScreen.class);
+                context.waitFor(c->TableInteractionClient.snapshot().game().rules().opportunity()==null,200);
+                require(context.computeOnClient(c->!TableCamera.overhead()),"Timer expiry does not recapture overhead after Esc");
+            } finally {server.runOnServer(s->dev.riichicraft.server.PlaytestFixTestMod.coverTicks(s,0));}
             server.runOnServer(s -> s.overworld().destroyBlock(active.center(), false));
             context.waitForScreen(null);
             context.runOnClient(client -> require(!TableCamera.active() && !TableInteractionClient.active(), "Destroyed table releases local camera and interaction session"));

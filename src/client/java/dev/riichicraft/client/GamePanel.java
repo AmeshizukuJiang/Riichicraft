@@ -273,6 +273,11 @@ final class GamePanel {
             for(var award:value.yaku()) { if (!awards.getString().isEmpty()) awards.append(" · "); awards.append(Component.translatable("yaku.riichicraft."+award.yaku().toLowerCase(Locale.ROOT))); }
             lines.add(awards); if(value.yakumanUnits()==0) lines.add(text(value.kita()>0?"bonuses_kita":"bonuses",value.dora(),value.aka(),value.ura(),value.kita()));
         }
+        if(!result.uraIndicators().isEmpty()) {
+            MutableComponent ura=text("ura_indicators");
+            for(int tile:result.uraIndicators()) ura.append(" ").append(TileFaces.shortName(tile));
+            lines.add(ura);
+        }
         for(var payment:result.transfers()) lines.add(text("payment",payment.fromSeat()<0?text("deposit_pool"):wind(payment.fromSeat()),wind(payment.toSeat()),payment.points()));
         lines.add(text(game().match()==null?"single_round_hint":matchFinished()?"match_result_hint":"next_round_hint_count",game().match()==null?0:game().match().confirmations().stream().filter(Boolean::booleanValue).count(),game().seats().size())); return lines;
     }

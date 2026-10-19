@@ -19,8 +19,12 @@ import net.minecraft.world.level.Level;
 /** A recipient-scoped hand scene; it contains no wall, seed, action masks or rule archives. */
 public record TableScenePayload(UUID viewId, UUID tableId, ResourceKey<Level> dimension, BlockPos pos,
         UUID gameId, long revision, int ownSeat, List<Integer> sides, boolean mounted,
-        List<List<Integer>> hands, List<Integer> drawnTiles, boolean finished) implements CustomPacketPayload {
-    public static final Type<TableScenePayload> TYPE = new Type<>(Riichicraft.id("table_scene_v1"));
+        List<List<Integer>> hands, List<Integer> drawnTiles, boolean finished, Integer publicStateHash) implements CustomPacketPayload {
+    public TableScenePayload(UUID viewId,UUID tableId,ResourceKey<Level> dimension,BlockPos pos,UUID gameId,long revision,int ownSeat,
+            List<Integer> sides,boolean mounted,List<List<Integer>> hands,List<Integer> drawnTiles,boolean finished) {
+        this(viewId,tableId,dimension,pos,gameId,revision,ownSeat,sides,mounted,hands,drawnTiles,finished,null);
+    }
+    public static final Type<TableScenePayload> TYPE = new Type<>(Riichicraft.id("table_scene_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TableScenePayload> CODEC =
             StreamCodec.of(TableScenePayload::encode, TableScenePayload::decode);
 
@@ -59,6 +63,7 @@ public record TableScenePayload(UUID viewId, UUID tableId, ResourceKey<Level> di
         for (var hand : p.hands()) { b.writeVarInt(hand.size()); hand.forEach(b::writeVarInt); }
         b.writeVarInt(p.drawnTiles().size()); p.drawnTiles().forEach(b::writeVarInt);
         b.writeBoolean(p.finished());
+        b.writeBoolean(p.publicStateHash()!=null);if(p.publicStateHash()!=null) b.writeInt(p.publicStateHash());
     }
 
     private static TableScenePayload decode(RegistryFriendlyByteBuf b) {
@@ -82,7 +87,8 @@ public record TableScenePayload(UUID viewId, UUID tableId, ResourceKey<Level> di
             int drawCount = range(b, count, count);
             var draws = new ArrayList<Integer>(drawCount);
             for (int i = 0; i < drawCount; i++) draws.add(range(b, -1, 135));
-            return new TableScenePayload(view, table, dim, pos, game, revision, own, sides, mounted, hands, draws, b.readBoolean());
+            boolean finished=b.readBoolean();Integer publicHash=b.readBoolean()?b.readInt():null;
+            return new TableScenePayload(view, table, dim, pos, game, revision, own, sides, mounted, hands, draws, finished,publicHash);
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new DecoderException("Invalid recipient table scene", e);
         }

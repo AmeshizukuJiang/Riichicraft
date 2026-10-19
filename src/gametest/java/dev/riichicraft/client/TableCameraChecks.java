@@ -60,6 +60,36 @@ public final class TableCameraChecks {
         var other = new TableScenePayload(view, table, Level.OVERWORLD, BlockPos.ZERO, UUID.randomUUID(), 2, -1,
                 List.of(0, 1, 2, 3), false, hands, List.of(-1, -1, -1, -1), false);
         require(TableDisplayRenderer.visibleFrames(payload, still, other, true) == still, "Stale game scene cannot replace another game's hands");
+        verifyIncomingDraw();
+    }
+
+    private static void verifyIncomingDraw() {
+        UUID game=UUID.randomUUID(),id=UUID.randomUUID(),epoch=UUID.randomUUID();
+        var seats=IntStream.range(0,4).mapToObj(side->new TableDisplaySnapshot.Seat(side,13,List.of(),List.of(),List.of())).toList();
+        var before=new TableDisplaySnapshot(game,false,false,0,69,List.of(132),seats);
+        var next=new ArrayList<>(seats);next.set(0,new TableDisplaySnapshot.Seat(0,14,List.of(),List.of(),List.of()));
+        var after=new TableDisplaySnapshot(game,false,false,0,68,List.of(132),next);
+        var oldPacket=new TableDisplayPayload(Level.OVERWORLD,id,BlockPos.ZERO,1,before,epoch,0,List.of());
+        var packet=new TableDisplayPayload(Level.OVERWORLD,id,BlockPos.ZERO,2,after,epoch,1,
+                List.of(new dev.riichicraft.network.TableAnimationStep(1,before,after)));
+        var scene=new TableScenePayload(UUID.randomUUID(),id,Level.OVERWORLD,BlockPos.ZERO,game,4,0,List.of(0,1,2,3),true,
+                List.of(IntStream.range(0,14).boxed().toList(),List.of(),List.of(),List.of()),List.of(13,-1,-1,-1),false,after.hashCode());
+        for(boolean top:List.of(false,true)) {
+            var early=TableDisplayRenderer.visibleFrames(oldPacket,TableAnimationPlayer.still(before),scene,top);
+            require(early.stream().noneMatch(f->f.tile().face()==13),"Private-first packet never flashes the new tile at the absent hand destination");
+            var oldSameCount=new TableDisplaySnapshot(game,false,false,0,69,List.of(132),next);
+            var stale=TableDisplayRenderer.visibleFrames(oldPacket,TableAnimationPlayer.still(oldSameCount),scene,top);
+            require(stale.stream().noneMatch(f->f.tile().face()==13),"A replacement or queued older draw cannot reuse the previous fourteen-card destination");
+            var player=new TableAnimationPlayer();player.accept(oldPacket,0);player.accept(packet,0);
+            var endpoint=TableDisplayRenderer.visibleFrames(packet,TableAnimationPlayer.still(after),scene,top).stream()
+                    .filter(f->f.tile().face()==13).findFirst().orElseThrow().pose();
+            for(long time:new long[]{0,50_000_000,150_000_000,259_000_000,260_000_000}) {
+                var frames=TableDisplayRenderer.visibleFrames(packet,player.frames(id,time),scene,top);
+                var drawn=frames.stream().filter(f->f.tile().face()==13).toList();
+                require(drawn.size()==1,"Draw is rendered once throughout its actual flight");
+                require((time==260_000_000)==drawn.getFirst().pose().equals(endpoint),"Draw arrives at hand only at the animation endpoint");
+            }
+        }
     }
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
