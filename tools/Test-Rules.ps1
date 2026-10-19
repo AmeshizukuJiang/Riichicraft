@@ -40,6 +40,13 @@ try {
     # A fresh, empty classpath ensures that no game or globally installed test library is needed.
     & $javacExecutable -encoding UTF-8 --release 25 --class-path $classesDirectory -d $classesDirectory @sources
     if ($LASTEXITCODE -ne 0) { throw 'Standalone rules compilation failed.' }
+    # Match Gradle's normal rulesTest resources classpath without regenerating historical archives.
+    $resourcesDirectory = Join-Path $projectRoot 'src/rulesTest/resources'
+    if (Test-Path -LiteralPath $resourcesDirectory -PathType Container) {
+        foreach ($entry in Get-ChildItem -LiteralPath $resourcesDirectory -Force) {
+            Copy-Item -LiteralPath $entry.FullName -Destination $classesDirectory -Recurse -Force
+        }
+    }
     & $javaExecutable -ea --class-path $classesDirectory dev.riichicraft.rules.RulesTests
     if ($LASTEXITCODE -ne 0) { throw 'Standalone rules verification failed.' }
 }

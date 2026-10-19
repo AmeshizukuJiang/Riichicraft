@@ -90,10 +90,18 @@ public final class KanActions {
         if (ownKans>context.establishedKans()) throw new IllegalArgumentException("Global kan count omits this player's kans");
         HandInput preceding=null;
         Set<Integer> precedingWaits=Set.of();
+        Set<Integer> exhaustedShapeWaits=Set.of();
         if (context.riichi()!=WinContext.Riichi.NONE) {
             var held=new ArrayList<>(hand.concealedTiles()); held.remove(Integer.valueOf(drawnTileId));
             preceding=new HandInput(held,hand.melds()); precedingWaits=waits.apply(preceding);
-            if (precedingWaits.isEmpty()) throw new IllegalArgumentException("An established riichi hand must have a preceding structural wait");
+            // Sanma may exhaust its sole north wait through legal kita after riichi. The hand
+            // still has its original shape; ankan must preserve that shape's waits as well.
+            if (precedingWaits.isEmpty()) {
+                exhaustedShapeWaits=HandAnalyzer.waits(preceding);
+                if (exhaustedShapeWaits.isEmpty()) {
+                    throw new IllegalArgumentException("An established riichi hand must have a preceding structural wait");
+                }
+            }
         }
         if (context.liveTilesRemaining()==0 || context.establishedKans()==4) return Set.of();
         Set<Choice> result=new HashSet<>();
@@ -107,8 +115,13 @@ public final class KanActions {
                 HandInput after=new Proposal(hand,drawnTileId,context,choice).handIfEstablished();
                 Set<Integer> afterWaits=waits.apply(after);
                 if (!precedingWaits.equals(afterWaits)) continue;
+                Set<Integer> countedWaits=precedingWaits;
+                if (precedingWaits.isEmpty()) {
+                    if (!exhaustedShapeWaits.equals(HandAnalyzer.waits(after))) continue;
+                    countedWaits=exhaustedShapeWaits;
+                }
                 int[] oldCounts=preceding.tileCounts(),newCounts=after.tileCounts();
-                if (precedingWaits.stream().anyMatch(wait->4-oldCounts[wait]!=4-newCounts[wait])) continue;
+                if (countedWaits.stream().anyMatch(wait->4-oldCounts[wait]!=4-newCounts[wait])) continue;
             }
             result.add(choice);
         }

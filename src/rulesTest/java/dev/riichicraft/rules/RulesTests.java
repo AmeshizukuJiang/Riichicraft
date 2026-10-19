@@ -30,6 +30,8 @@ public final class RulesTests {
         ThreePlayerBasicsTests.main(args);
         ThreePlayerScoringTests.main(args);
         ThreePlayerEngineTests.main(args);
+        ThreePlayerRiichiExhaustionTests.main(args);
+        LegacyArchiveTests.main(args);
         TableWallLayoutTests.main(args);
         TileMotionTests.main(args);
         TableHandVisibilityTests.main(args);
