@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "riichicraft-test",
-  "version": "0.0.16-dev",
+  "version": "0.0.17-dev",
   "name": "Riichicraft Game Tests",
   "environment": "*",
   "entrypoints": {
@@ -13,6 +13,7 @@
       "dev.riichicraft.test.TableAnimationGameTests",
       "dev.riichicraft.test.TableSceneGameTests",
       "dev.riichicraft.server.SeatingServiceGameTests",
+      "dev.riichicraft.server.LobbyTransitionGameTests",
       "dev.riichicraft.server.TableDisplayServiceGameTests",
       "dev.riichicraft.test.FurnitureGameTests",
       "dev.riichicraft.test.LobbyGameTests",

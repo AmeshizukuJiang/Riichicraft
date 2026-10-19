@@ -608,21 +608,11 @@ public final class LobbyService {
         } else if (payload.action() == GameActionPayload.RETURN_LOBBY) {
             if (!prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
             else {
-                games.remove(view.tableId()); clearDisconnected(prototype);
-                broadcast(registry.resetReadiness(view.tableId()),null,"");
-                save();
+                returnToLobby(view.tableId(), prototype, "");
                 return;
             }
         } else if (payload.action() == GameActionPayload.ABORT && !prototype.finished) {
-            games.remove(view.tableId());
-            for (UUID participant : prototype.players) {
-                if (disconnected.contains(participant) || server.getPlayerList().getPlayer(participant) == null) {
-                    pendingNotices.put(participant, "message.riichicraft.game.aborted");
-                }
-            }
-            clearDisconnected(prototype);
-            broadcast(registry.resetReadiness(view.tableId()), null, "message.riichicraft.game.aborted");
-            save();
+            returnToLobby(view.tableId(), prototype, "message.riichicraft.game.aborted");
             return;
         } else if (prototype.finished) feedback="message.riichicraft.lobby.invalid_action";
         else if (payload.action()==GameActionPayload.NEXT_ROUND) {
@@ -688,6 +678,26 @@ public final class LobbyService {
             }
         }
         sendSnapshot(player, view, lobby, feedback);
+    }
+
+    /** Restore idle-lobby ownership rules exactly once, before publishing or saving the transition. */
+    private void returnToLobby(UUID tableId, Prototype prototype, String feedback) {
+        if (!games.remove(tableId, prototype)) return;
+        for (UUID participant : prototype.players) {
+            boolean offline = disconnected.contains(participant)
+                    || server.getPlayerList().getPlayer(participant) == null;
+            if (offline && !feedback.isEmpty()) pendingNotices.put(participant, feedback);
+            // Active games reserve absent identities. An idle physical seat requires a valid mount again;
+            // legacy entries still retain online members when they merely close their view.
+            if (offline || seatedTables.contains(tableId) && !mounted(participant, tableId)) {
+                var seat = mountedSeats.remove(participant);
+                if (seat != null) seat.discard();
+                registry.disconnect(participant);
+            }
+        }
+        clearDisconnected(prototype);
+        broadcast(registry.resetReadiness(tableId), null, feedback);
+        save();
     }
 
     private static DiscardResponseWindow.Choice responseChoice(GameActionPayload payload) {
