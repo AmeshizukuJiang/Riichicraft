@@ -6,6 +6,8 @@ import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.GameSnapshot;
 import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.persistence.TableArchiveStore;
+import dev.riichicraft.rules.FourPlayerRound;
+import dev.riichicraft.rules.GameArchiveCodec;
 import dev.riichicraft.test.ConnectedTestPlayer;
 import dev.riichicraft.test.PersistenceTestActions;
 import java.io.IOException;
@@ -49,20 +51,13 @@ public final class TablePersistenceGameTests {
     @GameTest
     public void serviceReloadRetainsPartialResponsesAndRequiresFourFreshConfirmations(GameTestHelper helper) throws IOException {
         try(Scenario scenario=new Scenario(helper,LobbyRegistry.SINGLE)) {
-            boolean partial=false;
-            for(int deal=0;deal<4 && !partial;deal++) {
-                for(int command=0;command<400 && !partial;command++) {
-                    GameSnapshot before=scenario.game(0);
-                    if(before.rules().phase()==GameSnapshot.FINISHED) break;
-                    List<Integer> pending=scenario.pending();
-                    if(pending.size()>=2) {
-                        scenario.pass(pending.getFirst());
-                        partial=true;
-                    } else scenario.step();
-                }
-                if(!partial && deal<3) scenario.newDeal();
-            }
-            helper.assertTrue(partial,"A real bounded trajectory must reach and partially answer a multi-player response window");
+            scenario.loadMultiResponseWall();
+            scenario.action(0,GameActionPayload.DISCARD,scenario.game(0).drawnTile(),-1);
+            helper.assertTrue(scenario.pending().equals(List.of(1,2)),
+                    "The fixed legal first discard offers south chi and west pon in the same real window");
+            scenario.pass(1);
+            helper.assertTrue(scenario.pending().equals(List.of(2)),
+                    "South's accepted pass leaves exactly west's original response pending");
             List<CoreView> held=scenario.coreViews();
             List<Integer> pending=scenario.pending();
             long serial=scenario.game(0).rules().opportunity().serial();
@@ -178,6 +173,7 @@ public final class TablePersistenceGameTests {
             this.helper=helper; pos=helper.absolutePos(new BlockPos(2,2,2));
             path=helper.getLevel().getServer().getWorldPath(LevelResource.ROOT).resolve("data/riichicraft-tests/"+UUID.randomUUID()+"/tables.dat");
             service=new LobbyService(helper.getLevel().getServer(),path,writer);
+            service.responseDelaySource=()->0;
             helper.setBlock(new BlockPos(2,1,2),Blocks.STONE); helper.setBlock(new BlockPos(2,2,2),ModBlocks.MAHJONG_TABLE);
             for(int seat=0;seat<4;seat++) {
                 var fixture=new ConnectedTestPlayer(helper.getLevel().getServer(),helper.getLevel(),pos,"Save"+seat);
@@ -200,9 +196,21 @@ public final class TablePersistenceGameTests {
             for(int seat=0;seat<4;seat++) service.handleAction(players.get(seat),new LobbyActionPayload(views[seat],lobby().revision(),LobbyActionPayload.SET_READY,true));
             service.handleAction(players.getFirst(),new LobbyActionPayload(views[0],lobby().revision(),LobbyActionPayload.START,false));
         }
-        void newDeal() {
-            helper.assertTrue(game(0).rules().phase()==GameSnapshot.FINISHED,"An unsuccessful search completes its real round before the next legal deal");
-            action(0,GameActionPayload.RETURN_LOBBY,-1,-1); start();
+        void loadMultiResponseWall() throws IOException {
+            helper.assertTrue(service.save(),"The connected fixture supplies a valid world container");
+            var old=TableArchiveStore.read(path).getFirst();
+            var round=FourPlayerRound.ordered(UUID.randomUUID(),players.stream().map(ServerPlayer::getUUID).toList(),
+                    0,27,0,List.of(25000,25000,25000,25000),0,multiResponseWall());
+            service.stop();
+            var saved=new TableArchiveStore.Table(old.tableId(),old.dimension(),old.x(),old.y(),old.z(),old.mode(),
+                    old.lobbyRevision(),old.gameRevision(),old.seats(),GameArchiveCodec.encodeRound(round),old.chairSides());
+            TableArchiveStore.write(path,List.of(saved));
+            service=new LobbyService(helper.getLevel().getServer(),path);
+            service.responseDelaySource=()->0;
+            reopenAll();
+            for(int seat=0;seat<4;seat++) action(seat,GameActionPayload.RESUME,-1,-1);
+            helper.assertTrue(!game(0).paused() && game(0).drawnTile()/4==13,
+                    "The complete physical wall restores and resumes at east's first five-pin draw");
         }
         void step() {
             var pending=pending(); if(!pending.isEmpty()) { for(int seat:pending) pass(seat); return; }
@@ -211,7 +219,7 @@ public final class TablePersistenceGameTests {
             action(actor,GameActionPayload.DISCARD,tile,-1);
         }
         void finishRound() { for(int command=0;command<400 && game(0).rules().phase()!=GameSnapshot.FINISHED;command++) step(); helper.assertTrue(game(0).rules().phase()==GameSnapshot.FINISHED,"A bounded all-pass trajectory reaches a real paid result"); }
-        void reload() { helper.assertTrue(service.save(),"A successful durable checkpoint is required before reload"); service.stop(); service=new LobbyService(helper.getLevel().getServer(),path); }
+        void reload() { helper.assertTrue(service.save(),"A successful durable checkpoint is required before reload"); service.stop(); service=new LobbyService(helper.getLevel().getServer(),path); service.responseDelaySource=()->0; }
         void reopenAll() { for(int seat=0;seat<4;seat++) { views[seat]=service.open(players.get(seat),pos); helper.assertTrue(views[seat]!=null,"Restored participants can authenticate a fresh view at the same table"); } }
         void assertConservation() {
             var seen=new HashSet<Integer>();
@@ -224,5 +232,32 @@ public final class TablePersistenceGameTests {
             for(var fixture:fixtures) { service.disconnect(fixture.player()); fixture.close(); }
             service.removeTable(helper.getLevel(),pos);
         }
+    }
+
+    /** Every physical tile occurs once; the first five-pin has two independently legal callers. */
+    private static List<Integer> multiResponseWall() {
+        int[][] hands={
+                {0,1,2,3,4,5,6,7,8,18,19,20,27}, // 123456789m123s1z
+                {12,14,18,19,20,24,25,26,6,7,8,28,28}, // 46p123789s789m22z: chi five-pin
+                {13,13,10,11,12,21,22,23,26,26,26,29,29}, // 55p234p456999s33z: pon five-pin
+                {9,9,9,16,16,16,17,17,17,30,30,30,32} // 111888999p444z6z: no five-pin response
+        };
+        int[] order=new int[136],copies=new int[34];
+        Arrays.fill(order,-1);
+        boolean[] used=new boolean[136];
+        for(int seat=0;seat<4;seat++) for(int index=0;index<13;index++) {
+            int type=hands[seat][index];
+            if(copies[type]>=4) throw new AssertionError("The fixed wall cannot request a fifth tile");
+            int tile=type*4+copies[type]++;
+            order[index*4+seat]=tile; used[tile]=true;
+        }
+        int drawn=13*4+copies[13]++;
+        order[52]=drawn; used[drawn]=true;
+        int next=0;
+        for(int index=0;index<order.length;index++) if(order[index]<0) {
+            while(used[next]) next++;
+            order[index]=next; used[next]=true;
+        }
+        return Arrays.stream(order).boxed().toList();
     }
 }
