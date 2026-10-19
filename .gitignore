@@ -9,6 +9,7 @@
 /run/
 /run-*/
 /out/
+/logs/
 *.log
 
 # Editors and operating system files

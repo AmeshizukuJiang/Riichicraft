@@ -47,6 +47,8 @@
 
 规则基础可单独运行，不启动游戏或 Gradle：`./tools/Test-Rules.ps1`。也可用 `./tools/Invoke-Gradle.ps1 rulesTest`；`rulesCore` 编译类路径为空，测试进程仅使用纯规则和测试的输出目录。`check` 自动包含规则验证，具体范围见 [RULES_CORE.md](RULES_CORE.md)。
 
+从`0.0.17-dev`起，规则测试还读取固定的v16旧档资源，独立脚本会复制资源到项目内测试输出。普通测试不生成或更新历史字节；专用旧JAR生成器的来源、拒绝覆盖限制及手动复核方法见[历史兼容样本](LEGACY_ARCHIVES.md)。重构规则、恢复、投票或账本时须保持这套检查通过。
+
 `build` 包括配置好的服务端 GameTest；`runClientGameTest` 另行启动实际 Minecraft 客户端，运行后自动关闭并输出截图。游戏测试是否通过以实际报告为准，配置测试入口本身不代表已验证。
 
 `src/main/java/dev/riichicraft/rules` 是不依赖 Minecraft 的四人单局核心；`game/DrawDiscardGame` 保留为旧摸打原型的独立回归对象，活动桌不再用它裁决。`LobbyService` 管理桌子、连接权限和临时生命周期，分别维护外层界面修订与核心动作修订；普通意图严格匹配界面修订，三家响应使用稳定小局／窗口号，不因另一家先答而失效。网络只携带接收者有权查看的数据，所有嵌套集合在分配前检查长度。测试模组与正式模组分开，正式 jar 不包含测试类。客户端与服务器需使用同一 Riichicraft 版本，当前未实现跨协议版本兼容。
