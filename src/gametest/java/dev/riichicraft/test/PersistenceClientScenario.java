@@ -5,7 +5,9 @@ import dev.riichicraft.network.GameActionPayload;
 import dev.riichicraft.network.GameSnapshot;
 import dev.riichicraft.network.LobbyActionPayload;
 import dev.riichicraft.network.LobbySnapshotPayload;
+import dev.riichicraft.persistence.TableArchiveStore;
 import dev.riichicraft.server.LobbyService;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -152,9 +154,28 @@ final class PersistenceClientScenario {
                             "Only the remaining original responses resolve the stored window exactly once after real server restart");
                     second.runOnServer(s->DrawDiscardClientScenario.advance(LobbyService.get(s),session.table,connection.getServerPlayer()));
                     sync(connection); shot(context,"riichicraft-persistence-resumed");
-                    context.clickScreenButton("screen.riichicraft.game.abort");sync(connection);
-                    context.clickScreenButton("screen.riichicraft.game.confirm_abort");sync(connection);
-                    require(snapshot(context).game()==null,"The actual second abort button clears the restored session and archive");
+                    // A partial response may be near the wall's end; the next discard can settle the round.
+                    boolean finished = snapshot(context).game().rules().phase() == GameSnapshot.FINISHED;
+                    if (finished) {
+                        context.clickScreenButton("screen.riichicraft.game.return_lobby");
+                        sync(connection);
+                    } else {
+                        context.clickScreenButton("screen.riichicraft.game.abort");
+                        sync(connection);
+                        context.clickScreenButton("screen.riichicraft.game.confirm_abort");
+                        sync(connection);
+                    }
+                    require(snapshot(context).game()==null,"The applicable lobby-return controls clear the restored client session");
+                    second.runOnServer(s -> {
+                        require(LobbyService.get(s).gameView(session.tableId, session.player) == null,
+                                "The acknowledged return clears the restored server session");
+                        try {
+                            require(TableArchiveStore.read(session.archive).stream().noneMatch(table -> table.tableId().equals(session.tableId)),
+                                    "The acknowledged return removes this restored game from the on-disk archive");
+                        } catch (IOException failure) {
+                            throw new AssertionError("Could not verify the restored game's archive removal", failure);
+                        }
+                    });
                 }
             } finally {
                 if(session.table!=null) DrawDiscardClientScenario.closeFixtures(second,session.table);
