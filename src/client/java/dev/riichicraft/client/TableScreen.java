@@ -7,7 +7,6 @@ import dev.riichicraft.network.LobbySnapshotPayload;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -24,7 +23,6 @@ import static dev.riichicraft.network.GameActionPayload.*;
 /** Transparent controls over the actual table. No inventory or second copy of the hand. */
 public final class TableScreen extends Screen {
     private static final String[] WINDS = {"east", "south", "west", "north"};
-    private static final String[] ENDS = {"ron", "tsumo", "exhaustive", "nagashi", "nine_terminals", "four_winds", "four_riichi", "four_kans"};
     private final DoubleClickDiscardGate discardGate = new DoubleClickDiscardGate();
     private final List<Button> actionButtons = new ArrayList<>();
     private final List<Button> choiceButtons = new ArrayList<>();
@@ -330,13 +328,11 @@ public final class TableScreen extends Screen {
     }
 
     public int displayedPoints(int seat) {
-        if (game().match() != null && game().match().result() != null)
-            for (var standing : game().match().result().standings()) if (standing.seat() == seat) return standing.points();
-        return rules().seats().get(seat).points();
+        return GamePresentation.displayedPoints(game(), seat);
     }
 
     public int displayedDeposits() {
-        return game().match() != null && game().match().result() != null ? 0 : rules().deposits();
+        return GamePresentation.displayedDeposits(game());
     }
 
     private void drawSituation(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -349,7 +345,7 @@ public final class TableScreen extends Screen {
         if (mouseX >= 6 && mouseX < 6 + panelWidth && mouseY >= 6 && mouseY < 33)
             graphics.setComponentTooltipForNextFrame(font, List.of(first, second), mouseX, mouseY);
         if (!menuOpen && snapshot.feedbackKey().isEmpty() && game() != null && (game().paused() || finished())) {
-            Component state = finished() ? gameText("end." + ENDS[rules().result().kind()]) : gameText("paused");
+            Component state = finished() ? GamePresentation.endLabel(rules().result().kind()) : gameText("paused");
             graphics.centeredText(font, font.plainSubstrByWidth(state.getString(), width - 16), width / 2, 36, 0xFFE9D29A);
             if (mouseY >= 35 && mouseY < 46) graphics.setTooltipForNextFrame(state, mouseX, mouseY);
         }
@@ -562,58 +558,13 @@ public final class TableScreen extends Screen {
         return List.copyOf(distinct.values());
     }
 
-    /** Whole-hand point change: accepted declaration debit plus the actual settlement transfers. */
+    /** Compatibility entry point; both interfaces now use the same settlement projection. */
     public static List<Integer> settlementDeltas(GameSnapshot game) {
-        int[] deltas = new int[game.seats().size()];
-        if(game.rules()!=null) for(int seat=0;seat<deltas.length;seat++)
-            if(game.rules().seats().get(seat).riichiPhase()==2) deltas[seat]-=1000;
-        if (game.rules() != null && game.rules().result() != null) for (var payment : game.rules().result().transfers()) {
-            if (payment.fromSeat() >= 0) deltas[payment.fromSeat()] -= payment.points();
-            deltas[payment.toSeat()] += payment.points();
-        }
-        if (game.match() != null && game.match().result() != null && game.match().result().depositRecipient() >= 0)
-            deltas[game.match().result().depositRecipient()] += game.match().result().depositPoints();
-        List<Integer> result = new ArrayList<>();
-        for (int delta : deltas) result.add(delta);
-        return List.copyOf(result);
+        return GamePresentation.settlementDeltas(game);
     }
 
     private static List<Component> resultLines(LobbySnapshotPayload snapshot) {
-        GameSnapshot game = snapshot.game();
-        GameSnapshot.Result result = game.rules().result();
-        List<Component> lines = new ArrayList<>();
-        if(!result.uraIndicators().isEmpty()) {
-            MutableComponent ura=gameText("ura_indicators");
-            for(int tile:result.uraIndicators()) ura.append(" ").append(TileFaces.shortName(tile));
-            lines.add(ura);
-        }
-        for (var value : result.values()) {
-            lines.add(value.yakumanUnits() > 0 ? gameText("value_yakuman", wind(snapshot, value.seat()), value.yakumanUnits(), value.totalPoints())
-                    : gameText("value", wind(snapshot, value.seat()), value.han(), value.fu(), value.totalPoints()));
-            for (var award : value.yaku()) lines.add(text(award.yakumanUnits() > 0 ? "award_yakuman" : "award",
-                    Component.translatable("yaku.riichicraft." + award.yaku().toLowerCase(Locale.ROOT)),
-                    award.yakumanUnits() > 0 ? award.yakumanUnits() : award.han()));
-            if (value.yakumanUnits() == 0) lines.add(gameText("bonuses_kita", value.dora(), value.aka(), value.ura(), value.kita()));
-        }
-        List<Integer> deltas = settlementDeltas(game);
-        lines.add(text("delta_heading"));
-        for (int seat = 0; seat < game.seats().size(); seat++) {
-            int points = game.rules().seats().get(seat).points();
-            if (game.match() != null && game.match().result() != null) for (var standing : game.match().result().standings())
-                if (standing.seat() == seat) points = standing.points();
-            int delta = deltas.get(seat);
-            lines.add(text("points", wind(snapshot, seat), snapshot.seats().get(seat).name(), points, (delta >= 0 ? "+" : "") + delta));
-        }
-        for (var payment : result.transfers()) lines.add(gameText("payment",
-                payment.fromSeat() < 0 ? gameText("deposit_pool") : wind(snapshot, payment.fromSeat()), wind(snapshot, payment.toSeat()), payment.points()));
-        if (!result.tenpai().isEmpty()) {
-            MutableComponent tenpai = gameText("tenpai");
-            for (int seat : result.tenpai()) tenpai.append(" ").append(wind(snapshot, seat));
-            lines.add(tenpai);
-        }
-        if (game.match() != null && game.match().result() != null) for (var standing : game.match().result().standings())
-            lines.add(gameText("standing", standing.rank(), snapshot.seats().get(standing.seat()).name(), standing.points(), tenths(standing.totalTenths())));
-        return List.copyOf(lines);
+        return GamePresentation.tableResultLines(snapshot);
     }
 
     private int resultLinesPerPage() { return Math.max(1, (resultHeight - 44) / 12); }
@@ -624,21 +575,11 @@ public final class TableScreen extends Screen {
     private boolean isResponse() { return rules() != null && rules().opportunity() != null && !rules().responses().isEmpty(); }
     private GameSnapshot game() { return snapshot.game(); }
     private GameSnapshot.RuleState rules() { return game() == null ? null : game().rules(); }
-    private static String tenths(int value) { long amount = Math.abs((long) value); return (value < 0 ? "-" : "+") + amount / 10 + "." + amount % 10; }
     private static MutableComponent text(String key, Object... args) { return Component.translatable("screen.riichicraft.table." + key, args); }
     private static MutableComponent gameText(String key, Object... args) { return Component.translatable("screen.riichicraft.game." + key, args); }
     private static MutableComponent lobbyText(String key, Object... args) { return Component.translatable("screen.riichicraft.lobby." + key, args); }
-    private static Component wind(LobbySnapshotPayload snapshot, int seat) {
-        int dealer = snapshot.game() == null || snapshot.game().rules() == null ? 0 : snapshot.game().rules().dealerSeat();
-        return lobbyText(WINDS[(seat - dealer + snapshot.seats().size()) % snapshot.seats().size()]);
-    }
-    private static Component actionLabel(int action) {
-        return gameText(switch (action) {
-            case TSUMO -> "tsumo"; case NINE_TERMINALS -> "nine_terminals"; case PASS -> "pass"; case RON -> "ron";
-            case CHI -> "chi"; case PON -> "pon"; case OPEN_KAN -> "open_kan"; case CLOSED_KAN -> "closed_kan";
-            case ADDED_KAN -> "added_kan"; case KITA -> "kita"; default -> "actions";
-        });
-    }
+    private static Component wind(LobbySnapshotPayload snapshot, int seat) { return GamePresentation.wind(snapshot, seat); }
+    private static Component actionLabel(int action) { return GamePresentation.actionLabel(action); }
 
     private final class ChoiceButton extends Button {
         private final GameSnapshot.ActionOption option;

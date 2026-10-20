@@ -19,8 +19,6 @@ import static dev.riichicraft.network.GameActionPayload.*;
 /** Recipient-only controls. Enabled tiles and actions always come from the server's legal mask. */
 final class GamePanel {
     private enum Page { BOARD, ACTIONS, RESULT }
-    private static final String[] WINDS={"east","south","west","north"};
-    private static final String[] ENDS={"ron","tsumo","exhaustive","nagashi","nine_terminals","four_winds","four_riichi","four_kans"};
     private final LobbyScreen screen;
     private final Font font;
     private final List<GameTileButton> tiles=new ArrayList<>();
@@ -179,17 +177,13 @@ final class GamePanel {
         for (var option:result) distinct.putIfAbsent(optionLabel(option).getString(),option); return List.copyOf(distinct.values());
     }
     private Component optionLabel(GameSnapshot.ActionOption option) {
-        String key=switch(option.action()) {
-            case KITA -> "kita"; case TSUMO -> "tsumo"; case NINE_TERMINALS -> "nine_terminals"; case PASS -> "pass"; case RON -> "ron";
-            case CHI -> "chi"; case PON -> "pon"; case OPEN_KAN -> "open_kan"; case CLOSED_KAN -> "closed_kan"; case ADDED_KAN -> "added_kan"; default -> "actions";
-        };
-        MutableComponent label=text(key); for (int tile:option.handTiles()) label.append(" ").append(TileFaces.shortName(tile)); return label;
+        return GamePresentation.optionLabel(option);
     }
 
     void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY) {
         graphics.fill(0,0,width,screen.height,0xEE12271F); graphics.centeredText(font,title(),width/2,4,0xFFF0E4C9);
         Component headline=matchFinished()?text("match_end."+game().match().result().reason().toLowerCase(Locale.ROOT))
-                :finished()?text("end."+ENDS[rules().result().kind()]):text("turn",wind(game().turnSeat()),game().remainingTiles());
+                :finished()?GamePresentation.endLabel(rules().result().kind()):text("turn",wind(game().turnSeat()),game().remainingTiles());
         graphics.centeredText(font,headline,width/2,17,0xFFD6E4D9);
         MutableComponent indicators=text("dora");
         if (rules()!=null) { for (int tile:rules().doraIndicators()) indicators.append(" ").append(TileFaces.shortName(tile)); indicators.append("  ").append(text("deposits",matchFinished()?0:rules().deposits())); }
@@ -249,49 +243,15 @@ final class GamePanel {
         }
     }
 
-    private List<Component> resultLines() {
-        if (!finished()) return List.of(); var result=rules().result(); List<Component> lines=new ArrayList<>();
-        if (matchFinished()) {
-            for (var standing:game().match().result().standings()) lines.add(text("standing",standing.rank(),
-                    screen.snapshot().seats().get(standing.seat()).name(),standing.points(),tenths(standing.totalTenths())));
-            lines.add(text(game().seats().size()==3?"ranking_formula_three":"ranking_formula"));
-            if (game().match().result().depositPoints()>0) lines.add(text("final_deposits",game().match().result().depositPoints(),
-                    screen.snapshot().seats().get(game().match().result().depositRecipient()).name()));
-            lines.add(text(game().seats().size()==3?"last_round_result_three":"last_round_result"));
-        } else if (game().match()!=null) lines.add(text(game().seats().size()==3?"cumulative_points_three":"cumulative_points"));
-        if (!result.winners().isEmpty()) {
-            MutableComponent winners=text("winners");
-            for (int seat:result.winners()) winners.append(" ").append(wind(seat));
-            lines.add(winners);
-        }
-        for(int seat=0;seat<game().seats().size();seat++) { int points=rules().seats().get(seat).points(),delta=points-(game().seats().size()==3?35_000:25_000); lines.add(text("result_points",wind(seat),points,(delta>=0?"+":"")+delta)); }
-        if (!result.tenpai().isEmpty()) { MutableComponent tenpai=text("tenpai"); for(int seat:result.tenpai()) tenpai.append(" ").append(wind(seat)); lines.add(tenpai); }
-        for(var value:result.values()) {
-            lines.add(value.yakumanUnits()>0?text("value_yakuman",wind(value.seat()),value.yakumanUnits(),value.totalPoints())
-                    :text("value",wind(value.seat()),value.han(),value.fu(),value.totalPoints()));
-            MutableComponent awards=Component.empty();
-            for(var award:value.yaku()) { if (!awards.getString().isEmpty()) awards.append(" · "); awards.append(Component.translatable("yaku.riichicraft."+award.yaku().toLowerCase(Locale.ROOT))); }
-            lines.add(awards); if(value.yakumanUnits()==0) lines.add(text(value.kita()>0?"bonuses_kita":"bonuses",value.dora(),value.aka(),value.ura(),value.kita()));
-        }
-        if(!result.uraIndicators().isEmpty()) {
-            MutableComponent ura=text("ura_indicators");
-            for(int tile:result.uraIndicators()) ura.append(" ").append(TileFaces.shortName(tile));
-            lines.add(ura);
-        }
-        for(var payment:result.transfers()) lines.add(text("payment",payment.fromSeat()<0?text("deposit_pool"):wind(payment.fromSeat()),wind(payment.toSeat()),payment.points()));
-        lines.add(text(game().match()==null?"single_round_hint":matchFinished()?"match_result_hint":"next_round_hint_count",game().match()==null?0:game().match().confirmations().stream().filter(Boolean::booleanValue).count(),game().seats().size())); return lines;
-    }
-    private int displayPoints(int seat) {
-        return matchFinished()?game().match().result().standings().stream().filter(s->s.seat()==seat).findFirst().orElseThrow().points():rules().seats().get(seat).points();
-    }
+    private List<Component> resultLines() { return GamePresentation.legacyResultLines(screen.snapshot()); }
+    private int displayPoints(int seat) { return GamePresentation.displayedPoints(game(), seat); }
     private Component title() {
         if(game().match()==null) return text(game().seats().size()==3?"title_three":"title");
         return text("match_title",Component.translatable("screen.riichicraft.lobby.mode."+(game().match().format()==0?"east":"south")),
-                Component.translatable("screen.riichicraft.lobby."+WINDS[rules().roundWind()-27]),game().match().roundIndex()%game().seats().size()+1,rules().honba());
+                GamePresentation.roundWind(rules().roundWind()),game().match().roundIndex()%game().seats().size()+1,rules().honba());
     }
-    private static String tenths(int value) { long magnitude=Math.abs((long)value); return (value<0?"-":"+")+magnitude/10+"."+magnitude%10; }
     private GameSnapshot game() { return screen.snapshot().game(); }
     private GameSnapshot.RuleState rules() { return game().rules(); }
-    private Component wind(int seat) { return Component.translatable("screen.riichicraft.lobby."+WINDS[(seat-(rules()==null?0:rules().dealerSeat())+game().seats().size())%game().seats().size()]); }
+    private Component wind(int seat) { return GamePresentation.wind(screen.snapshot(), seat); }
     private static MutableComponent text(String suffix,Object... arguments) { return Component.translatable("screen.riichicraft.game."+suffix,arguments); }
 }
