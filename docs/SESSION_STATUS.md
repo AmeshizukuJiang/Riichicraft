@@ -14,6 +14,8 @@
 - 正式JAR`build/libs/riichicraft-0.1.0-dev.jar`927,333字节／562条目，SHA-256`aeae178d0218f4cc81a460bba1ac16add4025a9a8bc0f71d689d6a44727c2184`；84测试源及内部类／样本／生成器排除，37牌与原许可保留，源码包342条目。试玩ZIP`build/dist/riichicraft-0.1.0-dev-playtest.zip`842,535字节，仅同一JAR、中文说明与SHA，ZIP SHA-256`c5a06d73b4f1f60c91187c88229c78f8464b270b95f66072dcd2e876be21602a`。记录`.tmp/terrain-prototype/artifact*.json`及`package.json`；Gradle已停止。
 - 静态129 JSON／105引用／45资源PNG、44家具映射、41 Markdown／498本地链接／11源码锚点、45双语役名及Git空白检查通过；最终文档后重查。早期编译API、Windows内存不足、错误GameTest假设、未加载目的高度、标题收尾与无效高空图的日志保留。用户关闭FC26后内存足够，测试JVM上限原生1GiB／客户端2GiB，Gradle命令1GiB；未替用户关闭程序或改全局内存设置。
 - 所有主动文件读写均在已授权D盘项目；旧C副本、外部记忆／全局配置／玩家存档未访问。工具链、缓存、测试世界与日志均在忽略目录。下一步先交用户观察地形的尺度／区域／山形，再按反馈调整；不自动加生态内容，个性化仍延后道场。本轮完整提交、固定新tag及普通推送结果以下续记录为准，旧tag不移动、不强推。
+
+- 完整检查点`8f619ac4aba95935084ed35d878b924348190085`与固定新tag`v0.1.0-dev`已普通原子推送至核对过的用户GitHub仓库；`ls-remote`回读确认分支提交、tag对象`43497034f1bf3fa96bf2e3ed807fb07dab5e7998`及解引用目标一致。日志`.tmp/terrain-prototype/github-push.log`／`github-refs.log`。随后仅补本同步记录，不改产物或移动tag、不强推／创建Release；历史其他待同步分支／tag不因本次成功自动视为已解决。
 ## 上一节点：v0.0.20 存档协调重构完成
 
 - 从干净`9a1291f`建立`codex/persistence-coordination`。用户澄清不需兼容历史测试版，已更新AGENTS与开发／历史样本文档；只整理当前保存协调，不增加迁移、依赖、格式版本或新玩法。
