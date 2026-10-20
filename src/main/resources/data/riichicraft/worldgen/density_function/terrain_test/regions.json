@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:noise",
+  "noise": "riichicraft:terrain_test/regions",
+  "xz_scale": 1,
+  "y_scale": 0
+}

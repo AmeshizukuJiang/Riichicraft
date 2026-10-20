@@ -1,0 +1,57 @@
+{
+  "type": "riichicraft:terrain_test",
+  "generator": {
+    "type": "minecraft:noise",
+    "settings": "riichicraft:terrain_test",
+    "biome_source": {
+      "type": "minecraft:multi_noise",
+      "biomes": [
+        {
+          "biome": "riichicraft:test_region_a",
+          "parameters": {
+            "temperature": [
+              -2,
+              -0.16
+            ],
+            "humidity": 0,
+            "continentalness": 0,
+            "erosion": 0,
+            "depth": 0,
+            "weirdness": 0,
+            "offset": 0
+          }
+        },
+        {
+          "biome": "riichicraft:test_region_b",
+          "parameters": {
+            "temperature": [
+              -0.16,
+              0.16
+            ],
+            "humidity": 0,
+            "continentalness": 0,
+            "erosion": 0,
+            "depth": 0,
+            "weirdness": 0,
+            "offset": 0
+          }
+        },
+        {
+          "biome": "riichicraft:test_region_c",
+          "parameters": {
+            "temperature": [
+              0.16,
+              2
+            ],
+            "humidity": 0,
+            "continentalness": 0,
+            "erosion": 0,
+            "depth": 0,
+            "weirdness": 0,
+            "offset": 0
+          }
+        }
+      ]
+    }
+  }
+}

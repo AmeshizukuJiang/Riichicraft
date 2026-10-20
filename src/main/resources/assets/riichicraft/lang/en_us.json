@@ -268,5 +268,16 @@
   "screen.riichicraft.table.perspective_short": "View",
   "screen.riichicraft.table.perspective_key": "Seated / overhead view [%s]",
   "screen.riichicraft.table.controls_keys": "Esc / %1$s: look freely · %1$s: controls · %2$s: view · hide, then %3$s: stand",
-  "screen.riichicraft.table.discard_hint": "Click this same tile again promptly to discard"
+  "screen.riichicraft.table.discard_hint": "Click this same tile again promptly to discard",
+  "biome.riichicraft.test_region_a": "Test Region A",
+  "biome.riichicraft.test_region_b": "Test Region B",
+  "biome.riichicraft.test_region_c": "Test Region C",
+  "command.riichicraft.terrain.entered": "Entered the terrain test dimension.",
+  "command.riichicraft.terrain.left": "Left the terrain test dimension.",
+  "command.riichicraft.terrain.riding": "Dismount before changing dimensions.",
+  "command.riichicraft.terrain.already_inside": "You are already in the terrain test dimension.",
+  "command.riichicraft.terrain.not_inside": "You are not in the terrain test dimension.",
+  "command.riichicraft.terrain.missing_dimension": "The terrain test dimension is unavailable. Check datapack loading.",
+  "command.riichicraft.terrain.no_safe_position": "No safe landing position was found nearby; you were not teleported.",
+  "command.riichicraft.terrain.teleport_failed": "Teleport failed. Try again shortly."
 }

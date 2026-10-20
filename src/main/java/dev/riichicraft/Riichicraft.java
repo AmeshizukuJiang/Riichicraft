@@ -5,6 +5,7 @@ import dev.riichicraft.item.ModItems;
 import dev.riichicraft.entity.ModEntities;
 import dev.riichicraft.network.LobbyNetworking;
 import dev.riichicraft.server.LobbyService;
+import dev.riichicraft.worldgen.TerrainTestCommands;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ public final class Riichicraft implements ModInitializer {
         ModItems.initialize();
         LobbyNetworking.initialize();
         LobbyService.initialize();
+        TerrainTestCommands.initialize();
         LOGGER.info("Riichicraft initialized");
     }
 }

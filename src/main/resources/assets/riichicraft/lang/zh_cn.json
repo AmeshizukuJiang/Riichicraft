@@ -268,5 +268,16 @@
   "screen.riichicraft.table.perspective_short": "视角",
   "screen.riichicraft.table.perspective_key": "切换坐姿／俯瞰 [%s]",
   "screen.riichicraft.table.controls_keys": "Esc／%1$s 收起环顾 · %1$s 恢复操作 · %2$s 视角 · 收起后 %3$s 起身",
-  "screen.riichicraft.table.discard_hint": "再次快速点击同一张牌打出"
+  "screen.riichicraft.table.discard_hint": "再次快速点击同一张牌打出",
+  "biome.riichicraft.test_region_a": "测试区域 A",
+  "biome.riichicraft.test_region_b": "测试区域 B",
+  "biome.riichicraft.test_region_c": "测试区域 C",
+  "command.riichicraft.terrain.entered": "已进入地形测试维度。",
+  "command.riichicraft.terrain.left": "已离开地形测试维度。",
+  "command.riichicraft.terrain.riding": "请先离开载具或椅子，再切换维度。",
+  "command.riichicraft.terrain.already_inside": "你已在地形测试维度中。",
+  "command.riichicraft.terrain.not_inside": "你当前不在地形测试维度中。",
+  "command.riichicraft.terrain.missing_dimension": "地形测试维度不可用，请检查数据包加载情况。",
+  "command.riichicraft.terrain.no_safe_position": "附近没有安全落脚点；未进行传送。",
+  "command.riichicraft.terrain.teleport_failed": "传送未成功，请稍后重试。"
 }
