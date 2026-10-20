@@ -831,34 +831,26 @@ public final class LobbyService {
         return liveGameView(tableId,recipient,prototype);
     }
 
-    private GameSnapshot liveGameView(UUID tableId,UUID recipient,Prototype prototype) {
-        if(prototype.three()) return threeGameView(tableId,recipient,prototype);
-        FourPlayerRound.View gameView = prototype.roundView(recipient);
-        List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
-                seat.concealedCount(), seat.river().stream().map(FourPlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
-                prototype.confirmations.contains(seat.playerId()))).toList();
-        List<GameSnapshot.SeatRules> seatRules=new ArrayList<>(4);
-        for(var seat:gameView.seats()) {
-            List<GameSnapshot.MeldView> melds=new ArrayList<>();
-            for(int index=0;index<seat.melds().size();index++) {
-                var meld=seat.melds().get(index); var origin=seat.origins().get(index);
-                melds.add(new GameSnapshot.MeldView(meld.kind().ordinal(),meld.tiles(),origin.providerSeat(),origin.claimedTileId()));
-            }
-            seatRules.add(new GameSnapshot.SeatRules(melds,seat.river().stream().map(r->
-                    new GameSnapshot.RiverMark(r.declaration(),r.tsumogiri(),r.claimedBy())).toList(),seat.points(),seat.riichi().ordinal()));
+    private GameSnapshot liveGameView(UUID tableId, UUID recipient, Prototype prototype) {
+        if (prototype.three()) {
+            var view = prototype.threeView(recipient);
+            var context = projectionContext(tableId, prototype);
+            var ura = view.end().isPresent() ? revealedUra(prototype) : List.<Integer>of();
+            var match = prototype.threeMatch == null ? null : GameSnapshotProjector.matchInfo(prototype.threeMatch.view(recipient));
+            return GameSnapshotProjector.threePlayer(view, match, context, ura);
         }
-        var options=gameView.turnOptions();
-        List<GameSnapshot.ActionOption> kanOptions=options.kans().stream().map(k->new GameSnapshot.ActionOption(
-                k.kind()==KanActions.Kind.CLOSED?GameActionPayload.CLOSED_KAN:GameActionPayload.ADDED_KAN,k.meldIndex(),k.handTiles()))
-                .sorted(optionOrder()).toList();
-        List<GameSnapshot.ActionOption> responses=gameView.responses().stream().map(LobbyService::responseOption).sorted(optionOrder()).toList();
-        var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
-        var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
-                gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
-                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(end->resultView(end,revealedUra(prototype))).orElse(null));
-        return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
-                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
-                prototype.match==null?null:matchInfo(prototype.match.view(recipient)));
+        var view = prototype.roundView(recipient);
+        var context = projectionContext(tableId, prototype);
+        var ura = view.end().isPresent() ? revealedUra(prototype) : List.<Integer>of();
+        var match = prototype.match == null ? null : GameSnapshotProjector.matchInfo(prototype.match.view(recipient));
+        return GameSnapshotProjector.fourPlayer(view, match, context, ura);
+    }
+
+    private GameSnapshotProjector.Context projectionContext(UUID tableId, Prototype prototype) {
+        var available = new HashSet<UUID>();
+        for (UUID player : prototype.players) if (present(player, tableId)) available.add(player);
+        return new GameSnapshotProjector.Context(prototype.revision, prototype.paused, prototype.statusKey,
+                available, prototype.confirmations);
     }
 
     private void beginResponseDelay(UUID tableId,Prototype prototype,GameActionPayload action,int actor) {
@@ -871,84 +863,9 @@ public final class LobbyService {
         if(actor<0) return;
         prototype.responseDelayTicks=ticks+1;
         var held=new ArrayList<GameSnapshot>();
-        for(UUID player:prototype.players) held.add(waitingView(liveGameView(tableId,player,prototype),actor,action,prototype.revision));
+        for(UUID player:prototype.players) held.add(GameSnapshotProjector.waiting(liveGameView(tableId,player,prototype),actor,action.tileId(),action.action()==GameActionPayload.RIICHI,prototype.revision));
         prototype.waitingHands=List.copyOf(held);
-        prototype.waitingPublic=waitingView(live,actor,action,prototype.revision);
-    }
-
-    private static GameSnapshot waitingView(GameSnapshot live,int discarder,GameActionPayload action,long serial) {
-        int next=live.turnSeat();
-        var seats=new ArrayList<>(live.seats());var drawnSeat=seats.get(next);
-        seats.set(next,new GameSnapshot.Seat(drawnSeat.handCount()-1,drawnSeat.discards(),drawnSeat.present(),false));
-        var hand=new ArrayList<>(live.ownHand());if(live.drawnTile()>=0) hand.remove(Integer.valueOf(live.drawnTile()));
-        var rule=live.rules();var ruleSeats=new ArrayList<>(rule.seats());int deposits=rule.deposits();
-        if(action.action()==GameActionPayload.RIICHI) {
-            var declared=ruleSeats.get(discarder);deposits--;
-            ruleSeats.set(discarder,new GameSnapshot.SeatRules(declared.melds(),declared.river(),declared.points()+1000,1,declared.norths()));
-        }
-        var waiting=new GameSnapshot.RuleState(GameSnapshot.DISCARD_RESPONSES,rule.dealerSeat(),rule.roundWind(),rule.honba(),deposits,
-                rule.doraIndicators(),ruleSeats,List.of(),List.of(),List.of(),false,false,
-                new GameSnapshot.Opportunity(serial,discarder,action.tileId(),false),List.of(),null);
-        return new GameSnapshot(live.gameId(),live.revision(),discarder,live.remainingTiles()+1,seats,hand,-1,false,"",waiting,live.match());
-    }
-
-    private static GameSnapshot.MatchInfo matchInfo(FourPlayerMatch.View view) {
-        GameSnapshot.MatchResult result=view.result().map(value->new GameSnapshot.MatchResult(value.reason().name(),
-                value.standings().stream().map(s->new GameSnapshot.Standing(s.seat(),s.rank(),s.points(),s.rawTenths(),s.umaTenths(),s.totalTenths())).toList(),
-                value.depositRecipient(),value.depositPoints())).orElse(null);
-        return new GameSnapshot.MatchInfo(view.matchId(),view.format().ordinal(),view.phase().ordinal(),view.initialDealer(),
-                view.roundIndex(),view.continueEpoch(),view.confirmations(),result);
-    }
-
-    private GameSnapshot threeGameView(UUID tableId,UUID recipient,Prototype prototype) {
-        ThreePlayerRound.View gameView = prototype.threeView(recipient);
-        List<GameSnapshot.Seat> seats = gameView.seats().stream().map(seat -> new GameSnapshot.Seat(
-                seat.concealedCount(), seat.river().stream().map(ThreePlayerRound.RiverTile::tileId).toList(), present(seat.playerId(), tableId),
-                prototype.confirmations.contains(seat.playerId()))).toList();
-        List<GameSnapshot.SeatRules> seatRules=new ArrayList<>(4);
-        for(var seat:gameView.seats()) {
-            List<GameSnapshot.MeldView> melds=new ArrayList<>();
-            for(int index=0;index<seat.melds().size();index++) {
-                var meld=seat.melds().get(index); var origin=seat.origins().get(index);
-                melds.add(new GameSnapshot.MeldView(meld.kind().ordinal(),meld.tiles(),origin.providerSeat(),origin.claimedTileId()));
-            }
-            seatRules.add(new GameSnapshot.SeatRules(melds,seat.river().stream().map(r->
-                    new GameSnapshot.RiverMark(r.declaration(),r.tsumogiri(),r.claimedBy())).toList(),seat.points(),seat.riichi().ordinal(),seat.norths()));
-        }
-        var options=gameView.turnOptions();
-        List<GameSnapshot.ActionOption> kanOptions=options.kans().stream().map(k->new GameSnapshot.ActionOption(
-                k.kind()==KanActions.Kind.CLOSED?GameActionPayload.CLOSED_KAN:GameActionPayload.ADDED_KAN,k.meldIndex(),k.handTiles()))
-                .sorted(optionOrder()).toList();
-        List<GameSnapshot.ActionOption> responses=gameView.responses().stream().map(LobbyService::responseOption).sorted(optionOrder()).toList();
-        var opportunity=gameView.opportunity().map(o->new GameSnapshot.Opportunity(o.id().serial(),o.actorSeat(),o.tileId(),o.kan())).orElse(null);
-        var rules=new GameSnapshot.RuleState(gameView.phase().ordinal(),gameView.dealerSeat(),gameView.roundWind(),gameView.honba(),gameView.deposits(),
-                gameView.doraIndicators(),seatRules,options.discards().stream().sorted().toList(),options.riichiDiscards().stream().sorted().toList(),
-                kanOptions,options.tsumo(),options.nineTerminals(),opportunity,responses,gameView.end().map(end->resultView(end,revealedUra(prototype))).orElse(null),options.kitas().stream().sorted().toList());
-        return new GameSnapshot(gameView.roundId(),prototype.revision,gameView.actorSeat(),gameView.liveTiles(),seats,
-                gameView.ownHand().map(hand->hand.concealedTiles()).orElse(List.of()),gameView.ownDraw().orElse(-1),prototype.paused,prototype.statusKey,rules,
-                prototype.threeMatch==null?null:matchInfo(prototype.threeMatch.view(recipient)));
-    }
-
-    private static GameSnapshot.MatchInfo matchInfo(ThreePlayerMatch.View view) {
-        GameSnapshot.MatchResult result=view.result().map(value->new GameSnapshot.MatchResult(value.reason().name(),
-                value.standings().stream().map(s->new GameSnapshot.Standing(s.seat(),s.rank(),s.points(),s.rawTenths(),s.umaTenths(),s.totalTenths())).toList(),
-                value.depositRecipient(),value.depositPoints())).orElse(null);
-        return new GameSnapshot.MatchInfo(view.matchId(),view.format().ordinal(),view.phase().ordinal(),view.initialDealer(),
-                view.roundIndex(),view.continueEpoch(),view.confirmations(),result);
-    }
-
-    private static Comparator<GameSnapshot.ActionOption> optionOrder() {
-        return Comparator.comparingInt(GameSnapshot.ActionOption::action).thenComparingInt(GameSnapshot.ActionOption::meldIndex)
-                .thenComparing(o->o.handTiles().toString());
-    }
-
-    private static GameSnapshot.ActionOption responseOption(DiscardResponseWindow.Choice choice) {
-        if(choice==DiscardResponseWindow.Simple.PASS) return new GameSnapshot.ActionOption(GameActionPayload.PASS,-1,List.of());
-        if(choice==DiscardResponseWindow.Simple.RON) return new GameSnapshot.ActionOption(GameActionPayload.RON,-1,List.of());
-        var call=(DiscardResponseWindow.Call)choice;
-        int action=switch(call.kind()) { case CHI->GameActionPayload.CHI; case PON->GameActionPayload.PON;
-            case OPEN_KAN->GameActionPayload.OPEN_KAN; case CLOSED_KAN->throw new IllegalArgumentException("Closed kan is not a discard response"); };
-        return new GameSnapshot.ActionOption(action,-1,call.handTiles());
+        prototype.waitingPublic=GameSnapshotProjector.waiting(live,actor,action.tileId(),action.action()==GameActionPayload.RIICHI,prototype.revision);
     }
 
     private static List<Integer> revealedUra(Prototype prototype) {
@@ -962,28 +879,6 @@ public final class LobbyService {
         if(view.end().isEmpty() || view.end().get().kind().ordinal()>1 || view.end().get().winners().stream().noneMatch(seat->view.seats().get(seat).riichi().ordinal()==2)) return List.of();
         var state=prototype.match==null?prototype.game.serverState():prototype.match.serverState();
         return state.wall().uraIndicators(view.doraIndicators().size());
-    }
-
-    private static GameSnapshot.Result resultView(FourPlayerRound.End end,List<Integer> ura) {
-        List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
-            var v=entry.getValue();
-            return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
-                    new GameSnapshot.Award(y.yaku().name(),y.han(),y.yakumanUnits())).toList(),v.han(),v.fu(),v.yakumanUnits(),
-                    v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints());
-        }).toList();
-        return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
-                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues(),ura);
-    }
-
-    private static GameSnapshot.Result resultView(ThreePlayerRound.End end,List<Integer> ura) {
-        List<GameSnapshot.WinValue> values=end.values().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(entry->{
-            var v=entry.getValue();
-            return new GameSnapshot.WinValue(entry.getKey(),v.winningTileId(),v.yaku().stream().map(y->
-                    new GameSnapshot.Award(y.yaku().name(),y.han(),y.yakumanUnits())).toList(),v.han(),v.fu(),v.yakumanUnits(),
-                    v.dora(),v.aka(),v.ura(),v.points().payment().totalPoints(),v.kita());
-        }).toList();
-        return new GameSnapshot.Result(end.kind().ordinal(),end.winners(),end.tenpai().stream().sorted().toList(),values,
-                end.transfers().stream().map(p->new GameSnapshot.Payment(p.fromSeat(),p.toSeat(),p.points(),p.kind().ordinal())).toList(),end.dealerContinues(),ura);
     }
 
     public void disconnect(ServerPlayer player) {

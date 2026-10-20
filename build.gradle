@@ -71,6 +71,13 @@ fabricApi {
 def verifyDedicatedServer = providers.gradleProperty('verify_dedicated_server')
         .map { value -> value.toBoolean() }.getOrElse(false)
 def testProjectRoot = layout.projectDirectory.asFile.absolutePath
+// Reuse the exact historical core archives for server projection compatibility checks.
+sourceSets.gametest.resources.srcDir('src/rulesTest/resources')
+tasks.named('runGameTest', JavaExec) {
+    systemProperty 'riichicraft.test.projectRoot', testProjectRoot
+    systemProperty 'riichicraft.test.captureSnapshots', providers.gradleProperty('riichicraft_capture_snapshots')
+            .map { value -> value.toBoolean() }.getOrElse(false)
+}
 tasks.named('runClientGameTest', JavaExec) {
     systemProperty 'riichicraft.test.dedicated', verifyDedicatedServer
     systemProperty 'riichicraft.test.projectRoot', testProjectRoot
