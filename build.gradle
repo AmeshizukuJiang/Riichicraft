@@ -74,12 +74,19 @@ def testProjectRoot = layout.projectDirectory.asFile.absolutePath
 // Reuse the exact historical core archives for server projection compatibility checks.
 sourceSets.gametest.resources.srcDir('src/rulesTest/resources')
 tasks.named('runGameTest', JavaExec) {
+    // Explicit limits avoid the desktop JVM ergonomically growing toward 4 GiB.
+    minHeapSize = '128m'
+    maxHeapSize = '1G'
     systemProperty 'riichicraft.test.projectRoot', testProjectRoot
     systemProperty 'riichicraft.test.captureSnapshots', providers.gradleProperty('riichicraft_capture_snapshots')
             .map { value -> value.toBoolean() }.getOrElse(false)
 }
 tasks.named('runClientGameTest', JavaExec) {
+    minHeapSize = '128m'
+    maxHeapSize = '2G'
     systemProperty 'riichicraft.test.dedicated', verifyDedicatedServer
+    systemProperty 'riichicraft.test.terrain', providers.gradleProperty('riichicraft_terrain_test')
+            .map { value -> value.toBoolean() }.getOrElse(false)
     systemProperty 'riichicraft.test.projectRoot', testProjectRoot
     if (verifyDedicatedServer) {
         systemProperty 'java.awt.headless', true

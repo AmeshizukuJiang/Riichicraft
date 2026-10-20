@@ -16,6 +16,10 @@
 | `.tmp` | 临时文件 | 否 |
 | `build`、`run` | 产物、报告、开发／测试世界与日志 | 否 |
 
+## 独立地形生成边界
+
+`src/main/java/dev/riichicraft/worldgen`只维护测试维度标识与管理员往返命令；麻将规则、网络与牌局归档不依赖它。`src/main/resources/data/riichicraft/dimension`定义维度和群系来源，`dimension_type`定义高度／天空边界，`worldgen/noise`与`density_function`定义连续区域和地形，`worldgen/noise_settings`定义填充及按群系着色，`worldgen/biome`定义三个真实群系。目前群系的features／carvers／spawners为空，无运行时逐块替换器、主世界覆盖或新增生成依赖。调参入口见[地形样板](TERRAIN_PROTOTYPE.md)。
+
 ## 固定工具链
 
 | 组件 | 当前版本 |
@@ -75,7 +79,17 @@ PowerShell 中包含 URL 的 `-P` 参数需要整段加引号。此选项同时�
 ./tools/Invoke-Gradle.ps1 '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' runClientGameTest
 ```
 
-EULA 选项默认为 false，不把当前用户的同意写成所有使用者的默认选择。专用测试仅监听 `127.0.0.1`，使用临时端口及项目内的 `riichicraft-dedicated-test-world`；测试会重建该测试世界。专用模式使用 AWT headless 避免额外弹出 Swing 服务器面板，Minecraft 的 GLFW 测试客户端仍正常运行。
+地形样板使用独立的可选测试入口：
+
+```powershell
+./tools/Invoke-Gradle.ps1 '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' '-Priichicraft_terrain_test=true' runClientGameTest
+```
+
+`riichicraft_terrain_test`默认关闭。启用后按三个固定种子创建项目内独立测试世界`riichicraft-terrain-seed-{0,1,2}-{a,b}`，A正常保存重开，B逆序请求区块；这组固定测试目录会重建，不得改成玩家存档。调查和测量报告保存在`.tmp/terrain-prototype`，真实客户端截图保存在客户端测试截图目录；预测图与实际截图分别记录。新旧区块、群系与方块对应、命令往返和重载由真实专用服务器验证，是否整套通过以[地形说明](TERRAIN_PROTOTYPE.md)及[验证记录](VALIDATION.md)为准。
+
+原版26.2的`GameTestServer`把FLAT预设与空LEVEL_STEM注册表合并，忽略额外数据包维度。因此原生GameTest只验证真实资源的`LevelStem.CODEC`解析、动态群系及生成配置；它不证明维度已实际加载。正常创建世界与专用服务器会合并数据包维度，地形实测采用该正常启动路径，不覆盖原版预设或伪造ServerLevel。
+
+EULA 选项默认为 false，不把当前用户的同意写成所有使用者的默认选择。麻将专用测试仅监听 `127.0.0.1`，使用临时端口及项目内的 `riichicraft-dedicated-test-world`；测试会重建该测试世界。地形测试采用上列独立世界及相同本机监听边界。专用模式使用 AWT headless 避免额外弹出 Swing 服务器面板，Minecraft 的 GLFW 测试客户端仍正常运行。
 
 单局场景使用一名真实客户端和三名原生 `ServerPlayer`／`EmbeddedChannel` 夹具。专用测试将最大玩家数设为 8，以允许夹具仍在时真实客户端断线重连；不代表八个真实客户端已经验收。场景验证合法阶段驱动、私有手牌、真实鼠标弃牌、结算保留／重开／返回，以及活动局暂停恢复和终局 TCP 重连；具体已执行证据见 [VALIDATION.md](VALIDATION.md)。每次客户端测试可能重建截图目录，保留证据时应先复制到 `docs/images`。构建日志、测试世界和临时报告保留在忽略目录。
 

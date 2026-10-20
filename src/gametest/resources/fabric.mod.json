@@ -1,11 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "riichicraft-test",
-  "version": "0.0.20-dev",
+  "version": "0.1.0-dev",
   "name": "Riichicraft Game Tests",
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.riichicraft.server.PlaytestFixTestMod"],
+    "main": [
+      "dev.riichicraft.server.PlaytestFixTestMod"
+    ],
     "fabric-gametest": [
       "dev.riichicraft.test.MahjongTableGameTests",
       "dev.riichicraft.test.TileItemGameTests",
@@ -28,10 +30,12 @@
       "dev.riichicraft.test.ThreePlayerServiceGameTests",
       "dev.riichicraft.server.ThreePlayerPersistenceGameTests",
       "dev.riichicraft.test.SurvivalRecipeGameTests",
-      "dev.riichicraft.server.PlaytestFixGameTests"
+      "dev.riichicraft.server.PlaytestFixGameTests",
+      "dev.riichicraft.worldgen.TerrainRegistryGameTests"
     ],
     "fabric-client-gametest": [
-      "dev.riichicraft.test.MahjongTableClientGameTest"
+      "dev.riichicraft.test.MahjongTableClientGameTest",
+      "dev.riichicraft.worldgen.TerrainPrototypeClientGameTest"
     ]
   },
   "depends": {

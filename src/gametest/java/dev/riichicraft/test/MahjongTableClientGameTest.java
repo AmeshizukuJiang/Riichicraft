@@ -36,6 +36,7 @@ public final class MahjongTableClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
+        if (Boolean.getBoolean("riichicraft.test.terrain")) return;
         context.runOnClient(client -> dev.riichicraft.client.GamePresentationChecks.verify());
         if (Boolean.getBoolean("riichicraft.test.dedicated")) {
             Properties properties = dedicatedServerProperties(context);
