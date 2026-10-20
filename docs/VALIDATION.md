@@ -1,5 +1,30 @@
 # 验证记录
 
+## v0.0.20-dev 存档协调：2026-10-20
+
+范围见[存档协调](PERSISTENCE_COORDINATION.md)。从干净`9a1291f`提取保存状态与错误处理；服务保留当前记录构造、核心安装、桌子／玩家和通知，原原子文件写入器不改。用户已明确开发阶段不以旧测试版兼容为目标，本轮没有迁移分支、新格式版本或新依赖。
+
+| 类别 | 实际结果 |
+| --- | --- |
+| 编译／规则／打包 | `build`、`check`及`sourcesJar`任务完成，29套／5,664,445规则断言通过；同次组合命令的后续客户端失败，不能将整个命令表述为成功。日志`.tmp/persistence-refactor/validation.log` |
+| 原生服务端 | **100 required／35.47秒全部通过**。新增三／四麻各2项：干净检查点不重写；暂时IO与运行时失败保留文件，接受后续动作后重试最新修订，同版恢复与暂停正确；启动后文件损坏停止写入并保留当前核心、名册，终止／拆桌／停服不覆盖。既有部分响应、局间／终局、无效核心隔离与停服失败保护保留 |
+| 快照一致性 | 原416份接收者封包／4,609断言及10条纯转换检查通过，未生成新历史样本或添加兼容读取器 |
+| 首次客户端失败 | 组合命令**3分37秒退出1**；地形渲染`GpuOutOfMemoryException`，申请134,217,728字节缓冲失败。规则与100项原生测试已完成；失败日志保留，不用它声称客户端通过 |
+| 真实TCP重试 | 用户关闭其他游戏后，保持源码与测试设置不变，`runClientGameTest` **2分32秒成功**；三四麻、键鼠／菜单／分页、观战、生存合成与正常停服后另一服务器实例重开同世界通过。旧1,933展示断言及25,914动画帧断言保留；日志`.tmp/persistence-refactor/client-retry.log` |
+| 静态／产物 | 115 JSON／105引用／45资源PNG、44家具映射及双语通过。JAR911,969字节／535条目；199规则、34网络／存档及30客户端class与基线字节相同。新增协调类、Writer和SaveOutcome，原服务内写入接口由协调器Writer接管；服务和其内部类按提取调整。80测试源类型及内部类、样本及生成器排除，37牌及原许可保留，源码包316条目 |
+
+本次执行命令：
+
+```powershell
+./tools/Invoke-Gradle.ps1 --console=plain --offline --no-configuration-cache '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' build sourcesJar runClientGameTest
+# 上述命令的客户端因GPU缓冲分配失败；用户关闭其他游戏后保持原设置重试
+./tools/Invoke-Gradle.ps1 --console=plain --offline --no-configuration-cache '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' runClientGameTest
+```
+
+正式JAR`build/libs/riichicraft-0.0.20-dev.jar`，SHA-256`5270648597b77840762d5d95890892a43a180632361ac026d3615884b3c46188`。试玩ZIP`build/dist/riichicraft-0.0.20-dev-playtest.zip`，832,382字节，仅含同一JAR、中文说明和SHA，包内JAR校验一致；ZIP SHA-256`17a1f79131414ab4fdb151bf476a618dd148d79c5ba87df8617c084f940d95b1`。产物记录`.tmp/persistence-refactor/artifact.json`、`artifact-compare.json`及`package.json`，Gradle已停止。
+
+已查看实际暂停恢复与实体桌重开截图，保存在本地测试截图目录。回归是一名真实TCP客户端加原生服务端夹具，未新增真人多人长期、高延迟／丢包、硬崩溃或整机重启验收。Git提交与远程结果见[接续记录](SESSION_STATUS.md)。
+
 ## v0.0.19-dev 服务端快照转换：2026-10-20
 
 范围见[服务端快照转换](SERVER_PROJECTION.md)：提取三／四麻单局及整场、动作／结算与临时等待的纯快照转换；服务继续负责身份、在场、规则动作、生命周期、保存及里宝公开。没有规则、操作、协议、档案格式或依赖变更。
