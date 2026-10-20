@@ -160,6 +160,76 @@ public final class TablePersistenceGameTests {
         helper.succeed();
     }
 
+    @GameTest
+    public void transientSaveFailuresRetryLatestAcceptedStateAndCleanSavesDoNotRewrite(GameTestHelper helper) throws IOException {
+        int[] fault = {0}, writes = {0};
+        try (Scenario scenario = new Scenario(helper, LobbyRegistry.SINGLE, (path, tables) -> {
+            writes[0]++;
+            if (fault[0] == 1) throw new IOException("Injected temporary disk failure");
+            if (fault[0] == 2) throw new IllegalStateException("Injected checkpoint assembly/writer failure");
+            TableArchiveStore.write(path, tables);
+        })) {
+            scenario.service.responseDelaySource = () -> 0;
+            helper.assertTrue(scenario.service.save() && writes[0] == 1, "The current live game reaches its first durable checkpoint");
+            byte[] original = Files.readAllBytes(scenario.path);
+            helper.assertTrue(scenario.service.save() && writes[0] == 1, "An unchanged game does not rewrite its durable checkpoint");
+            scenario.action(0, GameActionPayload.DISCARD, scenario.game(0).drawnTile(), -1);
+            fault[0] = 1;
+            helper.assertTrue(!scenario.service.save() && writes[0] == 2 && Arrays.equals(original, Files.readAllBytes(scenario.path)),
+                    "A temporary IO failure retains the prior successful file and a retryable dirty state");
+            var pending = scenario.pending();
+            if (!pending.isEmpty()) scenario.pass(pending.getFirst());
+            else {
+                int actor = scenario.game(0).turnSeat();
+                scenario.action(actor, GameActionPayload.DISCARD, scenario.game(actor).drawnTile(), -1);
+            }
+            var latest = scenario.coreViews();
+            fault[0] = 2;
+            helper.assertTrue(!scenario.service.save() && writes[0] == 3 && Arrays.equals(original, Files.readAllBytes(scenario.path)),
+                    "A runtime checkpoint failure also retains the intact prior file without losing later accepted actions");
+            fault[0] = 0;
+            helper.assertTrue(scenario.service.save() && writes[0] == 4
+                            && TableArchiveStore.read(scenario.path).getFirst().gameRevision() == scenario.game(0).revision()
+                            && !Arrays.equals(original, Files.readAllBytes(scenario.path)),
+                    "A successful retry checkpoints the newest accepted revision instead of a cached failed snapshot");
+            helper.assertTrue(scenario.service.save() && writes[0] == 4, "Successful retry clears dirty state and stops unnecessary writes");
+            scenario.reload();
+            helper.assertTrue(scenario.coreViews().equals(latest) && scenario.game(0).paused(),
+                    "A new service restores the exact current-version checkpoint after retry and requires recovery confirmation");
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void damageAfterStartupBlocksFurtherWritesAndRetainsCurrentOwnership(GameTestHelper helper) throws IOException {
+        int[] writes = {0};
+        try (Scenario scenario = new Scenario(helper, LobbyRegistry.SINGLE, (path, tables) -> {
+            writes[0]++;
+            TableArchiveStore.write(path, tables);
+        })) {
+            scenario.service.responseDelaySource = () -> 0;
+            helper.assertTrue(scenario.service.save(), "Begin with a readable current-version checkpoint");
+            scenario.action(0, GameActionPayload.DISCARD, scenario.game(0).drawnTile(), -1);
+            var held = scenario.coreViews();
+            byte[] damaged = {7, 8, 9, 10};
+            Files.write(scenario.path, damaged);
+            helper.assertTrue(!scenario.service.save() && writes[0] == 2 && Arrays.equals(damaged, Files.readAllBytes(scenario.path)),
+                    "Damage discovered during saving is retained instead of being overwritten");
+            helper.assertTrue(!scenario.service.save() && writes[0] == 2, "The blocked owner never invokes the writer again");
+            helper.assertTrue(scenario.service.open(scenario.players.getFirst(), scenario.pos) == null,
+                    "A damaged world checkpoint cannot be opened as a fresh lobby");
+            scenario.action(0, GameActionPayload.ABORT, -1, -1);
+            scenario.service.removeTable(helper.getLevel(), scenario.pos);
+            helper.assertTrue(scenario.coreViews().equals(held) && scenario.players.stream().allMatch(player ->
+                            scenario.service.registry().tableForPlayer(player.getUUID()).orElseThrow().equals(scenario.tableId)),
+                    "Rejected abort and physical removal preserve the blocked game's existing state and reserved seats");
+            scenario.service.stop();
+            helper.assertTrue(!scenario.service.save() && writes[0] == 2 && Arrays.equals(damaged, Files.readAllBytes(scenario.path)),
+                    "Shutdown and a later native save cannot replace the blocked file with cleared runtime state");
+        }
+        helper.succeed();
+    }
+
     private record CoreView(UUID round,int actor,int remaining,List<Integer> hand,int draw,GameSnapshot.RuleState rules) {
         static CoreView of(GameSnapshot snapshot) { return new CoreView(snapshot.gameId(),snapshot.turnSeat(),snapshot.remainingTiles(),snapshot.ownHand(),snapshot.drawnTile(),snapshot.rules()); }
     }
@@ -169,7 +239,7 @@ public final class TablePersistenceGameTests {
         final List<ConnectedTestPlayer> fixtures=new ArrayList<>(); final List<ServerPlayer> players=new ArrayList<>();
         final UUID[] views=new UUID[4]; LobbyService service; UUID tableId;
         Scenario(GameTestHelper helper,int mode) { this(helper,mode,TableArchiveStore::write); }
-        Scenario(GameTestHelper helper,int mode,LobbyService.ArchiveWriter writer) {
+        Scenario(GameTestHelper helper,int mode,TablePersistenceCoordinator.Writer writer) {
             this.helper=helper; pos=helper.absolutePos(new BlockPos(2,2,2));
             path=helper.getLevel().getServer().getWorldPath(LevelResource.ROOT).resolve("data/riichicraft-tests/"+UUID.randomUUID()+"/tables.dat");
             service=new LobbyService(helper.getLevel().getServer(),path,writer);
