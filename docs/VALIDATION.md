@@ -1,5 +1,29 @@
 # 验证记录
 
+## v0.0.19-dev 服务端快照转换：2026-10-20
+
+范围见[服务端快照转换](SERVER_PROJECTION.md)：提取三／四麻单局及整场、动作／结算与临时等待的纯快照转换；服务继续负责身份、在场、规则动作、生命周期、保存及里宝公开。没有规则、操作、协议、档案格式或依赖变更。
+
+| 类别 | 实际结果 |
+| --- | --- |
+| 原版封包采集 | 原v18 JAR SHA及运行服务class字节双校验后，13份历史核心＋六赛制完整合法牌墙／真实立直，按身份及恢复／确认／等待／缺席阶段采集416份编码。`runGameTest`1分5秒成功，96 required／22.65秒、4,191语义及10纯转换断言；此轮是采集证据，不替代提取后回归。日志`.tmp/snapshot-refactor/capture-server.log` |
+| 新转换对照 | **4,609断言／416包逐字节一致**，覆盖19个实际核心情形、每名参与者、公用及陌生身份；公共信息一致、私手及私有动作隔离、立直待成立与下一摸隐藏通过。固定预期208,854字节，SHA-256`10a58fff192992febbc21b9a053091ccf14727a124e76bef5558b12e87fb8ebf`；默认只读，采集器默认关闭且新服务无法通过原版class校验 |
+| 纯转换 | **10断言**：Context集合复制且不可变；三／四麻保留修订、暂停、在场及恢复确认信息；转换前后权威核心档案编码字节相同 |
+| 最终构建／规则 | `build sourcesJar runClientGameTest` **4分14秒成功**；原29套／5,664,445规则断言、14份原v16档案检查保留。日志`.tmp/snapshot-refactor/validation.log` |
+| 原生服务端 | **96 required／22.83秒全过**，比v18新增2项；测试在实际Minecraft服务端运行，不是96名真人 |
+| 实际客户端／重开 | 一名真实TCP客户端加原生服务端测试玩家；三四麻、键鼠／菜单／分页、观战、生存合成及正常保存停服后另一专用服务器实例重开原世界全过。旧1,933展示断言和25,914动画帧断言保留；实际恢复截图`0052_riichicraft-persistence-resumed.png`已查看 |
+| 静态／产物 | 115 JSON／105引用／45资源PNG、44家具映射及双语通过。正式JAR908,475字节／533条目；199规则、34网络／存档及30客户端class与v18逐项字节相同。只改变服务类和switch辅助类，新增转换类、Context及switch辅助类，无删除class。逐一排除80测试源类型及内部类，样本／采集器不打包；37牌和原许可保留；源码包315条目 |
+
+最终完整命令（项目本地工具链与已获同意的本地EULA选项）：
+
+```powershell
+./tools/Invoke-Gradle.ps1 --console=plain --offline --no-configuration-cache '-Ploom_fabric_repository=https://maven2.fabricmc.net/' '-Priichicraft_accept_eula=true' '-Pverify_dedicated_server=true' build sourcesJar runClientGameTest
+```
+
+生产JAR`build/libs/riichicraft-0.0.19-dev.jar`，SHA-256`ded151fd4f584fe87b058ffced50ab2d462af802f01a373ad1e58e12fdb1d19a`。试玩包`build/dist/riichicraft-0.0.19-dev-playtest.zip`，828,946字节，仅含相同JAR、中文说明和SHA，包内JAR校验一致；ZIP SHA-256`1c0c817ee603ebe5542d29c3e187a32e600496a51d2b1b351714ed51b52bc72d`。产物记录`.tmp/snapshot-refactor/artifact.json`、`artifact-compare.json`及`package.json`；Gradle已停止，Git同步见[接续记录](SESSION_STATUS.md)。
+
+416包保护的是固定轨迹中的真实网络输出，不是全部麻将状态穷举或完整时序证明。实际TCP仍是一名客户端搭配两／三名原生内存夹具，旁观另用四夹具；本轮未新增真人多人长期、高延迟／丢包、多桌性能、硬崩溃或整机重启验收。
+
 ## v0.0.18-dev 共用客户端展示：2026-10-20
 
 范围见[共用展示](SHARED_PRESENTATION.md)：提取不可变结算摘要、公共文字及动作标签，保留两界面布局、输入、原点差基准及行顺序。无新依赖，规则、服务端、协议和存档格式不变。
