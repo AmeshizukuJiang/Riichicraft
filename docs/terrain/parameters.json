@@ -1,0 +1,413 @@
+{
+  "src/main/resources/data/riichicraft/dimension_type/terrain_test.json": {
+    "sha256": "cfa6a18cfcd81778eeeb05e4540685ffdd5a5c19b33865918a2db47c3aaf561f",
+    "data": {
+      "ambient_light": 0,
+      "attributes": {
+        "minecraft:visual/ambient_light_color": "#0a0a0a",
+        "minecraft:visual/cloud_height": 240,
+        "minecraft:visual/fog_color": "#c0d8ff",
+        "minecraft:visual/sky_color": "#78a7ff",
+        "minecraft:gameplay/respawn_anchor_works": false,
+        "minecraft:gameplay/nether_portal_spawns_piglin": false
+      },
+      "coordinate_scale": 1,
+      "default_clock": "minecraft:overworld",
+      "has_ceiling": false,
+      "has_ender_dragon_fight": false,
+      "has_skylight": true,
+      "height": 256,
+      "infiniburn": "#minecraft:infiniburn_overworld",
+      "logical_height": 256,
+      "min_y": 0,
+      "monster_spawn_block_light_limit": 0,
+      "monster_spawn_light_level": 0,
+      "timelines": "#minecraft:in_overworld"
+    }
+  },
+  "src/main/resources/data/riichicraft/dimension/terrain_test.json": {
+    "sha256": "0312fc18eb364bc0b449d5fb8739091a8857df4d4abb94d0c9f11e138b52eb05",
+    "data": {
+      "type": "riichicraft:terrain_test",
+      "generator": {
+        "type": "minecraft:noise",
+        "settings": "riichicraft:terrain_test",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "riichicraft:test_region_a",
+              "parameters": {
+                "temperature": [
+                  -2,
+                  -0.16
+                ],
+                "humidity": 0,
+                "continentalness": 0,
+                "erosion": 0,
+                "depth": 0,
+                "weirdness": 0,
+                "offset": 0
+              }
+            },
+            {
+              "biome": "riichicraft:test_region_b",
+              "parameters": {
+                "temperature": [
+                  -0.16,
+                  0.16
+                ],
+                "humidity": 0,
+                "continentalness": 0,
+                "erosion": 0,
+                "depth": 0,
+                "weirdness": 0,
+                "offset": 0
+              }
+            },
+            {
+              "biome": "riichicraft:test_region_c",
+              "parameters": {
+                "temperature": [
+                  0.16,
+                  2
+                ],
+                "humidity": 0,
+                "continentalness": 0,
+                "erosion": 0,
+                "depth": 0,
+                "weirdness": 0,
+                "offset": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/biome/test_region_a.json": {
+    "sha256": "ad4f3586b89e4088c4c7e004f52d01cff409c12347f0eb0873f84b46f71df16a",
+    "data": {
+      "attributes": {
+        "minecraft:visual/sky_color": "#78a7ff"
+      },
+      "carvers": [],
+      "downfall": 0,
+      "effects": {
+        "water_color": "#3f76e4"
+      },
+      "features": [],
+      "has_precipitation": false,
+      "spawn_costs": {},
+      "spawners": {},
+      "temperature": 0.8
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/biome/test_region_b.json": {
+    "sha256": "ad4f3586b89e4088c4c7e004f52d01cff409c12347f0eb0873f84b46f71df16a",
+    "data": {
+      "attributes": {
+        "minecraft:visual/sky_color": "#78a7ff"
+      },
+      "carvers": [],
+      "downfall": 0,
+      "effects": {
+        "water_color": "#3f76e4"
+      },
+      "features": [],
+      "has_precipitation": false,
+      "spawn_costs": {},
+      "spawners": {},
+      "temperature": 0.8
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/biome/test_region_c.json": {
+    "sha256": "ad4f3586b89e4088c4c7e004f52d01cff409c12347f0eb0873f84b46f71df16a",
+    "data": {
+      "attributes": {
+        "minecraft:visual/sky_color": "#78a7ff"
+      },
+      "carvers": [],
+      "downfall": 0,
+      "effects": {
+        "water_color": "#3f76e4"
+      },
+      "features": [],
+      "has_precipitation": false,
+      "spawn_costs": {},
+      "spawners": {},
+      "temperature": 0.8
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/density_function/terrain_test/base_density.json": {
+    "sha256": "01181a860ccac4614c12893a853330688075656fedf4028b26ef4fe56377f0f0",
+    "data": {
+      "type": "minecraft:add",
+      "argument1": {
+        "type": "minecraft:mul",
+        "argument1": 0.0625,
+        "argument2": "riichicraft:terrain_test/height"
+      },
+      "argument2": {
+        "type": "minecraft:y_clamped_gradient",
+        "from_y": 0,
+        "to_y": 256,
+        "from_value": 0,
+        "to_value": -16
+      }
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/density_function/terrain_test/detail.json": {
+    "sha256": "bf113ab874cbd7978055a961d35cbdc53f5a7a5d9b0370977234754c8f8cac8b",
+    "data": {
+      "type": "minecraft:noise",
+      "noise": "riichicraft:terrain_test/detail",
+      "xz_scale": 1,
+      "y_scale": 0
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/density_function/terrain_test/height.json": {
+    "sha256": "a50e570f3b56ed14c15690e62ecb03d9268a379f8bc91b050aaebdd4cf9a88f3",
+    "data": {
+      "type": "minecraft:add",
+      "argument1": {
+        "type": "minecraft:spline",
+        "spline": {
+          "coordinate": "riichicraft:terrain_test/landform",
+          "points": [
+            {
+              "location": -1,
+              "value": 76,
+              "derivative": 0
+            },
+            {
+              "location": -0.45,
+              "value": 82,
+              "derivative": 20
+            },
+            {
+              "location": -0.1,
+              "value": 94,
+              "derivative": 60
+            },
+            {
+              "location": 0.2,
+              "value": 122,
+              "derivative": 125
+            },
+            {
+              "location": 0.55,
+              "value": 164,
+              "derivative": 95
+            },
+            {
+              "location": 1,
+              "value": 188,
+              "derivative": 0
+            }
+          ]
+        }
+      },
+      "argument2": {
+        "type": "minecraft:mul",
+        "argument1": {
+          "type": "minecraft:spline",
+          "spline": {
+            "coordinate": "riichicraft:terrain_test/landform",
+            "points": [
+              {
+                "location": -1,
+                "value": 3,
+                "derivative": 0
+              },
+              {
+                "location": -0.2,
+                "value": 5,
+                "derivative": 4
+              },
+              {
+                "location": 0.3,
+                "value": 12,
+                "derivative": 8
+              },
+              {
+                "location": 1,
+                "value": 18,
+                "derivative": 0
+              }
+            ]
+          }
+        },
+        "argument2": "riichicraft:terrain_test/detail"
+      }
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/density_function/terrain_test/landform.json": {
+    "sha256": "a911ea6c5afa3f134daae64cba082a4542cba293e7e4a9b2eae9e553ad404a0e",
+    "data": {
+      "type": "minecraft:noise",
+      "noise": "riichicraft:terrain_test/landform",
+      "xz_scale": 1,
+      "y_scale": 0
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/density_function/terrain_test/regions.json": {
+    "sha256": "a69edbe3c67b6b57f015a0a0529003865a8a4ffe25a5db72dc9e04687f6d44dc",
+    "data": {
+      "type": "minecraft:noise",
+      "noise": "riichicraft:terrain_test/regions",
+      "xz_scale": 1,
+      "y_scale": 0
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/noise_settings/terrain_test.json": {
+    "sha256": "052e00ebf432af91d274603867706425badfeb6150df971c66a5f0fc2398606a",
+    "data": {
+      "aquifers_enabled": false,
+      "default_block": {
+        "Name": "minecraft:stone"
+      },
+      "default_fluid": {
+        "Name": "minecraft:water"
+      },
+      "disable_mob_generation": true,
+      "legacy_random_source": false,
+      "noise": {
+        "height": 256,
+        "min_y": 0,
+        "size_horizontal": 1,
+        "size_vertical": 1
+      },
+      "noise_router": {
+        "barrier": 0,
+        "fluid_level_floodedness": 0,
+        "fluid_level_spread": 0,
+        "lava": 0,
+        "temperature": "riichicraft:terrain_test/regions",
+        "vegetation": 0,
+        "continents": 0,
+        "erosion": 0,
+        "depth": 0,
+        "ridges": 0,
+        "preliminary_surface_level": {
+          "type": "minecraft:find_top_surface",
+          "density": "riichicraft:terrain_test/base_density",
+          "upper_bound": 255,
+          "lower_bound": 0,
+          "cell_height": 8
+        },
+        "final_density": {
+          "type": "minecraft:interpolated",
+          "argument": "riichicraft:terrain_test/base_density"
+        },
+        "vein_toggle": 0,
+        "vein_ridged": 0,
+        "vein_gap": 0
+      },
+      "ore_veins_enabled": false,
+      "sea_level": 0,
+      "spawn_target": [],
+      "surface_rule": {
+        "type": "minecraft:sequence",
+        "sequence": [
+          {
+            "type": "minecraft:condition",
+            "if_true": {
+              "type": "minecraft:vertical_gradient",
+              "random_name": "riichicraft:terrain_test/bedrock",
+              "true_at_and_below": {
+                "above_bottom": 0
+              },
+              "false_at_and_above": {
+                "above_bottom": 1
+              }
+            },
+            "then_run": {
+              "type": "minecraft:block",
+              "result_state": {
+                "Name": "minecraft:bedrock"
+              }
+            }
+          },
+          {
+            "type": "minecraft:condition",
+            "if_true": {
+              "type": "minecraft:biome",
+              "biome_is": "riichicraft:test_region_a"
+            },
+            "then_run": {
+              "type": "minecraft:block",
+              "result_state": {
+                "Name": "minecraft:lime_concrete"
+              }
+            }
+          },
+          {
+            "type": "minecraft:condition",
+            "if_true": {
+              "type": "minecraft:biome",
+              "biome_is": "riichicraft:test_region_b"
+            },
+            "then_run": {
+              "type": "minecraft:block",
+              "result_state": {
+                "Name": "minecraft:orange_concrete"
+              }
+            }
+          },
+          {
+            "type": "minecraft:condition",
+            "if_true": {
+              "type": "minecraft:biome",
+              "biome_is": "riichicraft:test_region_c"
+            },
+            "then_run": {
+              "type": "minecraft:block",
+              "result_state": {
+                "Name": "minecraft:light_blue_concrete"
+              }
+            }
+          },
+          {
+            "type": "minecraft:block",
+            "result_state": {
+              "Name": "minecraft:stone"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/noise/terrain_test/detail.json": {
+    "sha256": "ca9155ccd8c12519f40ffd963d8e27b9b6110a4fee87f76d0688f391008680f5",
+    "data": {
+      "firstOctave": -6,
+      "amplitudes": [
+        1,
+        0.5,
+        0.25
+      ]
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/noise/terrain_test/landform.json": {
+    "sha256": "65200ba421002996f4b990791daf0bb05255dc2dfdc49fdd14fdd33615b774fb",
+    "data": {
+      "firstOctave": -9,
+      "amplitudes": [
+        1,
+        0.4,
+        0.15
+      ]
+    }
+  },
+  "src/main/resources/data/riichicraft/worldgen/noise/terrain_test/regions.json": {
+    "sha256": "29cacacdd81bfab5d4d71e274f12770fef0dc119fd89d6c8eee4443b6300d1ce",
+    "data": {
+      "firstOctave": -9,
+      "amplitudes": [
+        1,
+        0.25
+      ]
+    }
+  }
+}

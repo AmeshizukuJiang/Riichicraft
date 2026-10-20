@@ -1,0 +1,2877 @@
+{
+  "minecraft": "26.2",
+  "originOverheadFeetAboveSurface": 40,
+  "boundaryOverheadFeetAboveSurface": 48,
+  "observationConditions": "clouds OFF, time noon, clear weather; identical for all seeds, test worlds only",
+  "dimension": "riichicraft:terrain_test",
+  "method": "independent native server A, graceful reopen A, reverse-order independent native server B",
+  "performanceBoundary": "observed test machine timings, including support generation and tick waits; not a throughput guarantee",
+  "seeds": [
+    {
+      "seed": 20261020,
+      "seedText": "20261020",
+      "worldA": "riichicraft-terrain-seed-0-a",
+      "worldB": "riichicraft-terrain-seed-0-b",
+      "prediction": {
+        "kind": "biome-source prediction; not generated blocks",
+        "minimumCoordinate": -2048,
+        "maximumCoordinate": 2048,
+        "step": 32,
+        "samples": 16641,
+        "differentNeighbourCells": 2714,
+        "regions": [
+          {
+            "biome": "riichicraft:test_region_a",
+            "cells": 4863,
+            "fraction": 0.29223003425274924,
+            "connectedComponents": 24,
+            "largestComponentCells": 907
+          },
+          {
+            "biome": "riichicraft:test_region_b",
+            "cells": 7462,
+            "fraction": 0.4484105522504657,
+            "connectedComponents": 3,
+            "largestComponentCells": 7330
+          },
+          {
+            "biome": "riichicraft:test_region_c",
+            "cells": 4316,
+            "fraction": 0.25935941349678504,
+            "connectedComponents": 19,
+            "largestComponentCells": 747
+          }
+        ],
+        "heightPrediction": {
+          "kind": "fixed-grid getBaseHeight prediction (first free Y); not actual FULL chunks or game screenshot",
+          "minimumCoordinate": -2048,
+          "maximumCoordinate": 2048,
+          "step": 128,
+          "samples": 1089,
+          "minimumPredictedY": 77,
+          "maximumPredictedY": 188,
+          "predictedHeightP10": 85,
+          "predictedHeightMedian": 101,
+          "predictedHeightP90": 140,
+          "neighbourGradients": 2112,
+          "gradientMedian": 0.0703125,
+          "gradientP90": 0.2265625,
+          "gradientMaximum": 0.4609375,
+          "gradientAtMost0.02Fraction": 0.17140151515151514,
+          "gradientAtMost0.05Fraction": 0.40198863636363635,
+          "gradientAtMost0.1Fraction": 0.6273674242424242,
+          "heightBands": [
+            {
+              "fromInclusive": 0,
+              "untilExclusive": 32,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 32,
+              "untilExclusive": 64,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 64,
+              "untilExclusive": 96,
+              "fraction": 0.3838383838383838
+            },
+            {
+              "fromInclusive": 96,
+              "untilExclusive": 128,
+              "fraction": 0.4288337924701561
+            },
+            {
+              "fromInclusive": 128,
+              "untilExclusive": 160,
+              "fraction": 0.1561065197428834
+            },
+            {
+              "fromInclusive": 160,
+              "untilExclusive": 192,
+              "fraction": 0.031221303948576674
+            },
+            {
+              "fromInclusive": 192,
+              "untilExclusive": 224,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 224,
+              "untilExclusive": 256,
+              "fraction": 0.0
+            }
+          ],
+          "elapsedMilliseconds": 480.5044
+        },
+        "estimatedLow": {
+          "x": -1920,
+          "y": 77,
+          "z": 128
+        },
+        "estimatedHigh": {
+          "x": 1024,
+          "y": 188,
+          "z": -256
+        },
+        "boundaryProbe": {
+          "x": -128,
+          "y": 128,
+          "z": -64
+        },
+        "serverThreadForecastWallMilliseconds": 552.1053
+      },
+      "fixedOriginGridChunks": 16,
+      "extraPredictionSelectedChunks": 13,
+      "initialChunks": [
+        {
+          "chunkX": -2,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "64183c5bffeca2632da8fe29ea5548e9902d8b0305025e332b8574a32f204dab",
+          "minimumTopY": 156,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40466,
+          "airBlocksChecked": 25070,
+          "biomeMappedBlocksChecked": 40210,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 80.0093,
+          "initialFullRequestMilliseconds": 886.2732
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "ced999ed2cf8728f1577c8df5a2e38b5c3d5fd6b75a91ab8536ea1af166f6087",
+          "minimumTopY": 156,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40317,
+          "airBlocksChecked": 25219,
+          "biomeMappedBlocksChecked": 40061,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 29.7617,
+          "initialFullRequestMilliseconds": 137.6076
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "5359bcfb4856ada84f66edfb6ac604e6a920a27b737416e66d1277d5d1b25a7e",
+          "minimumTopY": 156,
+          "maximumTopY": 160,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40798,
+          "airBlocksChecked": 24738,
+          "biomeMappedBlocksChecked": 40542,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 30.6592,
+          "initialFullRequestMilliseconds": 101.8698
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "f1e871821e115bbbf31ed0a8d5a4270e6ef32f6b1b546ee864772f70b73b0b46",
+          "minimumTopY": 158,
+          "maximumTopY": 161,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41181,
+          "airBlocksChecked": 24355,
+          "biomeMappedBlocksChecked": 40925,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 35.2142,
+          "initialFullRequestMilliseconds": 112.6327
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "9803d37d1e0233e4a581b12cd67b58a5624d8235f8b66548fb937f5b895de2f9",
+          "minimumTopY": 157,
+          "maximumTopY": 160,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40885,
+          "airBlocksChecked": 24651,
+          "biomeMappedBlocksChecked": 40629,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 24.0166,
+          "initialFullRequestMilliseconds": 107.5833
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "b17d2a54d02009031bcf3193b42f175faa91cf0f9db2626555338c81eff41b86",
+          "minimumTopY": 156,
+          "maximumTopY": 159,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40562,
+          "airBlocksChecked": 24974,
+          "biomeMappedBlocksChecked": 40306,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.9812,
+          "initialFullRequestMilliseconds": 28.5527
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "79819167a7c4f70add2ae6f45a6ffd36c0ab4953f910d65da2f346121feedf59",
+          "minimumTopY": 156,
+          "maximumTopY": 159,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40593,
+          "airBlocksChecked": 24943,
+          "biomeMappedBlocksChecked": 40337,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 19.9879,
+          "initialFullRequestMilliseconds": 43.526
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "7c84838590da23e08c88c3c37501e9c7dc30597aa744e0f714979eb5e9e98f0b",
+          "minimumTopY": 158,
+          "maximumTopY": 161,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41178,
+          "airBlocksChecked": 24358,
+          "biomeMappedBlocksChecked": 40922,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 22.2171,
+          "initialFullRequestMilliseconds": 28.016
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "caec4006a187842f4d36439c2087c641f3a876f96d64eb45a2ddfe21c7258845",
+          "minimumTopY": 158,
+          "maximumTopY": 160,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40970,
+          "airBlocksChecked": 24566,
+          "biomeMappedBlocksChecked": 40714,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.4782,
+          "initialFullRequestMilliseconds": 113.0596
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "c482d906cadf8c750ae91b8949732d0b258a27ebcf2ad21129393eb04790001c",
+          "minimumTopY": 157,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40598,
+          "airBlocksChecked": 24938,
+          "biomeMappedBlocksChecked": 40342,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 22.2539,
+          "initialFullRequestMilliseconds": 28.9651
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "16ddbd54a3e207510bf34a022ed8b630e82c9502b7b325e576c5ad30f4db0755",
+          "minimumTopY": 157,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40582,
+          "airBlocksChecked": 24954,
+          "biomeMappedBlocksChecked": 40326,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 23.9462,
+          "initialFullRequestMilliseconds": 28.8983
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "a9ef27c85d80d9340cb7a71046b43a7c5dfc17332e96f201e61a1acc61485afb",
+          "minimumTopY": 156,
+          "maximumTopY": 160,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40828,
+          "airBlocksChecked": 24708,
+          "biomeMappedBlocksChecked": 40572,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 21.4398,
+          "initialFullRequestMilliseconds": 28.4752
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "eaed8f5a2238be0acf873ba91dad04503003170018b46726d02f7c062bc96ab4",
+          "minimumTopY": 157,
+          "maximumTopY": 162,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41161,
+          "airBlocksChecked": 24375,
+          "biomeMappedBlocksChecked": 40905,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 27.7421,
+          "initialFullRequestMilliseconds": 103.6577
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "ef688b4efd1bbc009c489fd705ad7baea113bf7ee44b752489cfe1839a3cea2c",
+          "minimumTopY": 156,
+          "maximumTopY": 160,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40534,
+          "airBlocksChecked": 25002,
+          "biomeMappedBlocksChecked": 40278,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 21.6156,
+          "initialFullRequestMilliseconds": 31.5983
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "2895b247b24e263c6d3845a021bd267c76120d65ac492d3048ad974dd5680d77",
+          "minimumTopY": 152,
+          "maximumTopY": 157,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40096,
+          "airBlocksChecked": 25440,
+          "biomeMappedBlocksChecked": 39840,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 23.2761,
+          "initialFullRequestMilliseconds": 27.8834
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "9bd4ab05a4518c0227b4e3589da45320935a556ab210e7099748f952d0e927d2",
+          "minimumTopY": 149,
+          "maximumTopY": 156,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 39522,
+          "airBlocksChecked": 26014,
+          "biomeMappedBlocksChecked": 39266,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 18.7767,
+          "initialFullRequestMilliseconds": 29.5441
+        },
+        {
+          "chunkX": -8,
+          "chunkZ": 16,
+          "fullBlockAndBiomeSha256": "306026cbd5630db22a0a7f5b62d81b21fcce71bb96726dcbb71deaf6197876e9",
+          "minimumTopY": 89,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23315,
+          "airBlocksChecked": 42221,
+          "biomeMappedBlocksChecked": 23059,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 17,
+            "riichicraft:test_region_a": 239
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.0495,
+          "initialFullRequestMilliseconds": 293.8931
+        },
+        {
+          "chunkX": -10,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "59d4f290503f85d8b936bc46ab4be1656487db33e0b1ae7a5d128319e8983bad",
+          "minimumTopY": 150,
+          "maximumTopY": 155,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 39436,
+          "airBlocksChecked": 26100,
+          "biomeMappedBlocksChecked": 39180,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 86,
+            "riichicraft:test_region_c": 170
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 21.4479,
+          "initialFullRequestMilliseconds": 492.2816
+        },
+        {
+          "chunkX": -120,
+          "chunkZ": 8,
+          "fullBlockAndBiomeSha256": "4d5e391db2b44ca12af589679c0cd909f87bd1f61cd4bca0a8c9e6ec3802da36",
+          "minimumTopY": 76,
+          "maximumTopY": 77,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 19838,
+          "airBlocksChecked": 45698,
+          "biomeMappedBlocksChecked": 19582,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 10.7735,
+          "initialFullRequestMilliseconds": 326.0852
+        },
+        {
+          "chunkX": 64,
+          "chunkZ": -16,
+          "fullBlockAndBiomeSha256": "9f2c231b7a83cd2b6129b29b4521436044eefec417d42dc6fd0a3d59e93450cd",
+          "minimumTopY": 183,
+          "maximumTopY": 187,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 47813,
+          "airBlocksChecked": 17723,
+          "biomeMappedBlocksChecked": 47557,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 21.8328,
+          "initialFullRequestMilliseconds": 655.3159
+        },
+        {
+          "chunkX": -9,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "5a607da7e9537ba57fba498b6267522ed0ec2996c45f58fadc4ce58c8a66a1cc",
+          "minimumTopY": 149,
+          "maximumTopY": 155,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 39166,
+          "airBlocksChecked": 26370,
+          "biomeMappedBlocksChecked": 38910,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 23.9688,
+          "initialFullRequestMilliseconds": 173.7312
+        },
+        {
+          "chunkX": -8,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "2de8f9fd5e7a918dd0a695ec221196f878ee8e5bb92df264972361fe78d4113b",
+          "minimumTopY": 153,
+          "maximumTopY": 159,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40385,
+          "airBlocksChecked": 25151,
+          "biomeMappedBlocksChecked": 40129,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 24.2016,
+          "initialFullRequestMilliseconds": 106.1231
+        },
+        {
+          "chunkX": -7,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "b4340d0ecf31e90b211c74fac5fa30c9b1a79bdbdaccd106177cfb959b214ad9",
+          "minimumTopY": 159,
+          "maximumTopY": 163,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41500,
+          "airBlocksChecked": 24036,
+          "biomeMappedBlocksChecked": 41244,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 26.5923,
+          "initialFullRequestMilliseconds": 112.2831
+        },
+        {
+          "chunkX": -9,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "1993949de4f25f9b3ad7750b4a260a82fae79a707f8d55acb2611ad3dff795d0",
+          "minimumTopY": 152,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40017,
+          "airBlocksChecked": 25519,
+          "biomeMappedBlocksChecked": 39761,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 21.4637,
+          "initialFullRequestMilliseconds": 28.2845
+        },
+        {
+          "chunkX": -8,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "299a1a5c15bbf399b718c8bdb809fff05a879fe622e6876e13f6cc7eb6b6e4ad",
+          "minimumTopY": 156,
+          "maximumTopY": 163,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40965,
+          "airBlocksChecked": 24571,
+          "biomeMappedBlocksChecked": 40709,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.2069,
+          "initialFullRequestMilliseconds": 30.7229
+        },
+        {
+          "chunkX": -7,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "ca604879b09c32c460afa15f7e3c50c5f7ef94e2f4d8beb089ae53f844b0d80f",
+          "minimumTopY": 160,
+          "maximumTopY": 165,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41937,
+          "airBlocksChecked": 23599,
+          "biomeMappedBlocksChecked": 41681,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 26.6793,
+          "initialFullRequestMilliseconds": 27.6628
+        },
+        {
+          "chunkX": -9,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "01535e8b3dbc759cd7afb63e51c0e4d003276ea795efb4115b568eca95ffebff",
+          "minimumTopY": 152,
+          "maximumTopY": 158,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 40057,
+          "airBlocksChecked": 25479,
+          "biomeMappedBlocksChecked": 39801,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.2998,
+          "initialFullRequestMilliseconds": 107.1421
+        },
+        {
+          "chunkX": -8,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "8f3fd8dc529691b6cb4b0b4af47c7616de5c626d7f1c6318669b3d4172f2a542",
+          "minimumTopY": 157,
+          "maximumTopY": 163,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 41227,
+          "airBlocksChecked": 24309,
+          "biomeMappedBlocksChecked": 40971,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.8756,
+          "initialFullRequestMilliseconds": 28.2258
+        },
+        {
+          "chunkX": -7,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "46099dd173d14c33a8e0641cbd41625b17634d060b7d715b490bf64f61e5fde9",
+          "minimumTopY": 161,
+          "maximumTopY": 166,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 42265,
+          "airBlocksChecked": 23271,
+          "biomeMappedBlocksChecked": 42009,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 20.8594,
+          "initialFullRequestMilliseconds": 25.4713
+        }
+      ],
+      "continuity": {
+        "interiorAdjacentPairs": 13920,
+        "chunkBorderAdjacentPairs": 592,
+        "interiorMeanStep": 0.13261494252873562,
+        "chunkBorderMeanStep": 0.14695945945945946,
+        "maximumChunkBorderStep": 1,
+        "heightP10": 152,
+        "heightMedian": 158,
+        "heightP90": 162,
+        "adjacentStepAtMost1Fraction": 1.0,
+        "adjacentStepAtMost2Fraction": 1.0,
+        "adjacentStepAtMost4Fraction": 1.0,
+        "adjacentStepOver4Fraction": 0.0
+      },
+      "measuredMinimumTopY": 76,
+      "measuredMaximumTopY": 187,
+      "actualSurfaceBiomeColumns": {
+        "riichicraft:test_region_c": 6826,
+        "riichicraft:test_region_b": 103,
+        "riichicraft:test_region_a": 495
+      },
+      "survivalTravelPassed": true,
+      "exploration": {
+        "method": "normal player loading after fixed 32-block teleports; no biome forecast or full-column diagnostics in this window",
+        "boundary": "finite local-machine route observation; server tick execution differs from wall interval and does not include all asynchronous generation; not sustained TPS/FPS",
+        "startX": 8192,
+        "startZ": 8192,
+        "cameraFeetY": 220,
+        "stepBlocks": 32,
+        "plannedSteps": 16,
+        "initialRegionFileAbsent": true,
+        "initialLoadMilliseconds": 6144.6343,
+        "segments": [
+          {
+            "step": 1,
+            "x": 8224,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 943.3698
+          },
+          {
+            "step": 2,
+            "x": 8256,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1104.4313
+          },
+          {
+            "step": 3,
+            "x": 8288,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1246.9399
+          },
+          {
+            "step": 4,
+            "x": 8320,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 853.4286
+          },
+          {
+            "step": 5,
+            "x": 8352,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 946.0906
+          },
+          {
+            "step": 6,
+            "x": 8384,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1203.3914
+          },
+          {
+            "step": 7,
+            "x": 8416,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 651.1123
+          },
+          {
+            "step": 8,
+            "x": 8448,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 844.697
+          },
+          {
+            "step": 9,
+            "x": 8480,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 751.9457
+          },
+          {
+            "step": 10,
+            "x": 8512,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 952.3077
+          },
+          {
+            "step": 11,
+            "x": 8544,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 851.1747
+          },
+          {
+            "step": 12,
+            "x": 8576,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 943.6061
+          },
+          {
+            "step": 13,
+            "x": 8608,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 951.8125
+          },
+          {
+            "step": 14,
+            "x": 8640,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1253.0243
+          },
+          {
+            "step": 15,
+            "x": 8672,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1252.8538
+          },
+          {
+            "step": 16,
+            "x": 8704,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1293.7088
+          }
+        ],
+        "completedSteps": 16,
+        "segmentTiming": {
+          "count": 16,
+          "medianMilliseconds": 951.8125,
+          "p95Milliseconds": 1293.7088,
+          "maximumMilliseconds": 1293.7088
+        },
+        "serverTickExecution": {
+          "count": 415,
+          "medianMilliseconds": 0.8126,
+          "p95Milliseconds": 2.3319,
+          "maximumMilliseconds": 1561.4806
+        },
+        "ticksOverTwoSeconds": 0,
+        "segmentsOverTwoSeconds": 0,
+        "severeTickObserved": false,
+        "observationCompleted": true,
+        "assessment": "No server tick over two seconds observed in this fixed finite window"
+      },
+      "generatedAfterReopen": [
+        {
+          "chunkX": 4096,
+          "chunkZ": -4096,
+          "fullBlockAndBiomeSha256": "f283805d012d412c9cac4d29f8436aa9924b8d89903801b0664c416b190ec8c7",
+          "minimumTopY": 81,
+          "maximumTopY": 82,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 21184,
+          "airBlocksChecked": 44352,
+          "biomeMappedBlocksChecked": 20928,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.0567,
+          "newFullRequestMilliseconds": 361.7721
+        },
+        {
+          "chunkX": -8192,
+          "chunkZ": 6144,
+          "fullBlockAndBiomeSha256": "6bc5d9f7040d9475b06eb6b67f196c17a453491a62ec357f65e96438230bcaae",
+          "minimumTopY": 84,
+          "maximumTopY": 88,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22274,
+          "airBlocksChecked": 43262,
+          "biomeMappedBlocksChecked": 22018,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.3736,
+          "newFullRequestMilliseconds": 363.4667
+        }
+      ],
+      "restartWithoutReturnPointFallback": true,
+      "screenshots": [
+        {
+          "x": 8,
+          "y": 198,
+          "z": 8,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-0-origin-overhead",
+          "path": "../images/terrain/seed-0-origin-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": 8.5,
+            "y": 199.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": 8,
+          "y": 161,
+          "z": 8,
+          "yaw": -35.0,
+          "pitch": 7.0,
+          "name": "riichicraft-terrain-seed-0-origin-ground",
+          "path": "../images/terrain/seed-0-origin-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 7.0,
+            "cameraPitch": 7.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.12186936,
+            "x": 8.5,
+            "y": 162.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": -128,
+          "y": 204,
+          "z": -64,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-0-boundary-overhead",
+          "path": "../images/terrain/seed-0-boundary-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": -127.5,
+            "y": 205.61999988555908,
+            "z": -63.5
+          }
+        },
+        {
+          "x": -1920,
+          "y": 78,
+          "z": 128,
+          "yaw": -35.0,
+          "pitch": 5.0,
+          "name": "riichicraft-terrain-seed-0-lowland-ground",
+          "path": "../images/terrain/seed-0-lowland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 5.0,
+            "cameraPitch": 5.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.087155744,
+            "x": -1919.5,
+            "y": 79.61999988555908,
+            "z": 128.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedLow",
+          "actualFullSurfaceY": 76
+        },
+        {
+          "x": 1024,
+          "y": 189,
+          "z": -256,
+          "yaw": 35.0,
+          "pitch": 12.0,
+          "name": "riichicraft-terrain-seed-0-highland-ground",
+          "path": "../images/terrain/seed-0-highland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": 1024.5,
+            "y": 190.61999988555908,
+            "z": -255.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedHigh",
+          "actualFullSurfaceY": 187
+        },
+        {
+          "x": -126,
+          "y": 93,
+          "z": 257,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-0-region-a-ground",
+          "path": "../images/terrain/seed-0-region-a-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": -125.5,
+            "y": 94.61999988555908,
+            "z": 257.5
+          }
+        },
+        {
+          "x": -159,
+          "y": 152,
+          "z": -63,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-0-region-b-ground",
+          "path": "../images/terrain/seed-0-region-b-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": -158.5,
+            "y": 153.61999988555908,
+            "z": -62.5
+          }
+        },
+        {
+          "x": 1,
+          "y": 160,
+          "z": 1,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-0-region-c-ground",
+          "path": "../images/terrain/seed-0-region-c-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 1.5,
+            "y": 161.61999988555908,
+            "z": 1.5
+          }
+        },
+        {
+          "x": 0,
+          "y": -60,
+          "z": 0,
+          "name": "riichicraft-terrain-seed-0-reopened-leave",
+          "path": "../images/terrain/seed-0-reopened-leave.png",
+          "yaw": 35,
+          "pitch": 12,
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": 0.5,
+            "y": -58.38000011444092,
+            "z": 0.5
+          }
+        }
+      ],
+      "observedFullRequestTimings": {
+        "requests": 62,
+        "medianMilliseconds": 103.6577,
+        "p95Milliseconds": 589.9424,
+        "maximumMilliseconds": 886.2732
+      },
+      "reopenOldChunkHashesEqual": true,
+      "reverseGenerationOrderHashesEqual": true,
+      "comparedFullChunks": 31,
+      "passed": true,
+      "debugBiomeScreenshot": "../images/terrain/seed-0-debug-biome.png"
+    },
+    {
+      "seed": 42,
+      "seedText": "42",
+      "worldA": "riichicraft-terrain-seed-1-a",
+      "worldB": "riichicraft-terrain-seed-1-b",
+      "prediction": {
+        "kind": "biome-source prediction; not generated blocks",
+        "minimumCoordinate": -2048,
+        "maximumCoordinate": 2048,
+        "step": 32,
+        "samples": 16641,
+        "differentNeighbourCells": 2357,
+        "regions": [
+          {
+            "biome": "riichicraft:test_region_a",
+            "cells": 6043,
+            "fraction": 0.3631392344210084,
+            "connectedComponents": 10,
+            "largestComponentCells": 2516
+          },
+          {
+            "biome": "riichicraft:test_region_b",
+            "cells": 6894,
+            "fraction": 0.4142779881016766,
+            "connectedComponents": 4,
+            "largestComponentCells": 6724
+          },
+          {
+            "biome": "riichicraft:test_region_c",
+            "cells": 3704,
+            "fraction": 0.22258277747731506,
+            "connectedComponents": 25,
+            "largestComponentCells": 486
+          }
+        ],
+        "heightPrediction": {
+          "kind": "fixed-grid getBaseHeight prediction (first free Y); not actual FULL chunks or game screenshot",
+          "minimumCoordinate": -2048,
+          "maximumCoordinate": 2048,
+          "step": 128,
+          "samples": 1089,
+          "minimumPredictedY": 77,
+          "maximumPredictedY": 184,
+          "predictedHeightP10": 84,
+          "predictedHeightMedian": 103,
+          "predictedHeightP90": 143,
+          "neighbourGradients": 2112,
+          "gradientMedian": 0.0703125,
+          "gradientP90": 0.21875,
+          "gradientMaximum": 0.4765625,
+          "gradientAtMost0.02Fraction": 0.16524621212121213,
+          "gradientAtMost0.05Fraction": 0.39204545454545453,
+          "gradientAtMost0.1Fraction": 0.6297348484848485,
+          "heightBands": [
+            {
+              "fromInclusive": 0,
+              "untilExclusive": 32,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 32,
+              "untilExclusive": 64,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 64,
+              "untilExclusive": 96,
+              "fraction": 0.36363636363636365
+            },
+            {
+              "fromInclusive": 96,
+              "untilExclusive": 128,
+              "fraction": 0.43526170798898073
+            },
+            {
+              "fromInclusive": 128,
+              "untilExclusive": 160,
+              "fraction": 0.1689623507805326
+            },
+            {
+              "fromInclusive": 160,
+              "untilExclusive": 192,
+              "fraction": 0.03213957759412305
+            },
+            {
+              "fromInclusive": 192,
+              "untilExclusive": 224,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 224,
+              "untilExclusive": 256,
+              "fraction": 0.0
+            }
+          ],
+          "elapsedMilliseconds": 408.1096
+        },
+        "estimatedLow": {
+          "x": 512,
+          "y": 77,
+          "z": 0
+        },
+        "estimatedHigh": {
+          "x": -1792,
+          "y": 184,
+          "z": 896
+        },
+        "boundaryProbe": {
+          "x": 96,
+          "y": 128,
+          "z": 0
+        },
+        "serverThreadForecastWallMilliseconds": 432.2231
+      },
+      "fixedOriginGridChunks": 16,
+      "extraPredictionSelectedChunks": 12,
+      "initialChunks": [
+        {
+          "chunkX": -2,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "3a5fe2e7ead28e0ee593ba6e426dd6093323b7909885c6304196d6d5b47c1bdf",
+          "minimumTopY": 111,
+          "maximumTopY": 114,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 29081,
+          "airBlocksChecked": 36455,
+          "biomeMappedBlocksChecked": 28825,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 16.3647,
+          "initialFullRequestMilliseconds": 408.449
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "6e284d73009543c235319a371230a43253ea58b97fc13a12633b2ecb34f37b7c",
+          "minimumTopY": 105,
+          "maximumTopY": 111,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 27970,
+          "airBlocksChecked": 37566,
+          "biomeMappedBlocksChecked": 27714,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.9255,
+          "initialFullRequestMilliseconds": 71.8564
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "03170458552b2c611e42081ddcaa9478e377d64ffa72251f8107ad094003b8cd",
+          "minimumTopY": 103,
+          "maximumTopY": 107,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 27018,
+          "airBlocksChecked": 38518,
+          "biomeMappedBlocksChecked": 26762,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.9225,
+          "initialFullRequestMilliseconds": 74.7571
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "46c49d85d8963afa18ce6554dcd3453cdcf9d8fb20385158fb3aa045f45de3db",
+          "minimumTopY": 100,
+          "maximumTopY": 105,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 26627,
+          "airBlocksChecked": 38909,
+          "biomeMappedBlocksChecked": 26371,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.9981,
+          "initialFullRequestMilliseconds": 65.2568
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "e815114ca4c33d2c9cf88349ae046dac5363c5f8f93ae5fc47a91791aea5a62a",
+          "minimumTopY": 110,
+          "maximumTopY": 114,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 28827,
+          "airBlocksChecked": 36709,
+          "biomeMappedBlocksChecked": 28571,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.6951,
+          "initialFullRequestMilliseconds": 88.8086
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "ee050d9bbfb246998f10336d4f57dd57f5cd7d38b34a8c18b31fa774c5b04c85",
+          "minimumTopY": 105,
+          "maximumTopY": 110,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 27799,
+          "airBlocksChecked": 37737,
+          "biomeMappedBlocksChecked": 27543,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.8121,
+          "initialFullRequestMilliseconds": 21.02
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "d13278f06d4ee1dd9c99501cbc8b62c519b60c70f25e9da59a2a836b307baaa9",
+          "minimumTopY": 100,
+          "maximumTopY": 105,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 26473,
+          "airBlocksChecked": 39063,
+          "biomeMappedBlocksChecked": 26217,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.0608,
+          "initialFullRequestMilliseconds": 17.7374
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "599e25f4eadc625e57744d3902874495ccb6ac63037ed4db8651c6860a07d9e9",
+          "minimumTopY": 97,
+          "maximumTopY": 102,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 25812,
+          "airBlocksChecked": 39724,
+          "biomeMappedBlocksChecked": 25556,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.8447,
+          "initialFullRequestMilliseconds": 19.9101
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "a0c228e2bb0020f2bdf575a1bc36186ee10bf46dfb33a196e3c23ce39171885e",
+          "minimumTopY": 108,
+          "maximumTopY": 112,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 28551,
+          "airBlocksChecked": 36985,
+          "biomeMappedBlocksChecked": 28295,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.218,
+          "initialFullRequestMilliseconds": 70.1785
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "d075b78eb6a66ce0ff1e8b6eae457084385b51b1e3fb0ce7ba88b2333433277d",
+          "minimumTopY": 104,
+          "maximumTopY": 110,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 27577,
+          "airBlocksChecked": 37959,
+          "biomeMappedBlocksChecked": 27321,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.7716,
+          "initialFullRequestMilliseconds": 18.2051
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "0ad8943a13377d6267f7027ff195740ae40d3496730ec9fdbea38fa594cfa718",
+          "minimumTopY": 98,
+          "maximumTopY": 104,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 26122,
+          "airBlocksChecked": 39414,
+          "biomeMappedBlocksChecked": 25866,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.6105,
+          "initialFullRequestMilliseconds": 17.3613
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "b339a8e695ec0d746f6140bac30013bf6ee03b212c47b4a7c0ff5a964121535b",
+          "minimumTopY": 96,
+          "maximumTopY": 99,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 25106,
+          "airBlocksChecked": 40430,
+          "biomeMappedBlocksChecked": 24850,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 16.6744,
+          "initialFullRequestMilliseconds": 19.883
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "70032a1d050cd7e9bbdf5569cd05080cc08a55f810b3739d747c4dc4b3a55fc4",
+          "minimumTopY": 108,
+          "maximumTopY": 111,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 28199,
+          "airBlocksChecked": 37337,
+          "biomeMappedBlocksChecked": 27943,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.182,
+          "initialFullRequestMilliseconds": 72.0334
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "dde0a4956d8a441634648579868c3f42b68371d8a9eecf3d408ae621db478e5c",
+          "minimumTopY": 104,
+          "maximumTopY": 108,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 27502,
+          "airBlocksChecked": 38034,
+          "biomeMappedBlocksChecked": 27246,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.1662,
+          "initialFullRequestMilliseconds": 20.0711
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "ad75005268b731bda569401b6ab083cc3e853e78a245370d124c983dae32e67c",
+          "minimumTopY": 98,
+          "maximumTopY": 105,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 26200,
+          "airBlocksChecked": 39336,
+          "biomeMappedBlocksChecked": 25944,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.0888,
+          "initialFullRequestMilliseconds": 21.8055
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "211269dd6c3802b87d9a54d5753c94a00e8ee611c193625c333baefec2a293e2",
+          "minimumTopY": 96,
+          "maximumTopY": 99,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 25127,
+          "airBlocksChecked": 40409,
+          "biomeMappedBlocksChecked": 24871,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.7917,
+          "initialFullRequestMilliseconds": 21.0279
+        },
+        {
+          "chunkX": 6,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "f4fd7100b6bb84fa69a5ab81c2daf26a01cf86a112a9162db4b9215cb5024309",
+          "minimumTopY": 85,
+          "maximumTopY": 87,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22154,
+          "airBlocksChecked": 43382,
+          "biomeMappedBlocksChecked": 21898,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.5614,
+          "initialFullRequestMilliseconds": 276.6685
+        },
+        {
+          "chunkX": 12,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "f8365f69eada015fb95cfde1fc481bb4a2feb06bcf2261fae877e666be254134",
+          "minimumTopY": 82,
+          "maximumTopY": 83,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 21351,
+          "airBlocksChecked": 44185,
+          "biomeMappedBlocksChecked": 21095,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.4996,
+          "initialFullRequestMilliseconds": 269.621
+        },
+        {
+          "chunkX": 32,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "a1f6732efca03ef198aaa2153098e157788b08a6c26f13894a21816a0a8edb59",
+          "minimumTopY": 75,
+          "maximumTopY": 76,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 19534,
+          "airBlocksChecked": 46002,
+          "biomeMappedBlocksChecked": 19278,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.3863,
+          "initialFullRequestMilliseconds": 310.168
+        },
+        {
+          "chunkX": -112,
+          "chunkZ": 56,
+          "fullBlockAndBiomeSha256": "04b00b852b7c34f4f35f29ccb72691a87084b3f0607c8257884ea00de5cd30ea",
+          "minimumTopY": 171,
+          "maximumTopY": 183,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 45943,
+          "airBlocksChecked": 19593,
+          "biomeMappedBlocksChecked": 45687,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 192,
+            "riichicraft:test_region_b": 64
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 22.3513,
+          "initialFullRequestMilliseconds": 594.9467
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "2ac77419ee52d1b4b7f30d8147f97513bd8c847faaf8a9209cfd5181b38f641c",
+          "minimumTopY": 87,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22819,
+          "airBlocksChecked": 42717,
+          "biomeMappedBlocksChecked": 22563,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 193,
+            "riichicraft:test_region_b": 63
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.4153,
+          "initialFullRequestMilliseconds": 57.2812
+        },
+        {
+          "chunkX": 6,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "def61f920111b157c2bc1e06d6108789f5de6e7c65dc5cd8608e18d4edf33f78",
+          "minimumTopY": 86,
+          "maximumTopY": 89,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22712,
+          "airBlocksChecked": 42824,
+          "biomeMappedBlocksChecked": 22456,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.162,
+          "initialFullRequestMilliseconds": 17.5615
+        },
+        {
+          "chunkX": 7,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "ef0ac3543851e52377c33413a4d21d7783917724849771f9cbfe8c25a1304014",
+          "minimumTopY": 86,
+          "maximumTopY": 89,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22684,
+          "airBlocksChecked": 42852,
+          "biomeMappedBlocksChecked": 22428,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.6616,
+          "initialFullRequestMilliseconds": 61.2649
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "cf287f101b2968289db5568a4069dfb26c5462e74b5ab3f921f15244a260cbfb",
+          "minimumTopY": 86,
+          "maximumTopY": 88,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22520,
+          "airBlocksChecked": 43016,
+          "biomeMappedBlocksChecked": 22264,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 217,
+            "riichicraft:test_region_b": 39
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.6467,
+          "initialFullRequestMilliseconds": 3.3709
+        },
+        {
+          "chunkX": 7,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "272477f6cdb43878a45cbbc4490a04ffbde8b6835680f74d499e2b28125732b8",
+          "minimumTopY": 84,
+          "maximumTopY": 87,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22063,
+          "airBlocksChecked": 43473,
+          "biomeMappedBlocksChecked": 21807,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.7931,
+          "initialFullRequestMilliseconds": 15.8375
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "299a24dff5fa7f0cd3fd5ba2f3cd734a763e1d911083b69b9f9b6379e5a90755",
+          "minimumTopY": 85,
+          "maximumTopY": 88,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22434,
+          "airBlocksChecked": 43102,
+          "biomeMappedBlocksChecked": 22178,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 254,
+            "riichicraft:test_region_b": 2
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.3915,
+          "initialFullRequestMilliseconds": 54.1229
+        },
+        {
+          "chunkX": 6,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "12acc3ea399d281712d5ac20bc2a74021d1424edb194eb189adc77acc1b98634",
+          "minimumTopY": 83,
+          "maximumTopY": 85,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 21867,
+          "airBlocksChecked": 43669,
+          "biomeMappedBlocksChecked": 21611,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 21,
+            "riichicraft:test_region_b": 235
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.7191,
+          "initialFullRequestMilliseconds": 17.5573
+        },
+        {
+          "chunkX": 7,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "38ba75350aa9044c92e4e72232ccedaf674fa8ad67fde00936025904541d32b6",
+          "minimumTopY": 82,
+          "maximumTopY": 84,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 21592,
+          "airBlocksChecked": 43944,
+          "biomeMappedBlocksChecked": 21336,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.0763,
+          "initialFullRequestMilliseconds": 16.4374
+        }
+      ],
+      "continuity": {
+        "interiorAdjacentPairs": 13440,
+        "chunkBorderAdjacentPairs": 576,
+        "interiorMeanStep": 0.13482142857142856,
+        "chunkBorderMeanStep": 0.14930555555555555,
+        "maximumChunkBorderStep": 1,
+        "heightP10": 84,
+        "heightMedian": 100,
+        "heightP90": 111,
+        "adjacentStepAtMost1Fraction": 1.0,
+        "adjacentStepAtMost2Fraction": 1.0,
+        "adjacentStepAtMost4Fraction": 1.0,
+        "adjacentStepOver4Fraction": 0.0
+      },
+      "measuredMinimumTopY": 75,
+      "measuredMaximumTopY": 183,
+      "actualSurfaceBiomeColumns": {
+        "riichicraft:test_region_a": 4973,
+        "riichicraft:test_region_b": 1683,
+        "riichicraft:test_region_c": 512
+      },
+      "survivalTravelPassed": true,
+      "exploration": {
+        "method": "normal player loading after fixed 32-block teleports; no biome forecast or full-column diagnostics in this window",
+        "boundary": "finite local-machine route observation; server tick execution differs from wall interval and does not include all asynchronous generation; not sustained TPS/FPS",
+        "startX": 8192,
+        "startZ": 8192,
+        "cameraFeetY": 220,
+        "stepBlocks": 32,
+        "plannedSteps": 16,
+        "initialRegionFileAbsent": true,
+        "initialLoadMilliseconds": 6349.6045,
+        "segments": [
+          {
+            "step": 1,
+            "x": 8224,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1101.5821
+          },
+          {
+            "step": 2,
+            "x": 8256,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1244.7607
+          },
+          {
+            "step": 3,
+            "x": 8288,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1255.1217
+          },
+          {
+            "step": 4,
+            "x": 8320,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 843.6961
+          },
+          {
+            "step": 5,
+            "x": 8352,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1151.4695
+          },
+          {
+            "step": 6,
+            "x": 8384,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1103.0316
+          },
+          {
+            "step": 7,
+            "x": 8416,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1053.1678
+          },
+          {
+            "step": 8,
+            "x": 8448,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 844.1884
+          },
+          {
+            "step": 9,
+            "x": 8480,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 803.4158
+          },
+          {
+            "step": 10,
+            "x": 8512,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1045.4294
+          },
+          {
+            "step": 11,
+            "x": 8544,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1053.6517
+          },
+          {
+            "step": 12,
+            "x": 8576,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 896.3744
+          },
+          {
+            "step": 13,
+            "x": 8608,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1202.4908
+          },
+          {
+            "step": 14,
+            "x": 8640,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1196.6414
+          },
+          {
+            "step": 15,
+            "x": 8672,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1401.4424
+          },
+          {
+            "step": 16,
+            "x": 8704,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1201.9043
+          }
+        ],
+        "completedSteps": 16,
+        "segmentTiming": {
+          "count": 16,
+          "medianMilliseconds": 1103.0316,
+          "p95Milliseconds": 1401.4424,
+          "maximumMilliseconds": 1401.4424
+        },
+        "serverTickExecution": {
+          "count": 450,
+          "medianMilliseconds": 0.7094,
+          "p95Milliseconds": 2.1235,
+          "maximumMilliseconds": 1383.3029
+        },
+        "ticksOverTwoSeconds": 0,
+        "segmentsOverTwoSeconds": 0,
+        "severeTickObserved": false,
+        "observationCompleted": true,
+        "assessment": "No server tick over two seconds observed in this fixed finite window"
+      },
+      "generatedAfterReopen": [
+        {
+          "chunkX": 4096,
+          "chunkZ": -4096,
+          "fullBlockAndBiomeSha256": "182d610f3ae55c39765d55ac2184f5cd0d3151e47e2950aa7492eae81191c8bf",
+          "minimumTopY": 135,
+          "maximumTopY": 141,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 35564,
+          "airBlocksChecked": 29972,
+          "biomeMappedBlocksChecked": 35308,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 17.8196,
+          "newFullRequestMilliseconds": 550.2201
+        },
+        {
+          "chunkX": -8192,
+          "chunkZ": 6144,
+          "fullBlockAndBiomeSha256": "bf632eafdfd97eebf4385b763719c0224b9ca61fc9f94bc781279e7bc85062cb",
+          "minimumTopY": 95,
+          "maximumTopY": 100,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 25181,
+          "airBlocksChecked": 40355,
+          "biomeMappedBlocksChecked": 24925,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.9517,
+          "newFullRequestMilliseconds": 449.0843
+        }
+      ],
+      "restartWithoutReturnPointFallback": true,
+      "screenshots": [
+        {
+          "x": 8,
+          "y": 141,
+          "z": 8,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-1-origin-overhead",
+          "path": "../images/terrain/seed-1-origin-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": 8.5,
+            "y": 142.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": 8,
+          "y": 104,
+          "z": 8,
+          "yaw": -35.0,
+          "pitch": 7.0,
+          "name": "riichicraft-terrain-seed-1-origin-ground",
+          "path": "../images/terrain/seed-1-origin-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 7.0,
+            "cameraPitch": 7.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.12186936,
+            "x": 8.5,
+            "y": 105.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": 96,
+          "y": 134,
+          "z": 0,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-1-boundary-overhead",
+          "path": "../images/terrain/seed-1-boundary-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": 96.5,
+            "y": 135.61999988555908,
+            "z": 0.5
+          }
+        },
+        {
+          "x": 512,
+          "y": 78,
+          "z": 0,
+          "yaw": -35.0,
+          "pitch": 5.0,
+          "name": "riichicraft-terrain-seed-1-lowland-ground",
+          "path": "../images/terrain/seed-1-lowland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 5.0,
+            "cameraPitch": 5.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.087155744,
+            "x": 512.5,
+            "y": 79.61999988555908,
+            "z": 0.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedLow",
+          "actualFullSurfaceY": 76
+        },
+        {
+          "x": -1792,
+          "y": 185,
+          "z": 896,
+          "yaw": 35.0,
+          "pitch": 12.0,
+          "name": "riichicraft-terrain-seed-1-highland-ground",
+          "path": "../images/terrain/seed-1-highland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": -1791.5,
+            "y": 186.61999988555908,
+            "z": 896.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedHigh",
+          "actualFullSurfaceY": 183
+        },
+        {
+          "x": 1,
+          "y": 106,
+          "z": 1,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-1-region-a-ground",
+          "path": "../images/terrain/seed-1-region-a-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 1.5,
+            "y": 107.61999988555908,
+            "z": 1.5
+          }
+        },
+        {
+          "x": 97,
+          "y": 88,
+          "z": 1,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-1-region-b-ground",
+          "path": "../images/terrain/seed-1-region-b-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 97.5,
+            "y": 89.61999988555908,
+            "z": 1.5
+          }
+        },
+        {
+          "x": 193,
+          "y": 85,
+          "z": 1,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-1-region-c-ground",
+          "path": "../images/terrain/seed-1-region-c-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 193.5,
+            "y": 86.61999988555908,
+            "z": 1.5
+          }
+        },
+        {
+          "x": 0,
+          "y": -60,
+          "z": 0,
+          "name": "riichicraft-terrain-seed-1-reopened-leave",
+          "path": "../images/terrain/seed-1-reopened-leave.png",
+          "yaw": 35,
+          "pitch": 12,
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": 0.5,
+            "y": -58.38000011444092,
+            "z": 0.5
+          }
+        }
+      ],
+      "observedFullRequestTimings": {
+        "requests": 60,
+        "medianMilliseconds": 60.8713,
+        "p95Milliseconds": 540.4495,
+        "maximumMilliseconds": 617.563
+      },
+      "reopenOldChunkHashesEqual": true,
+      "reverseGenerationOrderHashesEqual": true,
+      "comparedFullChunks": 30,
+      "passed": true,
+      "debugBiomeScreenshot": "../images/terrain/seed-1-debug-biome.png"
+    },
+    {
+      "seed": -7046029254386353131,
+      "seedText": "-7046029254386353131",
+      "worldA": "riichicraft-terrain-seed-2-a",
+      "worldB": "riichicraft-terrain-seed-2-b",
+      "prediction": {
+        "kind": "biome-source prediction; not generated blocks",
+        "minimumCoordinate": -2048,
+        "maximumCoordinate": 2048,
+        "step": 32,
+        "samples": 16641,
+        "differentNeighbourCells": 2646,
+        "regions": [
+          {
+            "biome": "riichicraft:test_region_a",
+            "cells": 5483,
+            "fraction": 0.329487410612343,
+            "connectedComponents": 19,
+            "largestComponentCells": 1416
+          },
+          {
+            "biome": "riichicraft:test_region_b",
+            "cells": 6779,
+            "fraction": 0.4073673457123971,
+            "connectedComponents": 6,
+            "largestComponentCells": 6490
+          },
+          {
+            "biome": "riichicraft:test_region_c",
+            "cells": 4379,
+            "fraction": 0.2631452436752599,
+            "connectedComponents": 20,
+            "largestComponentCells": 1374
+          }
+        ],
+        "heightPrediction": {
+          "kind": "fixed-grid getBaseHeight prediction (first free Y); not actual FULL chunks or game screenshot",
+          "minimumCoordinate": -2048,
+          "maximumCoordinate": 2048,
+          "step": 128,
+          "samples": 1089,
+          "minimumPredictedY": 78,
+          "maximumPredictedY": 183,
+          "predictedHeightP10": 84,
+          "predictedHeightMedian": 102,
+          "predictedHeightP90": 138,
+          "neighbourGradients": 2112,
+          "gradientMedian": 0.0625,
+          "gradientP90": 0.203125,
+          "gradientMaximum": 0.4453125,
+          "gradientAtMost0.02Fraction": 0.1856060606060606,
+          "gradientAtMost0.05Fraction": 0.4147727272727273,
+          "gradientAtMost0.1Fraction": 0.650094696969697,
+          "heightBands": [
+            {
+              "fromInclusive": 0,
+              "untilExclusive": 32,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 32,
+              "untilExclusive": 64,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 64,
+              "untilExclusive": 96,
+              "fraction": 0.35353535353535354
+            },
+            {
+              "fromInclusive": 96,
+              "untilExclusive": 128,
+              "fraction": 0.48117539026629935
+            },
+            {
+              "fromInclusive": 128,
+              "untilExclusive": 160,
+              "fraction": 0.14049586776859505
+            },
+            {
+              "fromInclusive": 160,
+              "untilExclusive": 192,
+              "fraction": 0.024793388429752067
+            },
+            {
+              "fromInclusive": 192,
+              "untilExclusive": 224,
+              "fraction": 0.0
+            },
+            {
+              "fromInclusive": 224,
+              "untilExclusive": 256,
+              "fraction": 0.0
+            }
+          ],
+          "elapsedMilliseconds": 355.6021
+        },
+        "estimatedLow": {
+          "x": -1920,
+          "y": 78,
+          "z": -1920
+        },
+        "estimatedHigh": {
+          "x": 1152,
+          "y": 183,
+          "z": -384
+        },
+        "boundaryProbe": {
+          "x": 64,
+          "y": 128,
+          "z": -64
+        },
+        "serverThreadForecastWallMilliseconds": 372.262
+      },
+      "fixedOriginGridChunks": 16,
+      "extraPredictionSelectedChunks": 13,
+      "initialChunks": [
+        {
+          "chunkX": -2,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "244ab978f20ff8425c7e66f13309e88d19000a26a68f4ff7ae215aa6ef5d7c73",
+          "minimumTopY": 86,
+          "maximumTopY": 89,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22613,
+          "airBlocksChecked": 42923,
+          "biomeMappedBlocksChecked": 22357,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.3496,
+          "initialFullRequestMilliseconds": 352.3919
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "d22d6f419fe26628f2c8f4daa68d5d64f36087fecc5a165e94340c62fddac267",
+          "minimumTopY": 87,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22886,
+          "airBlocksChecked": 42650,
+          "biomeMappedBlocksChecked": 22630,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.9676,
+          "initialFullRequestMilliseconds": 70.2196
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "628122d9396201922b5c823a917445a755b4faa5b166ada41363ffd337ab0790",
+          "minimumTopY": 87,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22959,
+          "airBlocksChecked": 42577,
+          "biomeMappedBlocksChecked": 22703,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.536,
+          "initialFullRequestMilliseconds": 64.2205
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "c7c9bcdf8a467d38ee853b0645586175f5557300ac600847dc0852e92234c9f6",
+          "minimumTopY": 88,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23188,
+          "airBlocksChecked": 42348,
+          "biomeMappedBlocksChecked": 22932,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.823,
+          "initialFullRequestMilliseconds": 68.2633
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "764b49b926970cf863fee21f2938499f064208ebd48b3fd28c4de3a9f9765ef2",
+          "minimumTopY": 87,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22838,
+          "airBlocksChecked": 42698,
+          "biomeMappedBlocksChecked": 22582,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.3562,
+          "initialFullRequestMilliseconds": 67.876
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "1cc04d70aaca8106eb3e4a68ef6cbcf34b157aecc0bc211471fb6c9c03d0c768",
+          "minimumTopY": 89,
+          "maximumTopY": 92,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23439,
+          "airBlocksChecked": 42097,
+          "biomeMappedBlocksChecked": 23183,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.6492,
+          "initialFullRequestMilliseconds": 19.8721
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "44e14af32723d5fa5bb8639e736c4e699f9e49646a71469459e9f3c1fb4020ee",
+          "minimumTopY": 90,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23655,
+          "airBlocksChecked": 41881,
+          "biomeMappedBlocksChecked": 23399,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.1985,
+          "initialFullRequestMilliseconds": 18.9971
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": -1,
+          "fullBlockAndBiomeSha256": "f2308b5be04dfda658ee6a5be80a075d5336b806946490ae29b1c469c332b4ff",
+          "minimumTopY": 90,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23754,
+          "airBlocksChecked": 41782,
+          "biomeMappedBlocksChecked": 23498,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.9339,
+          "initialFullRequestMilliseconds": 18.9146
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "3119e9666fd1b4edb1f8366eb3f486c9e29722a5f2885c78915ffdc855669201",
+          "minimumTopY": 88,
+          "maximumTopY": 92,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23296,
+          "airBlocksChecked": 42240,
+          "biomeMappedBlocksChecked": 23040,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.556,
+          "initialFullRequestMilliseconds": 72.5473
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "ec0752dacd6d29b35153ab29ba7e20a76bc9a9f10f98a8f563dcdb5a10a49d47",
+          "minimumTopY": 91,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23855,
+          "airBlocksChecked": 41681,
+          "biomeMappedBlocksChecked": 23599,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.9754,
+          "initialFullRequestMilliseconds": 18.2094
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "3a63a762b907ede63949efa21381a5c59ca159a53077e887749d829c8dbc1703",
+          "minimumTopY": 92,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 24038,
+          "airBlocksChecked": 41498,
+          "biomeMappedBlocksChecked": 23782,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.7878,
+          "initialFullRequestMilliseconds": 20.2768
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 0,
+          "fullBlockAndBiomeSha256": "109b1ae0b2e767d3db45c155df1181bf514d4065730cf1a8cfafba80487f7e17",
+          "minimumTopY": 92,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 24025,
+          "airBlocksChecked": 41511,
+          "biomeMappedBlocksChecked": 23769,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.1505,
+          "initialFullRequestMilliseconds": 18.9341
+        },
+        {
+          "chunkX": -2,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "861d9bfa47a66275f9b71aa948ad27b99e740f5c94571c99d8686b47c18c3c8b",
+          "minimumTopY": 90,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23803,
+          "airBlocksChecked": 41733,
+          "biomeMappedBlocksChecked": 23547,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.9451,
+          "initialFullRequestMilliseconds": 72.7817
+        },
+        {
+          "chunkX": -1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "fd68db755a1e5486d4fa0341c86dd12883b8250e2215ef01bd8a5c495055a7f2",
+          "minimumTopY": 92,
+          "maximumTopY": 94,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 24107,
+          "airBlocksChecked": 41429,
+          "biomeMappedBlocksChecked": 23851,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.5168,
+          "initialFullRequestMilliseconds": 18.5488
+        },
+        {
+          "chunkX": 0,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "1ee9fb7e15f8b3d29f63a62964ae476b0cb59315d951a2ac4f65309e04bec945",
+          "minimumTopY": 93,
+          "maximumTopY": 94,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 24079,
+          "airBlocksChecked": 41457,
+          "biomeMappedBlocksChecked": 23823,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.7428,
+          "initialFullRequestMilliseconds": 19.4054
+        },
+        {
+          "chunkX": 1,
+          "chunkZ": 1,
+          "fullBlockAndBiomeSha256": "fb631e702ef959dfb9fdfd6f5425d4c29031bf847fa743f4fdd422b11b720c22",
+          "minimumTopY": 92,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 24025,
+          "airBlocksChecked": 41511,
+          "biomeMappedBlocksChecked": 23769,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.1023,
+          "initialFullRequestMilliseconds": 18.76
+        },
+        {
+          "chunkX": 6,
+          "chunkZ": 12,
+          "fullBlockAndBiomeSha256": "42402a97ed10bf77aab8843eb0b32615c64405815e0c631db47cb88538f674af",
+          "minimumTopY": 102,
+          "maximumTopY": 106,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 26722,
+          "airBlocksChecked": 38814,
+          "biomeMappedBlocksChecked": 26466,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 8,
+            "riichicraft:test_region_a": 248
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.6129,
+          "initialFullRequestMilliseconds": 361.3515
+        },
+        {
+          "chunkX": 6,
+          "chunkZ": -2,
+          "fullBlockAndBiomeSha256": "fa9f99c07f75aa4e2128ffb1666f80442d0c350a12854df80f970b21e10b16d8",
+          "minimumTopY": 92,
+          "maximumTopY": 92,
+          "maximumInteriorAdjacentStep": 0,
+          "solidBlocksChecked": 23808,
+          "airBlocksChecked": 41728,
+          "biomeMappedBlocksChecked": 23552,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 192,
+            "riichicraft:test_region_b": 64
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.6975,
+          "initialFullRequestMilliseconds": 325.9618
+        },
+        {
+          "chunkX": -120,
+          "chunkZ": -120,
+          "fullBlockAndBiomeSha256": "9c54d36ed1402d2e43d234b17d401bde5d6f714d2828606038eaea4fbb1c70b0",
+          "minimumTopY": 76,
+          "maximumTopY": 78,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 19847,
+          "airBlocksChecked": 45689,
+          "biomeMappedBlocksChecked": 19591,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 11.7255,
+          "initialFullRequestMilliseconds": 338.642
+        },
+        {
+          "chunkX": 72,
+          "chunkZ": -24,
+          "fullBlockAndBiomeSha256": "33ae2596dec54eda4de95fc2b4487b5b9e9e3ae545045649269cf4208df9d028",
+          "minimumTopY": 175,
+          "maximumTopY": 182,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 45884,
+          "airBlocksChecked": 19652,
+          "biomeMappedBlocksChecked": 45628,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 25.1408,
+          "initialFullRequestMilliseconds": 641.9317
+        },
+        {
+          "chunkX": 3,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "c939beaa4be712014178eb4f0b4828e39653b17b8b5e29db895f28c5bdafd09c",
+          "minimumTopY": 86,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22855,
+          "airBlocksChecked": 42681,
+          "biomeMappedBlocksChecked": 22599,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 229,
+            "riichicraft:test_region_c": 27
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.7104,
+          "initialFullRequestMilliseconds": 235.108
+        },
+        {
+          "chunkX": 4,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "edf1409908526baaebf4da187857b13c7f614107800af169af06f8b1d7c04e63",
+          "minimumTopY": 88,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23234,
+          "airBlocksChecked": 42302,
+          "biomeMappedBlocksChecked": 22978,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 231,
+            "riichicraft:test_region_b": 25
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 22.1121,
+          "initialFullRequestMilliseconds": 46.9522
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": -5,
+          "fullBlockAndBiomeSha256": "b3502a4acd9ad46250554a34fa7a5232e66fef8cc499e83b05a7b8f8e86adf2f",
+          "minimumTopY": 90,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23500,
+          "airBlocksChecked": 42036,
+          "biomeMappedBlocksChecked": 23244,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 17.3622,
+          "initialFullRequestMilliseconds": 39.5781
+        },
+        {
+          "chunkX": 3,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "b00272744b57c33873ee1b4dde7f017fef4abe2f197a9aec321a9ca9a7013747",
+          "minimumTopY": 88,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23202,
+          "airBlocksChecked": 42334,
+          "biomeMappedBlocksChecked": 22946,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 17.8285,
+          "initialFullRequestMilliseconds": 2.4172
+        },
+        {
+          "chunkX": 4,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "a0e4a3776369f1b94a2a53204bd8a91ccbb8a3d81f7959584725c35b0ff47ad2",
+          "minimumTopY": 90,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23371,
+          "airBlocksChecked": 42165,
+          "biomeMappedBlocksChecked": 23115,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 160,
+            "riichicraft:test_region_c": 96
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 15.8634,
+          "initialFullRequestMilliseconds": 1.7384
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": -4,
+          "fullBlockAndBiomeSha256": "bba982b4cc82ffebd82ae3564d0612a7b83314534c171a8973b291cbbc3ffb91",
+          "minimumTopY": 91,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23685,
+          "airBlocksChecked": 41851,
+          "biomeMappedBlocksChecked": 23429,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.8386,
+          "initialFullRequestMilliseconds": 0.8626
+        },
+        {
+          "chunkX": 3,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "0d341c1ef454be5d29766031557038401d49cf7cb789a72a757b1c4b4a7b9d8d",
+          "minimumTopY": 89,
+          "maximumTopY": 90,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23294,
+          "airBlocksChecked": 42242,
+          "biomeMappedBlocksChecked": 23038,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 14.5579,
+          "initialFullRequestMilliseconds": 3.0772
+        },
+        {
+          "chunkX": 4,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "825faa8143d275e561ec7305c17c357c22d81fcb8797e8f48ff139846fd57f53",
+          "minimumTopY": 90,
+          "maximumTopY": 91,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23401,
+          "airBlocksChecked": 42135,
+          "biomeMappedBlocksChecked": 23145,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 249,
+            "riichicraft:test_region_c": 7
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.9228,
+          "initialFullRequestMilliseconds": 1.605
+        },
+        {
+          "chunkX": 5,
+          "chunkZ": -3,
+          "fullBlockAndBiomeSha256": "98e7e3455a18e585dd6635ea1f6eb1c9b78c71913a37b58c83f4869666eb79e4",
+          "minimumTopY": 91,
+          "maximumTopY": 93,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 23758,
+          "airBlocksChecked": 41778,
+          "biomeMappedBlocksChecked": 23502,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_c": 185,
+            "riichicraft:test_region_b": 71
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.8391,
+          "initialFullRequestMilliseconds": 1.0916
+        }
+      ],
+      "continuity": {
+        "interiorAdjacentPairs": 13920,
+        "chunkBorderAdjacentPairs": 576,
+        "interiorMeanStep": 0.07614942528735633,
+        "chunkBorderMeanStep": 0.06076388888888889,
+        "maximumChunkBorderStep": 1,
+        "heightP10": 88,
+        "heightMedian": 91,
+        "heightP90": 93,
+        "adjacentStepAtMost1Fraction": 1.0,
+        "adjacentStepAtMost2Fraction": 1.0,
+        "adjacentStepAtMost4Fraction": 1.0,
+        "adjacentStepOver4Fraction": 0.0
+      },
+      "measuredMinimumTopY": 76,
+      "measuredMaximumTopY": 182,
+      "actualSurfaceBiomeColumns": {
+        "riichicraft:test_region_b": 5670,
+        "riichicraft:test_region_a": 248,
+        "riichicraft:test_region_c": 1506
+      },
+      "survivalTravelPassed": true,
+      "exploration": {
+        "method": "normal player loading after fixed 32-block teleports; no biome forecast or full-column diagnostics in this window",
+        "boundary": "finite local-machine route observation; server tick execution differs from wall interval and does not include all asynchronous generation; not sustained TPS/FPS",
+        "startX": 8192,
+        "startZ": 8192,
+        "cameraFeetY": 220,
+        "stepBlocks": 32,
+        "plannedSteps": 16,
+        "initialRegionFileAbsent": true,
+        "initialLoadMilliseconds": 4721.5854,
+        "segments": [
+          {
+            "step": 1,
+            "x": 8224,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1049.0624
+          },
+          {
+            "step": 2,
+            "x": 8256,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 700.7094
+          },
+          {
+            "step": 3,
+            "x": 8288,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 750.6125
+          },
+          {
+            "step": 4,
+            "x": 8320,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 649.0974
+          },
+          {
+            "step": 5,
+            "x": 8352,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 649.8845
+          },
+          {
+            "step": 6,
+            "x": 8384,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 1250.3637
+          },
+          {
+            "step": 7,
+            "x": 8416,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 599.8381
+          },
+          {
+            "step": 8,
+            "x": 8448,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 699.7755
+          },
+          {
+            "step": 9,
+            "x": 8480,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 700.4645
+          },
+          {
+            "step": 10,
+            "x": 8512,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 749.5194
+          },
+          {
+            "step": 11,
+            "x": 8544,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 700.1436
+          },
+          {
+            "step": 12,
+            "x": 8576,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 799.7428
+          },
+          {
+            "step": 13,
+            "x": 8608,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 700.0307
+          },
+          {
+            "step": 14,
+            "x": 8640,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 601.2837
+          },
+          {
+            "step": 15,
+            "x": 8672,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 498.441
+          },
+          {
+            "step": 16,
+            "x": 8704,
+            "z": 8192,
+            "downloadAndRenderMilliseconds": 550.081
+          }
+        ],
+        "completedSteps": 16,
+        "segmentTiming": {
+          "count": 16,
+          "medianMilliseconds": 700.1436,
+          "p95Milliseconds": 1250.3637,
+          "maximumMilliseconds": 1250.3637
+        },
+        "serverTickExecution": {
+          "count": 300,
+          "medianMilliseconds": 0.5712,
+          "p95Milliseconds": 5.6344,
+          "maximumMilliseconds": 1432.0161
+        },
+        "ticksOverTwoSeconds": 0,
+        "segmentsOverTwoSeconds": 0,
+        "severeTickObserved": false,
+        "observationCompleted": true,
+        "assessment": "No server tick over two seconds observed in this fixed finite window"
+      },
+      "generatedAfterReopen": [
+        {
+          "chunkX": 4096,
+          "chunkZ": -4096,
+          "fullBlockAndBiomeSha256": "53a1cb3bf36c24030965d58f399857c9f889aaab05809d70d579b7881258b5a1",
+          "minimumTopY": 98,
+          "maximumTopY": 101,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 25680,
+          "airBlocksChecked": 39856,
+          "biomeMappedBlocksChecked": 25424,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_a": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 13.3248,
+          "newFullRequestMilliseconds": 412.3306
+        },
+        {
+          "chunkX": -8192,
+          "chunkZ": 6144,
+          "fullBlockAndBiomeSha256": "deb5c68b1795d8cb51aacbe2863403d0cb75345d11f95544d9ad904cc6ba8a86",
+          "minimumTopY": 85,
+          "maximumTopY": 86,
+          "maximumInteriorAdjacentStep": 1,
+          "solidBlocksChecked": 22241,
+          "airBlocksChecked": 43295,
+          "biomeMappedBlocksChecked": 21985,
+          "surfaceBiomeColumns": {
+            "riichicraft:test_region_b": 256
+          },
+          "serverThreadFullColumnDiagnosticMilliseconds": 12.5408,
+          "newFullRequestMilliseconds": 361.9652
+        }
+      ],
+      "restartWithoutReturnPointFallback": true,
+      "screenshots": [
+        {
+          "x": 8,
+          "y": 133,
+          "z": 8,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-2-origin-overhead",
+          "path": "../images/terrain/seed-2-origin-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": 8.5,
+            "y": 134.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": 8,
+          "y": 96,
+          "z": 8,
+          "yaw": -35.0,
+          "pitch": 7.0,
+          "name": "riichicraft-terrain-seed-2-origin-ground",
+          "path": "../images/terrain/seed-2-origin-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 7.0,
+            "cameraPitch": 7.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.12186936,
+            "x": 8.5,
+            "y": 97.61999988555908,
+            "z": 8.5
+          }
+        },
+        {
+          "x": 64,
+          "y": 138,
+          "z": -64,
+          "yaw": 0.0,
+          "pitch": 90.0,
+          "name": "riichicraft-terrain-seed-2-boundary-overhead",
+          "path": "../images/terrain/seed-2-boundary-overhead.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 90.0,
+            "cameraPitch": 90.0,
+            "cameraYaw": 0.0,
+            "forwardY": -1.0,
+            "x": 64.5,
+            "y": 139.61999988555908,
+            "z": -63.5
+          }
+        },
+        {
+          "x": -1920,
+          "y": 79,
+          "z": -1920,
+          "yaw": -35.0,
+          "pitch": 5.0,
+          "name": "riichicraft-terrain-seed-2-lowland-ground",
+          "path": "../images/terrain/seed-2-lowland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 5.0,
+            "cameraPitch": 5.0,
+            "cameraYaw": -35.0,
+            "forwardY": -0.087155744,
+            "x": -1919.5,
+            "y": 80.61999988555908,
+            "z": -1919.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedLow",
+          "actualFullSurfaceY": 77
+        },
+        {
+          "x": 1152,
+          "y": 184,
+          "z": -384,
+          "yaw": 35.0,
+          "pitch": 12.0,
+          "name": "riichicraft-terrain-seed-2-highland-ground",
+          "path": "../images/terrain/seed-2-highland-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": 1152.5,
+            "y": 185.61999988555908,
+            "z": -383.5
+          },
+          "selection": "fixed 33x33 height prediction estimatedHigh",
+          "actualFullSurfaceY": 182
+        },
+        {
+          "x": 98,
+          "y": 104,
+          "z": 193,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-2-region-a-ground",
+          "path": "../images/terrain/seed-2-region-a-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 98.5,
+            "y": 105.61999988555908,
+            "z": 193.5
+          }
+        },
+        {
+          "x": 1,
+          "y": 94,
+          "z": 1,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-2-region-b-ground",
+          "path": "../images/terrain/seed-2-region-b-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 1.5,
+            "y": 95.61999988555908,
+            "z": 1.5
+          }
+        },
+        {
+          "x": 97,
+          "y": 94,
+          "z": -31,
+          "yaw": 35.0,
+          "pitch": 9.0,
+          "name": "riichicraft-terrain-seed-2-region-c-ground",
+          "path": "../images/terrain/seed-2-region-c-ground.png",
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 9.0,
+            "cameraPitch": 9.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.15643446,
+            "x": 97.5,
+            "y": 95.61999988555908,
+            "z": -30.5
+          }
+        },
+        {
+          "x": 0,
+          "y": -60,
+          "z": 0,
+          "name": "riichicraft-terrain-seed-2-reopened-leave",
+          "path": "../images/terrain/seed-2-reopened-leave.png",
+          "yaw": 35,
+          "pitch": 12,
+          "actualCamera": {
+            "perspective": "FIRST_PERSON",
+            "playerPitch": 12.0,
+            "cameraPitch": 12.0,
+            "cameraYaw": 35.0,
+            "forwardY": -0.2079117,
+            "x": 0.5,
+            "y": -58.38000011444092,
+            "z": 0.5
+          }
+        }
+      ],
+      "observedFullRequestTimings": {
+        "requests": 62,
+        "medianMilliseconds": 39.5781,
+        "p95Milliseconds": 403.7655,
+        "maximumMilliseconds": 641.9317
+      },
+      "reopenOldChunkHashesEqual": true,
+      "reverseGenerationOrderHashesEqual": true,
+      "comparedFullChunks": 31,
+      "passed": true,
+      "debugBiomeScreenshot": "../images/terrain/seed-2-debug-biome.png"
+    }
+  ],
+  "finishedOnTitleScreen": true,
+  "passed": true,
+  "evidenceScope": "Native Minecraft 26.2 dedicated server and TCP client; fixed sample rules; prediction maps are not game screenshots; human long-play acceptance remains pending"
+}
